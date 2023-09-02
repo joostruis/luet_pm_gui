@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 /path/to/your/python/script.py
+python /usr/bin/luet_pm_gui.py
