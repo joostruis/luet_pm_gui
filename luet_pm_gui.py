@@ -14,6 +14,9 @@ class SearchApp(Gtk.Window):
         Gtk.Window.__init__(self, title="Luet Package Search")
         self.set_default_size(800, 400)
 
+        # Set the application icon name
+        self.set_icon_name("luet_pm_gui")  # Add this line
+
         self.last_search = ""  # Store the last entered search string
         self.search_thread = None  # Thread for search process
         self.repo_update_thread = None  # Thread for repository update process
