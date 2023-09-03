@@ -290,24 +290,20 @@ class SearchApp(Gtk.Window):
             # Disable GUI while uninstallation is running
             self.disable_gui()
 
-            # Update the status bar with the uninstallation message
-            self.set_status_message(f"Uninstalling {name}...")
-
-            # Create a new thread for the uninstallation process
-            uninstall_thread = threading.Thread(target=self.run_uninstall, args=(uninstall_command,))
+            # Create a new thread for the uninstallation process and pass the uninstall command and package name
+            uninstall_thread = threading.Thread(target=self.run_uninstall, args=(uninstall_command, name))
             uninstall_thread.start()
 
-    def run_uninstall(self, uninstall_command):
+    def run_uninstall(self, uninstall_command, package_name):
         try:
+            # Update the status bar with "Uninstalling [package name]"
+            GLib.idle_add(self.set_status_message, f"Uninstalling {package_name}...")
+
             result = subprocess.run(["sh", "-c", uninstall_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if result.returncode == 0:
-                # Update the status bar with the completion message
+                # Update the status bar with "Ready" once uninstallation is complete
                 GLib.idle_add(self.set_status_message, "Ready")
-
-                # Re-enable the GUI after uninstallation is completed
-                self.enable_gui()
-
-                # Search for the same string and update the TreeView content
+                # Search for the same string again and update the TreeView content
                 if self.last_search:
                     search_command = f"luet search -o json -q {self.last_search}"
                     GLib.idle_add(self.run_search, search_command)
@@ -316,6 +312,9 @@ class SearchApp(Gtk.Window):
                 GLib.idle_add(self.set_status_message, "Error uninstalling package")
         except Exception as e:
             print(f"Error uninstalling package: {str(e)}")
+        finally:
+            # Enable GUI after uninstallation is completed or if an error occurs
+            GLib.idle_add(self.enable_gui)
 
     def confirm_install(self, iter):
         category = self.liststore.get_value(iter, 0)
