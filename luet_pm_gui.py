@@ -36,6 +36,9 @@ class SearchApp(Gtk.Window):
         self.search_entry = Gtk.Entry()
         self.search_entry.set_placeholder_text("Enter package name")
 
+        # Connect the "activate" signal to the search method
+        self.search_entry.connect("activate", self.on_search_clicked)
+
         self.search_button = Gtk.Button(label="Search")
         self.search_button.connect("clicked", self.on_search_clicked)
 
