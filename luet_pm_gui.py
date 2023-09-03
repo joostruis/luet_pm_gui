@@ -3,6 +3,7 @@ import subprocess
 import json
 import os
 import threading
+import webbrowser
 
 gi.require_version('Gtk', '3.0')
 gi.require_version('Vte', '2.91')
@@ -10,11 +11,12 @@ from gi.repository import Gtk, GLib, Gdk, GdkPixbuf, Vte
 
 class SearchApp(Gtk.Window):
     def __init__(self):
-        Gtk.Window.__init__(self, title="Package Search")
+        Gtk.Window.__init__(self, title="Luet Package Search")
         self.set_default_size(800, 400)
 
         self.last_search = ""  # Store the last entered search string
         self.search_thread = None  # Thread for search process
+        self.repo_update_thread = None  # Thread for repository update process
 
         if os.getuid() == 0:
             # Running as root, initialize the search UI
@@ -24,6 +26,10 @@ class SearchApp(Gtk.Window):
             self.init_permission_error_ui()
 
     def init_search_ui(self):
+        # Create a menu bar
+        self.menu_bar = Gtk.MenuBar()
+        self.create_menu(self.menu_bar)
+
         self.search_entry = Gtk.Entry()
         self.search_entry.set_placeholder_text("Enter package name")
 
@@ -66,6 +72,11 @@ class SearchApp(Gtk.Window):
         self.result_label = Gtk.Label()
         self.result_label.set_line_wrap(True)
 
+        # Create a status bar at the bottom of the window
+        self.status_bar = Gtk.Statusbar()
+        self.status_bar_context_id = self.status_bar.get_context_id("Status")
+        self.set_status_message("Ready")  # Initialize the status bar message
+
         # Create a box for the search area
         search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         search_box.pack_start(self.search_entry, True, True, 0)
@@ -73,10 +84,12 @@ class SearchApp(Gtk.Window):
 
         # Create a box for the spacer and add it before the search box
         main_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        main_content.pack_start(self.menu_bar, False, False, 0)
         main_content.pack_start(spacer_box, False, False, 0)
         main_content.pack_start(search_box, False, False, 0)  # Place the spacer before the search bar
         main_content.pack_start(scrolled_window, True, True, 0)
         main_content.pack_start(self.result_label, False, False, 0)
+        main_content.pack_start(self.status_bar, False, False, 0)  # Add the status bar
 
         # Create a main box to add margin on both sides
         main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -86,18 +99,102 @@ class SearchApp(Gtk.Window):
 
         self.add(main_box)
 
-    def init_permission_error_ui(self):
-        self.result_label = Gtk.Label()
-        self.result_label.set_text("This program can only operate with root permissions.")
+    def create_menu(self, menu_bar):
+        # Create the "File" menu
+        file_menu = Gtk.Menu()
 
+        # Create "Update repositories" item under "File"
+        update_repositories_item = Gtk.MenuItem(label="Update Repositories")
+        update_repositories_item.connect("activate", self.update_repositories)
+        file_menu.append(update_repositories_item)
+
+        # Create "Quit" item under "File"
+        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item.connect("activate", Gtk.main_quit)
+        file_menu.append(quit_item)
+
+        # Create the "Help" menu
+        help_menu = Gtk.Menu()
+
+        # Create "About" item under "Help"
+        about_item = Gtk.MenuItem(label="About")
+        about_item.connect("activate", self.show_about_dialog)
+        help_menu.append(about_item)
+
+        # Create "File" and "Help" menu items in the menu bar
+        file_menu_item = Gtk.MenuItem(label="File")
+        file_menu_item.set_submenu(file_menu)
+        help_menu_item = Gtk.MenuItem(label="Help")
+        help_menu_item.set_submenu(help_menu)
+
+        menu_bar.append(file_menu_item)
+        menu_bar.append(help_menu_item)
+
+    def update_repositories(self, widget):
+        # Disable GUI while the repository update is running
+        self.disable_gui()
+
+        # Set the status bar message to "Updating repositories"
+        self.set_status_message("Updating repositories...")
+
+        # Create a new thread for the repository update process
+        self.repo_update_thread = threading.Thread(target=self.run_repo_update)
+        self.repo_update_thread.start()
+
+    def run_repo_update(self):
+        try:
+            # Run 'luet repo update' command
+            update_command = "luet repo update"
+            result = subprocess.run(["sh", "-c", update_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if result.returncode == 0:
+                # Update the status bar message
+                GLib.idle_add(self.set_status_message, "Repositories updated")
+            else:
+                # Update the status bar message with an error
+                GLib.idle_add(self.set_status_message, "Error updating repositories")
+        except Exception as e:
+            print(f"Error updating repositories: {str(e)}")
+        finally:
+            # Re-enable the GUI after the repository update is completed
+            self.enable_gui()
+
+    def disable_gui(self):
+        # Disable GUI elements
+        self.search_entry.set_sensitive(False)
+        self.search_button.set_sensitive(False)
+
+    def enable_gui(self):
+        # Enable GUI elements
+        self.search_entry.set_sensitive(True)
+        self.search_button.set_sensitive(True)
+
+    def show_about_dialog(self, widget):
+        about_dialog = Gtk.Dialog(
+            title="About",
+            transient_for=self,
+            modal=True,
+            destroy_with_parent=True
+        )
+        
+        about_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        about_content.set_margin_start(10)
+        about_content.set_margin_end(10)
+        
+        label = Gtk.Label(label="© 2023 MocaccinoOS org. All Rights Reserved")
+        label.set_line_wrap(True)
+        
         close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", Gtk.main_quit)
-
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        main_box.pack_start(self.result_label, True, True, 0)
-        main_box.pack_start(close_button, False, False, 0)
-
-        self.add(main_box)
+        close_button.connect("clicked", lambda btn: about_dialog.destroy())
+        
+        about_content.pack_start(label, False, False, 0)
+        about_content.pack_start(close_button, False, False, 0)
+        
+        about_dialog.get_content_area().add(about_content)
+        about_dialog.show_all()
+        
+        about_dialog.run()
+        about_dialog.destroy()
 
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text()
@@ -110,8 +207,7 @@ class SearchApp(Gtk.Window):
                 self.search_thread.join()
 
             # Disable GUI while search is running
-            self.search_entry.set_sensitive(False)
-            self.search_button.set_sensitive(False)
+            self.disable_gui()
 
             # Create a new thread for the search process
             self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
@@ -146,8 +242,7 @@ class SearchApp(Gtk.Window):
             self.result_label.set_text("Error executing the search command.")
         finally:
             # Enable GUI after search is completed
-            self.search_entry.set_sensitive(True)
-            self.search_button.set_sensitive(True)
+            self.enable_gui()
 
     def add_action_buttons(self):
         # Create a button for the "Action" column
@@ -155,24 +250,14 @@ class SearchApp(Gtk.Window):
         renderer.set_property("alignment", Gtk.Align.CENTER)  # Center-align the button text
         column5 = self.treeview.get_column(4)  # Get the "Action" column (buttons)
         column5.set_visible(True)  # Ensure the "Action" column is visible
-        column5.set_title("Action")  # Update the column title
-        column5.set_cell_data_func(renderer, self.action_button_data_func, None)
-        column5.clear_attributes(renderer)  # Clear existing attributes
 
         # Connect the button-press-event signal to handle button clicks
         self.treeview.connect("button-press-event", self.on_button_clicked)
 
-    def action_button_data_func(self, column, cell, model, iter, user_data):
-        # Set button text and foreground color based on whether the package is installed
-        action_text = model[iter][4]
-        if action_text == "Remove":
-            cell.set_property("text", action_text)
-            cell.set_property("foreground", "red")  # Set text color to red
-        else:
-            cell.set_property("text", action_text)
-            cell.set_property("foreground", "green")  # Set text color to green
-
     def on_button_clicked(self, widget, event):
+        if not self.search_entry.get_sensitive():
+            return  # Ignore clicks when the GUI is disabled
+
         if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 1:  # Left mouse button
             path, column, x, y = self.treeview.get_path_at_pos(int(event.x), int(event.y))
             if path is not None:
@@ -201,7 +286,36 @@ class SearchApp(Gtk.Window):
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
             uninstall_command = f"luet uninstall -y {category}/{name}"
-            self.run_terminal(uninstall_command)
+
+            # Disable GUI while uninstallation is running
+            self.disable_gui()
+
+            # Update the status bar with the uninstallation message
+            self.set_status_message(f"Uninstalling {name}...")
+
+            # Create a new thread for the uninstallation process
+            uninstall_thread = threading.Thread(target=self.run_uninstall, args=(uninstall_command,))
+            uninstall_thread.start()
+
+    def run_uninstall(self, uninstall_command):
+        try:
+            result = subprocess.run(["sh", "-c", uninstall_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result.returncode == 0:
+                # Update the status bar with the completion message
+                GLib.idle_add(self.set_status_message, "Ready")
+
+                # Re-enable the GUI after uninstallation is completed
+                self.enable_gui()
+
+                # Search for the same string and update the TreeView content
+                if self.last_search:
+                    search_command = f"luet search -o json -q {self.last_search}"
+                    GLib.idle_add(self.run_search, search_command)
+            else:
+                # Update the status bar with an error message
+                GLib.idle_add(self.set_status_message, "Error uninstalling package")
+        except Exception as e:
+            print(f"Error uninstalling package: {str(e)}")
 
     def confirm_install(self, iter):
         category = self.liststore.get_value(iter, 0)
@@ -218,36 +332,38 @@ class SearchApp(Gtk.Window):
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
             install_command = f"luet install -y {category}/{name}"
-            self.run_terminal(install_command)
+            
+            # Disable GUI while installation is running
+            self.disable_gui()
 
-    def run_terminal(self, command):
-        window = Gtk.Window()
-        window.set_title("Terminal")
-        window.set_default_size(800, 400)
+            # Create a new thread for the installation process
+            install_thread = threading.Thread(target=self.run_installation, args=(install_command, name))
+            install_thread.start()
 
-        vte = Vte.Terminal()
-        vte.spawn_sync(
-            Vte.PtyFlags.DEFAULT,
-            None,
-            ["/bin/bash", "-c", command],
-            [],
-            GLib.SpawnFlags.DEFAULT,
-            None,
-            None,
-        )
+    def run_installation(self, install_command, package_name):
+        try:
+            # Update the status bar with "Installing [package name]"
+            GLib.idle_add(self.set_status_message, f"Installing {package_name}...")
 
-        vte.connect("child-exited", self.on_terminal_child_exited)  # Connect to child-exited signal
+            result = subprocess.run(["sh", "-c", install_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result.returncode == 0:
+                # Update the status bar with "Ready" once installation is complete
+                GLib.idle_add(self.set_status_message, "Ready")
+                # Search for the same string again and update the TreeView content
+                if self.last_search:
+                    search_command = f"luet search -o json -q {self.last_search}"
+                    GLib.idle_add(self.run_search, search_command)
+            else:
+                self.set_status_message("Error installing package")
+        except Exception as e:
+            print(f"Error installing package: {str(e)}")
+        finally:
+            # Enable GUI after installation is completed or if an error occurs
+            self.enable_gui()
 
-        window.add(vte)
-        window.show_all()
 
-    def on_terminal_child_exited(self, vte, status):
-        vte.get_parent().destroy()  # Close the terminal window when the child process exits
-
-        # Refresh the TreeView with the last entered search string
-        if self.last_search:
-            search_command = f"luet search -o json -q {self.last_search}"
-            GLib.idle_add(self.run_search, search_command)
+    def set_status_message(self, message):
+        self.status_bar.push(self.status_bar_context_id, message)
 
 def main():
     win = SearchApp()
