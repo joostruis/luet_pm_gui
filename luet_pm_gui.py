@@ -212,6 +212,9 @@ class SearchApp(Gtk.Window):
             if self.search_thread and self.search_thread.is_alive():
                 self.search_thread.join()
 
+            # Set the status bar message to "Searching for [package name]"
+            self.set_status_message(f"Searching for {package_name}...")
+
             # Disable GUI while search is running
             self.disable_gui()
 
@@ -240,6 +243,9 @@ class SearchApp(Gtk.Window):
                         self.result_label.set_text("No packages found.")
                     else:
                         self.result_label.set_text("")
+                    
+                    # Update the status bar to "Ready" once the search results are shown
+                    self.set_status_message("Ready")
                 except json.JSONDecodeError:
                     self.result_label.set_text("Invalid JSON output.")
             else:
