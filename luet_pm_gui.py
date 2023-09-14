@@ -229,29 +229,42 @@ class SearchApp(Gtk.Window):
                 output = result.stdout.strip()
                 try:
                     data = json.loads(output)
-                    packages = data.get("packages", [])
-                    self.liststore.clear()
-                    for package_info in packages:
-                        category = package_info.get("category", "")
-                        name = package_info.get("name", "")
-                        version = package_info.get("version", "")
-                        repository = package_info.get("repository", "")
-                        installed = package_info.get("installed", False)
-                        action_text = "Remove" if installed else "Install"
-                        self.liststore.append([category, name, version, repository, action_text])  # Show appropriate button
-                    if not packages:
-                        self.result_label.set_text("No packages found.")
+                    packages = data.get("packages")
+                    if packages is not None:
+                        self.liststore.clear()
+                        for package_info in packages:
+                            category = package_info.get("category", "")
+                            name = package_info.get("name", "")
+                            version = package_info.get("version", "")
+                            repository = package_info.get("repository", "")
+                            installed = package_info.get("installed", False)
+                            action_text = "Remove" if installed else "Install"
+                            self.liststore.append([category, name, version, repository, action_text])
+
+                        if not packages:
+                            self.result_label.set_text("")
+                            # Update the status bar to "No results"
+                            self.set_status_message("No results")
+                        else:
+                            self.result_label.set_text("")
+                            # Update the status bar to "Ready" once the search results are shown
+                            self.set_status_message("Ready")
                     else:
                         self.result_label.set_text("")
-                    
-                    # Update the status bar to "Ready" once the search results are shown
-                    self.set_status_message("Ready")
+                        # Update the status bar with "No results" message
+                        self.set_status_message("No results")
                 except json.JSONDecodeError:
                     self.result_label.set_text("Invalid JSON output.")
+                    # Update the status bar with "Invalid JSON output" message
+                    self.set_status_message("Invalid JSON output")
             else:
                 self.result_label.set_text("Error executing the search command.")
+                # Update the status bar with "Error executing the search command" message
+                self.set_status_message("Error executing the search command")
         except FileNotFoundError:
             self.result_label.set_text("Error executing the search command.")
+            # Update the status bar with "Error executing the search command" message
+            self.set_status_message("Error executing the search command")
         finally:
             # Enable GUI after search is completed
             self.enable_gui()
@@ -259,7 +272,7 @@ class SearchApp(Gtk.Window):
     def add_action_buttons(self):
         # Create a button for the "Action" column
         renderer = Gtk.CellRendererText()
-        renderer.set_property("alignment", Gtk.Align.CENTER)  # Center-align the button text
+        renderer.set_property("xalign", 0.5)  # Center-align the text horizontally
         column5 = self.treeview.get_column(4)  # Get the "Action" column (buttons)
         column5.set_visible(True)  # Ensure the "Action" column is visible
 
@@ -289,10 +302,10 @@ class SearchApp(Gtk.Window):
         message = f"Do you want to remove {name}?"
         dialog = Gtk.MessageDialog(
             parent=self,
-            flags=Gtk.DialogFlags.MODAL,
-            type=Gtk.MessageType.QUESTION,
+            modal=True,  # Use initializer keyword modal=True
+            message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.YES_NO,
-            message_format=message,
+            text=message,  # Use initializer keyword text=message
         )
         response = dialog.run()
         dialog.destroy()
@@ -334,16 +347,16 @@ class SearchApp(Gtk.Window):
         message = f"Do you want to install {name}?"
         dialog = Gtk.MessageDialog(
             parent=self,
-            flags=Gtk.DialogFlags.MODAL,
-            type=Gtk.MessageType.QUESTION,
+            modal=True,  # Use initializer keyword modal=True
+            message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.YES_NO,
-            message_format=message,
+            text=message,  # Use initializer keyword text=message
         )
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
             install_command = f"luet install -y {category}/{name}"
-            
+
             # Disable GUI while installation is running
             self.disable_gui()
 
