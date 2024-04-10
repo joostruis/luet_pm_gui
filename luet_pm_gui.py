@@ -52,19 +52,18 @@ class SearchApp(Gtk.Window):
         self.treeview.set_model(self.liststore)
 
         renderer = Gtk.CellRendererText()
-        renderer.set_alignment(0.5, 0.5)  # Center-align the text horizontally and vertically
+        renderer.set_alignment(0, 0.5)  # Align text to the left
+        column1 = Gtk.TreeViewColumn("Category", renderer, text=0)
+        column2 = Gtk.TreeViewColumn("Name", renderer, text=1)
+        column3 = Gtk.TreeViewColumn("Version", renderer, text=2)
+        column4 = Gtk.TreeViewColumn("Repository", renderer, text=3)
+        column5 = Gtk.TreeViewColumn("Action", Gtk.CellRendererText(), text=4)  # Text column for buttons
 
-        columns = [
-            ("Category", 0),
-            ("Name", 1),
-            ("Version", 2),
-            ("Repository", 3),
-            ("Action", 4)
-        ]
-
-        for title, idx in columns:
-            column = Gtk.TreeViewColumn(title, renderer, text=idx)
+        # Set sort column ID for each column (0 for Category, 1 for Name, 2 for Version, 3 for Repository, 4 for Action)
+        for idx, column in enumerate([column1, column2, column3, column4, column5]):
             column.set_sort_column_id(idx)
+
+            # Allow sorting by clicking on column headers
             column.set_resizable(True)
             column.set_expand(True)
             column.set_clickable(True)
@@ -189,7 +188,7 @@ class SearchApp(Gtk.Window):
         about_content.set_margin_start(10)
         about_content.set_margin_end(10)
 
-        label = Gtk.Label(label="© 2023 MocaccinoOS org. All Rights Reserved")
+        label = Gtk.Label(label="© 2024 MocaccinoOS org. All Rights Reserved")
         label.set_line_wrap(True)
 
         close_button = Gtk.Button(label="Close")
