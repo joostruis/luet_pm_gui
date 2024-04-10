@@ -233,6 +233,8 @@ class SearchApp(Gtk.Window):
                     packages = data.get("packages")
                     if packages is not None:
                         self.liststore.clear()
+                        result_count = len(packages)  # Count the number of search results
+                        search_string = self.search_entry.get_text()  # Get the search string
                         for package_info in packages:
                             category = package_info.get("category", "")
                             name = package_info.get("name", "")
@@ -248,8 +250,8 @@ class SearchApp(Gtk.Window):
                             self.set_status_message("No results")
                         else:
                             self.result_label.set_text("")
-                            # Update the status bar to "Ready" once the search results are shown
-                            self.set_status_message("Ready")
+                            # Update the status bar to show the number of results and the search string
+                            self.set_status_message(f"Found {result_count} results matching '{search_string}'")
                     else:
                         self.result_label.set_text("")
                         # Update the status bar with "No results" message
