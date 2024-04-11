@@ -352,12 +352,13 @@ class SearchApp(Gtk.Window):
                         if num_results > 0:
                             self.set_status_message(f"Found {num_results} results matching '{self.last_search}'")
                         else:
+                            # Clear the liststore when there are no results
+                            self.liststore.clear()
                             self.set_status_message("No results")
-
-                        self.result_label.set_text("")  # Clear any previous error message
                     else:
-                        self.result_label.set_text("")
-                        # Update the status bar with "No results" message
+                        # Handle the case when 'packages' is None
+                        # Clear the liststore when there are no results
+                        self.liststore.clear()
                         self.set_status_message("No results")
                 except json.JSONDecodeError:
                     self.result_label.set_text("Invalid JSON output.")
