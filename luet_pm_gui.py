@@ -2,6 +2,7 @@ import gi
 import subprocess
 import json
 import os
+import re
 import threading
 import time
 import webbrowser
@@ -224,9 +225,12 @@ class SearchApp(Gtk.Window):
 
                 # Loop through words
                 for word in words:
-                    # Strip off the last '-' and all characters after it
-                    word = word.rsplit('-', 1)[0]
+
                     if '/' in word:
+                        # Find the index of the first '-' followed by a number using regular expressions
+                        match = re.search(r'-\d', word)
+                        index = match.start()
+                        word = word[:index]
                         words_dict[word] = True
 
                 for word in words_dict:
