@@ -413,10 +413,15 @@ class SearchApp(Gtk.Window):
 
             result = subprocess.run(["sh", "-c", install_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if result.returncode == 0:
+                # Start searching for the same package name after installation
                 if self.last_search:
+                    # Disable GUI while search is running
+                    self.disable_gui()
                     search_command = f"luet search -o json -q {self.last_search}"
+                    # Stop the spinner animation
+                    self.stop_spinner()
                     # Update the status bar to indicate searching again
-                    self.set_status_message(f"Searching again for '{self.last_search}'...")
+                    self.start_spinner(f"Searching again for '{self.last_search}'...")
                     # Start the search thread
                     self.start_search_thread(search_command)
                 else:
@@ -431,12 +436,12 @@ class SearchApp(Gtk.Window):
             # Enable GUI after installation is completed or if an error occurs
             self.enable_gui()
 
-    def run_uninstallation(self, uninstall_command, package_name):
+    def run_uninstallation(self, uninstall_command, category, package_name):
         try:
             # Update the status bar with "Uninstalling [package name]"
             self.set_status_message(f"Uninstalling {package_name}...")
 
-            process = subprocess.Popen(["sh", "-c", uninstall_command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(["sh", "-c", uninstall_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             while process.poll() is None:  # While the process is running
                 Gtk.main_iteration_do(False)  # Process GTK events without blocking
 
@@ -445,28 +450,26 @@ class SearchApp(Gtk.Window):
             if process.returncode == 0:
                 if self.last_search:
                     search_command = f"luet search -o json -q {self.last_search}"
+                    # Stop the spinner animation
+                    self.stop_spinner()
                     # Update the status bar to indicate searching again
-                    self.set_status_message(f"Searching again for '{self.last_search}'...")
+                    self.start_spinner(f"Searching again for '{self.last_search}'...")
                     # Start the search thread
                     self.start_search_thread(search_command)
                 else:
                     # Update the status bar with "Ready" once uninstallation is complete
                     self.set_status_message("Ready")
             else:
-                # Update the status bar with an error message
-                self.set_status_message(f"Error uninstalling package: {stderr.decode('utf-8')}")
+                # Stop the spinner animation
+                self.stop_spinner()
+                # Update the status bar with an error message using GLib.idle_add
+                GLib.idle_add(self.set_status_message, f"Error uninstalling package: '{category}/{package_name}'")
+
         except Exception as e:
             print(f"Error uninstalling package: {str(e)}")
         finally:
             # Enable GUI after uninstallation is completed or if an error occurs
             self.enable_gui()
-
-    def show_spinner_message(self, message):
-        self.start_spinner(message)
-
-    def start_search_thread(self, search_command):
-        self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
-        self.search_thread.start()
 
     def confirm_install(self, iter):
         category = self.liststore.get_value(iter, 0)
@@ -517,17 +520,13 @@ class SearchApp(Gtk.Window):
             self.start_spinner(f"Uninstalling {name}...")
 
             # Create a new thread for the uninstallation process and pass the uninstall command and package name
-            uninstall_thread = threading.Thread(target=self.run_uninstallation, args=(uninstall_command, name))
+            uninstall_thread = threading.Thread(target=self.run_uninstallation, args=(uninstall_command, category, name))
             uninstall_thread.start()
 
-    def show_spinner_message(self, message):
-        self.start_spinner(message)
-
     def start_search_thread(self, search_command):
-        self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
-        self.search_thread.start()
-
-    def start_search_thread(self, search_command):
+        self.liststore.clear()
+        # Disable GUI while search is running
+        self.disable_gui()
         self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
         self.search_thread.start()
 
@@ -549,10 +548,12 @@ class SearchApp(Gtk.Window):
         self.status_bar.push(self.status_bar_context_id, f"{frame} {message}")
         return True
 
+    def show_spinner_message(self, message):
+        self.start_spinner(message)
+
     def set_status_message(self, message):
         # Clear any previous messages
         self.status_bar.remove_all(self.status_bar_context_id)
-
         # Add the new message to the status bar
         self.status_bar.push(self.status_bar_context_id, message)
 
