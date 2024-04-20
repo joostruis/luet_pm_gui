@@ -11,6 +11,116 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Vte', '2.91')
 from gi.repository import Gtk, GLib, Gdk, GdkPixbuf, Vte
 
+class AboutDialog(Gtk.AboutDialog):
+    def __init__(self, parent):
+        super().__init__(
+            transient_for=parent,
+            modal=True,
+            destroy_with_parent=True
+        )
+
+        self.set_program_name("Luet Package Search")
+        self.set_version("0.0.1")
+        self.set_website("https://www.mocaccino.org")
+        self.set_website_label("Visit our website")
+        self.set_authors(["Joost Ruis"])
+
+        github_link = Gtk.LinkButton.new_with_label(
+            uri="https://github.com/joostruis/luet_pm_gui",
+            label="GitHub Repository"
+        )
+
+        # Connect the "activate-link" signal of the link button to the open_link method
+        github_link.connect("activate-link", self.open_link, "https://github.com/joostruis/luet_pm_gui")
+
+        about_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        about_content.set_margin_start(10)
+        about_content.set_margin_end(10)
+
+        label = Gtk.Label(label="© 2024 MocaccinoOS org. All Rights Reserved")
+        label.set_line_wrap(True)
+
+        about_content.pack_start(label, False, False, 0)
+        about_content.pack_start(github_link, False, False, 0)
+
+        self.get_content_area().add(about_content)
+
+        # Connect the response signal to destroy the dialog
+        self.connect("response", lambda dialog, response_id: dialog.destroy())
+
+    def open_link(self, button, uri):
+        # Attempt to open the URI using webbrowser module
+        try:
+            webbrowser.open(uri, new=2)
+        except Exception as e:
+            print("Error opening link:", e)
+
+class PackageDetailsPopup(Gtk.Window):
+    def __init__(self, package_info):
+        Gtk.Window.__init__(self, title="Package Details")
+        self.set_default_size(400, 300)
+
+        # Extract package information
+        category = package_info.get("category", "")
+        name = package_info.get("name", "")
+        version = package_info.get("version", "")
+        installed = package_info.get("installed", False)
+
+        # Create labels to display package details
+        package_name_label = Gtk.Label(label=f"Package: {category}/{name}")
+        version_label = Gtk.Label(label=f"Version: {version}")
+        installed_label = Gtk.Label(label=f"Installed: {'Yes' if installed else 'No'}")
+
+        # Create a text view for displaying file list
+        self.file_list_textview = Gtk.TextView()
+        self.file_list_textview.set_editable(False)
+        self.file_list_textview.set_wrap_mode(Gtk.WrapMode.WORD)
+
+        # Create a scrolled window for the text view
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrolled_window.add(self.file_list_textview)
+
+        # Create a close button
+        close_button = Gtk.Button(label="Close")
+        close_button.connect("clicked", self.on_close_button_clicked)
+
+        # Create a box to arrange widgets vertically
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.pack_start(package_name_label, False, False, 0)
+        box.pack_start(version_label, False, False, 0)
+        box.pack_start(installed_label, False, False, 0)
+        box.pack_start(scrolled_window, True, True, 0)  # Add scrolled window for file list
+        box.pack_start(close_button, False, False, 0)
+
+        self.add(box)
+
+        # Start the spinner animation with "Please wait" message
+        self.spinner_timeout_id = GLib.timeout_add(80, self.show_spinner, "Please wait...")
+
+        # Simulate loading file list from database (replace this with actual loading)
+        GLib.timeout_add(2000, self.load_file_list)
+
+    def load_file_list(self):
+        # Simulate loading file list from database (replace this with actual loading)
+        file_list = ["file1.txt", "file2.txt", "file3.txt", "file4.txt", "Not implemented yet"]  # Replace with actual file list
+        file_list_text = "\n".join(file_list)
+
+        # Stop the spinner animation
+        GLib.source_remove(self.spinner_timeout_id)
+
+        # Set the file list text in the text view
+        self.file_list_textview.get_buffer().set_text(file_list_text)
+
+    def show_spinner(self, message):
+        # Show spinner animation and update text in text view
+        self.file_list_textview.get_buffer().set_text(message)
+        return True
+
+    def on_close_button_clicked(self, button):
+        self.destroy()
+
+
 class SearchApp(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="Luet Package Search")
@@ -29,6 +139,11 @@ class SearchApp(Gtk.Window):
         else:
             # Not running as root, display a message and close button
             self.init_permission_error_ui()
+
+    def show_about_dialog(self, widget):
+        about_dialog = AboutDialog(self)
+        about_dialog.show_all()
+        about_dialog.run()
 
     def init_search_ui(self):
         # Create a menu bar
@@ -50,7 +165,7 @@ class SearchApp(Gtk.Window):
 
         # Create a TreeView to display the search results
         self.treeview = Gtk.TreeView()
-        self.liststore = Gtk.ListStore(str, str, str, str, str)  # Added a string column for "Action" and "Name"
+        self.liststore = Gtk.ListStore(str, str, str, str, str, str)  # Added a string column for "Action" and "Name"
         self.treeview.set_model(self.liststore)
 
         renderer = Gtk.CellRendererText()
@@ -60,6 +175,7 @@ class SearchApp(Gtk.Window):
         column3 = Gtk.TreeViewColumn("Version", renderer, text=2)
         column4 = Gtk.TreeViewColumn("Repository", renderer, text=3)
         column5 = Gtk.TreeViewColumn("Action", Gtk.CellRendererText(), text=4)  # Text column for buttons
+        column6 = Gtk.TreeViewColumn("Details", Gtk.CellRendererText(), text=5)
 
         # Set sort column ID for each column (0 for Category, 1 for Name, 2 for Version, 3 for Repository, 4 for Action)
         for idx, column in enumerate([column1, column2, column3, column4, column5]):
@@ -282,33 +398,6 @@ class SearchApp(Gtk.Window):
         self.search_entry.set_sensitive(True)
         self.search_button.set_sensitive(True)
 
-    def show_about_dialog(self, widget):
-        about_dialog = Gtk.Dialog(
-            title="About",
-            transient_for=self,
-            modal=True,
-            destroy_with_parent=True
-        )
-
-        about_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        about_content.set_margin_start(10)
-        about_content.set_margin_end(10)
-
-        label = Gtk.Label(label="© 2024 MocaccinoOS org. All Rights Reserved")
-        label.set_line_wrap(True)
-
-        close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", lambda btn: about_dialog.destroy())
-
-        about_content.pack_start(label, False, False, 0)
-        about_content.pack_start(close_button, False, False, 0)
-
-        about_dialog.get_content_area().add(about_content)
-        about_dialog.show_all()
-
-        about_dialog.run()
-        about_dialog.destroy()
-
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text()
         if package_name:
@@ -346,7 +435,8 @@ class SearchApp(Gtk.Window):
                             repository = package_info.get("repository", "")
                             installed = package_info.get("installed", False)
                             action_text = "Remove" if installed else "Install"
-                            self.liststore.append([category, name, version, repository, action_text])
+                            # Append a new column for "Details"
+                            self.liststore.append([category, name, version, repository, action_text, "Details"])
 
                         num_results = len(packages)  # Calculate the number of results
                         if num_results > 0:
@@ -389,22 +479,55 @@ class SearchApp(Gtk.Window):
         column5 = self.treeview.get_column(4)  # Get the "Action" column (buttons)
         column5.set_visible(True)  # Ensure the "Action" column is visible
 
-        # Connect the button-press-event signal to handle button clicks
-        self.treeview.connect("button-press-event", self.on_button_clicked)
+        # Add a new column for "Details"
+        column6 = Gtk.TreeViewColumn("Details", Gtk.CellRendererText(), text=5)
+        column6.set_resizable(True)
+        column6.set_expand(True)
+        column6.set_clickable(True)
+        self.treeview.append_column(column6)
 
-    def on_button_clicked(self, treeview, event):
+        # Connect the button-press-event signal to the treeview widget
+        self.treeview.connect("button-press-event", self.on_treeview_button_clicked)
+
+    def on_treeview_button_clicked(self, treeview, event):
         if event.type == Gdk.EventType.BUTTON_PRESS and event.button == Gdk.BUTTON_PRIMARY:
+            # Get the path at the clicked position
             path = treeview.get_path_at_pos(int(event.x), int(event.y))
             if path is not None:
-                path, column, cell_x, cell_y = path
-                iter = self.liststore.get_iter(path)
-                action = self.liststore.get_value(iter, 4)  # Get the action text
+                row = path[0]  # Extract the row from the path
 
-                if action == "Install":
-                    self.confirm_install(iter)
-                elif action == "Remove":
-                    self.confirm_uninstall(iter)
+                # Check if the click occurred on the "Action" column
+                column = self.treeview.get_column(4)  # Get the "Action" column
+                cell_area = treeview.get_cell_area(row, column)
+                cell_x, cell_y, cell_width, cell_height = cell_area.x, cell_area.y, cell_area.width, cell_area.height
 
+                # Check if the click occurred within the boundaries of the "Action" cell
+                if event.x >= cell_x and event.x <= cell_x + cell_width and \
+                event.y >= cell_y and event.y <= cell_y + cell_height:
+                    iter = self.liststore.get_iter(row)
+                    action = self.liststore.get_value(iter, 4)  # Get the action text
+
+                    if action == "Install":
+                        self.confirm_install(iter)
+                    elif action == "Remove":
+                        self.confirm_uninstall(iter)
+                else:
+                    # Check if the click occurred on the "Details" column
+                    column = self.treeview.get_column(5)  # Get the "Details" column
+                    cell_area = treeview.get_cell_area(row, column)
+                    cell_x, cell_y, cell_width, cell_height = cell_area.x, cell_area.y, cell_area.width, cell_area.height
+
+                    # Check if the click occurred within the boundaries of the "Details" cell
+                    if event.x >= cell_x and event.x <= cell_x + cell_width and \
+                    event.y >= cell_y and event.y <= cell_y + cell_height:
+                        iter = self.liststore.get_iter(row)
+                        package_info = {
+                            "category": self.liststore.get_value(iter, 0),
+                            "name": self.liststore.get_value(iter, 1),
+                            "version": self.liststore.get_value(iter, 2),
+                            "installed": self.liststore.get_value(iter, 4) == "Remove"
+                        }
+                        self.show_package_details_popup(package_info)
 
     def run_installation(self, install_command, package_name):
         try:
@@ -522,6 +645,10 @@ class SearchApp(Gtk.Window):
             # Create a new thread for the uninstallation process and pass the uninstall command and package name
             uninstall_thread = threading.Thread(target=self.run_uninstallation, args=(uninstall_command, category, name))
             uninstall_thread.start()
+
+    def show_package_details_popup(self, package_info):
+        package_details_popup = PackageDetailsPopup(package_info)
+        package_details_popup.show_all()
 
     def start_search_thread(self, search_command):
         self.liststore.clear()
