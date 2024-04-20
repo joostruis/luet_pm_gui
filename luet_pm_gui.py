@@ -20,7 +20,7 @@ class AboutDialog(Gtk.AboutDialog):
         )
 
         self.set_program_name("Luet Package Search")
-        self.set_version("0.0.1")
+        self.set_version("0.0.8")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
