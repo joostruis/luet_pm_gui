@@ -20,7 +20,7 @@ class AboutDialog(Gtk.AboutDialog):
         )
 
         self.set_program_name("Luet Package Search")
-        self.set_version("0.0.8")
+        self.set_version("0.0.1")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
@@ -60,6 +60,13 @@ class PackageDetailsPopup(Gtk.Window):
         Gtk.Window.__init__(self, title="Package Details")
         self.set_default_size(400, 300)
 
+        self.required_by_textview = Gtk.TextView()
+        self.required_by_textview.set_editable(False)
+        self.required_by_textview.set_wrap_mode(Gtk.WrapMode.WORD)
+        required_by_scrolled_window = Gtk.ScrolledWindow()
+        required_by_scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        required_by_scrolled_window.add(self.required_by_textview)
+
         # Extract package information
         category = package_info.get("category", "")
         name = package_info.get("name", "")
@@ -71,55 +78,87 @@ class PackageDetailsPopup(Gtk.Window):
         version_label = Gtk.Label(label=f"Version: {version}")
         installed_label = Gtk.Label(label=f"Installed: {'Yes' if installed else 'No'}")
 
-        # Create a text view for displaying file list
-        self.file_list_textview = Gtk.TextView()
-        self.file_list_textview.set_editable(False)
-        self.file_list_textview.set_wrap_mode(Gtk.WrapMode.WORD)
+        # Create a box to arrange widgets vertically with spacing and margins
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_start(10)
+        box.set_margin_end(10)
+        box.set_margin_top(10)
+        box.set_margin_bottom(10)
 
-        # Create a scrolled window for the text view
-        scrolled_window = Gtk.ScrolledWindow()
-        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        scrolled_window.add(self.file_list_textview)
+        # Add package name, version, and installed labels to the main box
+        box.pack_start(package_name_label, False, False, 0)
+        box.pack_start(version_label, False, False, 0)
+        box.pack_start(installed_label, False, False, 0)
+
+        # If the package is installed, show its dependencies
+        if installed:
+            # Create a label for "Required by:" and align it to the left
+            required_by_label = Gtk.Label(label="Required by:")
+            required_by_label.set_xalign(0)
+
+            # Create a box for required by information with padding
+            required_by_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            required_by_box.set_margin_top(10)
+            required_by_box.set_margin_bottom(10)
+            required_by_box.set_margin_start(10)
+            required_by_box.set_margin_end(10)
+            required_by_box.pack_start(required_by_label, False, False, 0)
+            required_by_box.pack_start(required_by_scrolled_window, True, True, 0)
+
+            # Add required by box to the main box
+            box.pack_start(required_by_box, True, True, 0)
+
+            # Load required by information asynchronously
+            GLib.idle_add(self.load_required_by_info, category, name)
 
         # Create a close button
         close_button = Gtk.Button(label="Close")
         close_button.connect("clicked", self.on_close_button_clicked)
 
-        # Create a box to arrange widgets vertically
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        box.pack_start(package_name_label, False, False, 0)
-        box.pack_start(version_label, False, False, 0)
-        box.pack_start(installed_label, False, False, 0)
-        box.pack_start(scrolled_window, True, True, 0)  # Add scrolled window for file list
-        box.pack_start(close_button, False, False, 0)
+        # Add the close button to the main box
+        box.pack_end(close_button, False, False, 0)
 
         self.add(box)
 
-        # Start the spinner animation with "Please wait" message
-        self.spinner_timeout_id = GLib.timeout_add(80, self.show_spinner, "Please wait...")
+    def load_required_by_info(self, category, name):
+        required_by_info = self.get_required_by_info(category, name)
+        if required_by_info is not None:
+            if required_by_info:
+                required_by_text = "\n".join(required_by_info)
+            else:
+                required_by_text = "There are no packages installed that require this package."
+            self.update_message(required_by_text)
+        else:
+            self.update_message("Error retrieving required by information.")
 
-        # Simulate loading file list from database (replace this with actual loading)
-        GLib.timeout_add(2000, self.load_file_list)
+    def get_required_by_info(self, category, name):
+        try:
+            # Run 'luet search --revdeps' command with -o json option
+            revdeps_command = f"luet search --revdeps {category}/{name} -q --installed -o json"
+            result = subprocess.run(["sh", "-c", revdeps_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result.returncode == 0:
+                # Parse the JSON output
+                revdeps_json = json.loads(result.stdout)
+                if revdeps_json is not None:
+                    if "packages" in revdeps_json and revdeps_json["packages"]:
+                        return [package["category"] + "/" + package["name"] for package in revdeps_json["packages"]]
+                    else:
+                        return []  # Return an empty list here
+                else:
+                    return []  # Return an empty list here
+            else:
+                print("Error executing revdeps command:", result.stderr)
+                return None
+        except Exception as e:
+            print("Error retrieving required by information:", str(e))
+            return None
 
-    def load_file_list(self):
-        # Simulate loading file list from database (replace this with actual loading)
-        file_list = ["file1.txt", "file2.txt", "file3.txt", "file4.txt", "Not implemented yet"]  # Replace with actual file list
-        file_list_text = "\n".join(file_list)
-
-        # Stop the spinner animation
-        GLib.source_remove(self.spinner_timeout_id)
-
-        # Set the file list text in the text view
-        self.file_list_textview.get_buffer().set_text(file_list_text)
-
-    def show_spinner(self, message):
-        # Show spinner animation and update text in text view
-        self.file_list_textview.get_buffer().set_text(message)
-        return True
+    def update_message(self, message):
+        buffer = self.required_by_textview.get_buffer()
+        buffer.set_text(message)
 
     def on_close_button_clicked(self, button):
         self.destroy()
-
 
 class SearchApp(Gtk.Window):
     def __init__(self):
