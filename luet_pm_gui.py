@@ -538,7 +538,7 @@ class SearchApp(Gtk.Window):
             self.search_entry.set_sensitive(True)
             self.search_button.set_sensitive(True)
             self.treeview.set_sensitive(True)
-        finally:
+        
         # Enable GUI after search is completed
         GLib.idle_add(self.enable_gui)
 
