@@ -559,27 +559,30 @@ class SearchApp(Gtk.Window):
                     data = json.loads(output)
                     packages = data.get("packages")
                     if packages is not None:
-                        self.liststore.clear()
-                        for package_info in packages:
-                            category = package_info.get("category", "")
-                            name = package_info.get("name", "")
-                            version = package_info.get("version", "")
-                            repository = package_info.get("repository", "")
-                            installed = package_info.get("installed", False)
-                            action_text = "Remove" if installed else "Install"
-                            # Append a new column for "Details"
-                            self.liststore.append([category, name, version, repository, action_text, "Details"])
-
-                        num_results = len(packages)  # Calculate the number of results
-                        if num_results > 0:
-                            self.set_status_message(f"Found {num_results} results matching '{self.last_search}'")
-                        else:
-                            # Clear the liststore when there are no results
+                        def append_to_liststore():
+                            # Clear the liststore before appending new data
                             self.liststore.clear()
-                            self.set_status_message("No results")
+
+                            for package_info in packages:
+                                category = package_info.get("category", "")
+                                name = package_info.get("name", "")
+                                version = package_info.get("version", "")
+                                repository = package_info.get("repository", "")
+                                installed = package_info.get("installed", False)
+                                action_text = "Remove" if installed else "Install"
+                                # Append a new column for "Details"
+                                self.liststore.append([category, name, version, repository, action_text, "Details"])
+
+                            num_results = len(packages)  # Calculate the number of results
+                            if num_results > 0:
+                                self.set_status_message(f"Found {num_results} results matching '{self.last_search}'")
+                            else:
+                                self.set_status_message("No results")
+
+                        # Schedule appending data to liststore in the main GTK thread
+                        GLib.idle_add(append_to_liststore)
                     else:
-                        # Handle the case when 'packages' is None
-                        # Clear the liststore when there are no results
+                        # Clear the liststore when 'packages' is None
                         self.liststore.clear()
                         self.set_status_message("No results")
                 except json.JSONDecodeError:
