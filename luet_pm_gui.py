@@ -60,12 +60,7 @@ class PackageDetailsPopup(Gtk.Window):
         Gtk.Window.__init__(self, title="Package Details")
         self.set_default_size(400, 300)
 
-        self.required_by_textview = Gtk.TextView()
-        self.required_by_textview.set_editable(False)
-        self.required_by_textview.set_wrap_mode(Gtk.WrapMode.WORD)
-        required_by_scrolled_window = Gtk.ScrolledWindow()
-        required_by_scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        required_by_scrolled_window.add(self.required_by_textview)
+        self.package_info = package_info
 
         # Extract package information
         category = package_info.get("category", "")
@@ -90,26 +85,27 @@ class PackageDetailsPopup(Gtk.Window):
         box.pack_start(version_label, False, False, 0)
         box.pack_start(installed_label, False, False, 0)
 
-        # If the package is installed, show its dependencies
+        # Create an expander for required by information
+        self.expander = Gtk.Expander(label="Required by")
+        self.expander.set_expanded(False)  # Start collapsed
+
+        # Create a text view for required by information
+        self.required_by_textview = Gtk.TextView()
+        self.required_by_textview.set_editable(False)
+        self.required_by_textview.set_wrap_mode(Gtk.WrapMode.WORD)
+        required_by_scrolled_window = Gtk.ScrolledWindow()
+        required_by_scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        required_by_scrolled_window.set_min_content_height(100)  # Set minimum height
+        required_by_scrolled_window.add(self.required_by_textview)
+
+        # Add the scrolled window to the expander
+        self.expander.add(required_by_scrolled_window)
+
+        # Add the expander to the main box only if package is installed
         if installed:
-            # Create a label for "Required by:" and align it to the left
-            required_by_label = Gtk.Label(label="Required by:")
-            required_by_label.set_xalign(0)
-
-            # Create a box for required by information with padding
-            required_by_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-            required_by_box.set_margin_top(10)
-            required_by_box.set_margin_bottom(10)
-            required_by_box.set_margin_start(10)
-            required_by_box.set_margin_end(10)
-            required_by_box.pack_start(required_by_label, False, False, 0)
-            required_by_box.pack_start(required_by_scrolled_window, True, True, 0)
-
-            # Add required by box to the main box
-            box.pack_start(required_by_box, True, True, 0)
-
-            # Load required by information asynchronously
-            GLib.idle_add(self.load_required_by_info, category, name)
+            box.pack_start(self.expander, False, False, 0)
+            # Trigger loading of required by information
+            self.load_required_by_info()
 
         # Create a close button
         close_button = Gtk.Button(label="Close")
@@ -120,16 +116,37 @@ class PackageDetailsPopup(Gtk.Window):
 
         self.add(box)
 
-    def load_required_by_info(self, category, name):
+    def load_required_by_info(self):
+        category = self.package_info.get("category", "")
+        name = self.package_info.get("name", "")
+
         required_by_info = self.get_required_by_info(category, name)
         if required_by_info is not None:
-            if required_by_info:
-                required_by_text = "\n".join(required_by_info)
+            sorted_required_by_info = sorted(required_by_info, key=lambda x: (x.split('/')[0], x.split('/')[1]))
+            required_by_count = len(sorted_required_by_info)
+            self.update_expander_label(required_by_count)
+            if sorted_required_by_info:
+                required_by_text = "\n".join(sorted_required_by_info)
+                # Adjust the height of the scrolled window if there are more than 4 results
+                if required_by_count > 4:
+                    self.required_by_textview.set_size_request(-1, -1)  # Remove previous size request
+                else:
+                    self.required_by_textview.set_size_request(-1, 100)  # Restore minimum height
             else:
                 required_by_text = "There are no packages installed that require this package."
-            self.update_message(required_by_text)
+            # Update the text in the text view
+            self.update_required_by_text(required_by_text)
         else:
-            self.update_message("Error retrieving required by information.")
+            # Update the text in the text view
+            self.update_required_by_text("Error retrieving required by information.")
+
+    def update_expander_label(self, count):
+        label_text = f"Required by ({count})"
+        GLib.idle_add(lambda: self.expander.set_label(label_text))
+
+    def update_required_by_text(self, text):
+        buffer = self.required_by_textview.get_buffer()
+        buffer.set_text(text)
 
     def get_required_by_info(self, category, name):
         try:
@@ -152,10 +169,6 @@ class PackageDetailsPopup(Gtk.Window):
         except Exception as e:
             print("Error retrieving required by information:", str(e))
             return None
-
-    def update_message(self, message):
-        buffer = self.required_by_textview.get_buffer()
-        buffer.set_text(message)
 
     def on_close_button_clicked(self, button):
         self.destroy()
