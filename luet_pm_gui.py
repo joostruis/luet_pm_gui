@@ -63,6 +63,7 @@ class PackageDetailsPopup(Gtk.Window):
 
         self.package_info = package_info
         self.loaded_package_files = {}  # Dictionary to store loaded package files information
+        self.required_by_info = None  # Store required by info
 
         # Extract package information
         category = package_info.get("category", "")
@@ -143,6 +144,11 @@ class PackageDetailsPopup(Gtk.Window):
         category = self.package_info.get("category", "")
         name = self.package_info.get("name", "")
 
+        # Start a new thread to load required by information
+        thread = threading.Thread(target=self.retrieve_required_by_info, args=(category, name))
+        thread.start()
+
+    def retrieve_required_by_info(self, category, name):
         required_by_info = self.get_required_by_info(category, name)
         if required_by_info is not None:
             sorted_required_by_info = sorted(required_by_info, key=lambda x: (x.split('/')[0], x.split('/')[1]))
@@ -166,6 +172,7 @@ class PackageDetailsPopup(Gtk.Window):
         name = self.package_info.get("name", "")
         if (category, name) in self.loaded_package_files:
             files_info = self.loaded_package_files[(category, name)]
+            self.update_package_files_text(files_info)
         else:
             # Display "Loading..." text while fetching package files info
             self.update_textview(self.package_files_textview, "Loading...")
@@ -261,6 +268,7 @@ class SearchApp(Gtk.Window):
         self.last_search = ""  # Store the last entered search string
         self.search_thread = None  # Thread for search process
         self.repo_update_thread = None  # Thread for repository update process
+        self.lock = threading.Lock()  # Lock for thread-safe access to shared resources
 
         if os.getuid() == 0:
             # Running as root, initialize the search UI
@@ -395,40 +403,29 @@ class SearchApp(Gtk.Window):
         menu_bar.append(help_menu_item)
 
     def update_repositories(self, widget):
-        # Disable GUI while the repository update is running
         self.disable_gui()
-
-        # Start the spinner animation
         self.start_spinner("Updating repositories...")
-
-        # Create a new thread for the repository update process
-        self.repo_update_thread = threading.Thread(target=self.run_repo_update)
-        self.repo_update_thread.start()
+        
+        with self.lock:  # Acquire lock before critical section
+            self.repo_update_thread = threading.Thread(target=self.run_repo_update)
+            self.repo_update_thread.start()
 
     def run_repo_update(self):
         try:
-            # Run 'luet repo update' command
             update_command = "luet repo update"
             result = subprocess.run(["sh", "-c", update_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
             if result.returncode == 0:
-                # Update the status bar message
                 GLib.idle_add(self.set_status_message, "Repositories updated")
             else:
-                # Update the status bar message with an error
                 GLib.idle_add(self.set_status_message, "Error updating repositories")
         except Exception as e:
             print(f"Error updating repositories: {str(e)}")
         finally:
-            # Re-enable the GUI after the repository update is completed
-            GLib.idle_add(self.enable_gui)
-
-            # Stop the spinner animation
-            GLib.idle_add(self.stop_spinner)
-
-            # Update status bar with "Repositories updated" if update was successful
-            if result.returncode == 0:
-                GLib.idle_add(self.set_status_message, "Repositories updated")
+            with self.lock:  # Release lock after critical section
+                GLib.idle_add(self.enable_gui)
+                GLib.idle_add(self.stop_spinner)
+                if result.returncode == 0:
+                    GLib.idle_add(self.set_status_message, "Repositories updated")
 
     def check_system(self, widget):
          # Disable GUI while check system is running
@@ -531,21 +528,16 @@ class SearchApp(Gtk.Window):
         package_name = self.search_entry.get_text()
         if package_name:
             search_command = f"luet search -o json -q {package_name}"
-            self.last_search = package_name  # Store the last entered search string
-
-            # Check if a search thread is already running, and if so, stop it before starting a new one
+            self.last_search = package_name
             if self.search_thread and self.search_thread.is_alive():
                 self.search_thread.join()
 
-            # Start the spinner animation
             self.start_spinner(f"Searching for {package_name}...")
-
-            # Disable GUI while search is running
             self.disable_gui()
 
-            # Create a new thread for the search process
-            self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
-            self.search_thread.start()
+            with self.lock:  # Acquire lock before critical section
+                self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
+                self.search_thread.start()
 
     def run_search(self, search_command):
         try:
@@ -798,10 +790,10 @@ class SearchApp(Gtk.Window):
             self.status_bar.pop(self.status_bar_context_id)
 
     def show_spinner(self, message):
-        # Show spinner animation and update status bar text
         self.spinner_counter = (self.spinner_counter + 1) % len(self.spinner_frames)
         frame = self.spinner_frames[self.spinner_counter]
-        self.status_bar.push(self.status_bar_context_id, f"{frame} {message}")
+        with self.lock:  # Acquire lock before critical section
+            self.status_bar.push(self.status_bar_context_id, f"{frame} {message}")
         return True
 
     def show_spinner_message(self, message):
