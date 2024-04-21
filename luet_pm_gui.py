@@ -518,11 +518,13 @@ class SearchApp(Gtk.Window):
         # Disable GUI elements
         self.search_entry.set_sensitive(False)
         self.search_button.set_sensitive(False)
+        self.treeview.set_sensitive(False)
 
     def enable_gui(self):
         # Enable GUI elements
         self.search_entry.set_sensitive(True)
         self.search_button.set_sensitive(True)
+        self.treeview.set_sensitive(True)
 
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text()
