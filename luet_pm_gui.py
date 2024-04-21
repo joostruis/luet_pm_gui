@@ -195,8 +195,9 @@ class PackageDetailsPopup(Gtk.Window):
                 files_text = "No files found for this package."
         else:
             files_text = "Error retrieving package files information."
-        # Update the text in the text view
-        self.update_textview(self.package_files_textview, files_text)
+
+        # Update the text in the text view from the main thread
+        GLib.idle_add(lambda: self.update_textview(self.package_files_textview, files_text))
 
     def update_expander_label(self, expander, count):
         label_text = f"{expander.get_label()} ({count})"
@@ -403,25 +404,33 @@ class SearchApp(Gtk.Window):
         menu_bar.append(help_menu_item)
 
     def update_repositories(self, widget):
+        # Disable GUI while update is running
         self.disable_gui()
+
+        # Start the spinner animation
         self.start_spinner("Updating repositories...")
-        
-        with self.lock:  # Acquire lock before critical section
+
+        # Run the update process in a separate thread
+        with self.lock:
             self.repo_update_thread = threading.Thread(target=self.run_repo_update)
             self.repo_update_thread.start()
 
     def run_repo_update(self):
         try:
+            # Run the repository update command
             update_command = "luet repo update"
             result = subprocess.run(["sh", "-c", update_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if result.returncode == 0:
-                GLib.idle_add(self.set_status_message, "Repositories updated")
+                # Update status message
+                self.set_status_message("Repositories updated")
             else:
-                GLib.idle_add(self.set_status_message, "Error updating repositories")
+                self.set_status_message("Error updating repositories")
         except Exception as e:
+            # Handle exceptions
             print(f"Error updating repositories: {str(e)}")
         finally:
-            with self.lock:  # Release lock after critical section
+            # Re-enable GUI after update process completes
+            with self.lock:
                 GLib.idle_add(self.enable_gui)
                 GLib.idle_add(self.stop_spinner)
                 if result.returncode == 0:
@@ -774,9 +783,16 @@ class SearchApp(Gtk.Window):
         package_details_popup.show_all()
 
     def start_search_thread(self, search_command):
-        self.liststore.clear()
         # Disable GUI while search is running
         self.disable_gui()
+
+        # Clear the liststore
+        self.liststore.clear()
+
+        # Ensure that any references to rows are updated or invalidated
+        # For example, if you have references to specific rows, you may need to clear or update them here
+
+        # Start the search thread
         self.search_thread = threading.Thread(target=self.run_search, args=(search_command,))
         self.search_thread.start()
 
