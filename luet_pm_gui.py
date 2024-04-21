@@ -270,6 +270,8 @@ class SearchApp(Gtk.Window):
         self.search_thread = None  # Thread for search process
         self.repo_update_thread = None  # Thread for repository update process
         self.lock = threading.Lock()  # Lock for thread-safe access to shared resources
+        # Define a lock for thread-safe access to status message
+        self.status_message_lock = threading.Lock()
 
         if os.getuid() == 0:
             # Running as root, initialize the search UI
@@ -575,7 +577,8 @@ class SearchApp(Gtk.Window):
 
                             num_results = len(packages)  # Calculate the number of results
                             if num_results > 0:
-                                self.set_status_message(f"Found {num_results} results matching '{self.last_search}'")
+                                # Update the status message after appending data to liststore
+                                GLib.idle_add(self.set_status_message, f"Found {len(self.liststore)} results matching '{self.last_search}'")
                             else:
                                 self.set_status_message("No results")
 
@@ -603,9 +606,6 @@ class SearchApp(Gtk.Window):
 
             # Stop the spinner animation
             self.stop_spinner()
-
-            # Set the status message after all operations are completed
-            self.set_status_message(f"Found {len(self.liststore)} results matching '{self.last_search}'")
 
     def add_action_buttons(self):
         # Create a button for the "Action" column
@@ -755,6 +755,9 @@ class SearchApp(Gtk.Window):
             install_thread = threading.Thread(target=self.run_installation, args=(install_command, name))
             install_thread.start()
 
+            # Schedule clearing the liststore after installation on the main GTK thread
+            GLib.idle_add(self.clear_liststore)
+
     def confirm_uninstall(self, iter):
         category = self.liststore.get_value(iter, 0)
         name = self.liststore.get_value(iter, 1)
@@ -780,6 +783,13 @@ class SearchApp(Gtk.Window):
             # Create a new thread for the uninstallation process and pass the uninstall command and package name
             uninstall_thread = threading.Thread(target=self.run_uninstallation, args=(uninstall_command, category, name))
             uninstall_thread.start()
+
+            # Schedule clearing the liststore after uninstallation on the main GTK thread
+            GLib.idle_add(self.clear_liststore)
+
+    def clear_liststore(self):
+        self.liststore.clear()
+
 
     def show_package_details_popup(self, package_info):
         package_details_popup = PackageDetailsPopup(package_info)
@@ -821,10 +831,16 @@ class SearchApp(Gtk.Window):
         self.start_spinner(message)
 
     def set_status_message(self, message):
-        # Clear any previous messages
-        self.status_bar.remove_all(self.status_bar_context_id)
-        # Add the new message to the status bar
-        self.status_bar.push(self.status_bar_context_id, message)
+        # Schedule setting the status message in the main GTK thread
+        GLib.idle_add(self._set_status_message, message)
+
+    def _set_status_message(self, message):
+        # Acquire the lock before updating the status message
+        with self.status_message_lock:
+            # Clear any previous messages
+            self.status_bar.remove_all(self.status_bar_context_id)
+            # Add the new message to the status bar
+            self.status_bar.push(self.status_bar_context_id, message)
 
 def main():
     win = SearchApp()
