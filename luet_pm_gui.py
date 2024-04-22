@@ -532,7 +532,18 @@ class SearchApp(Gtk.Window):
         self.treeview.set_sensitive(False)
 
     def enable_gui(self):
-        # Enable GUI elements
+        # Acquire lock before modifying GUI elements
+        with self.lock:
+            # Enable GUI elements
+            self.search_entry.set_sensitive(True)
+            self.search_button.set_sensitive(True)
+            self.treeview.set_sensitive(True)
+
+            # Schedule enabling GUI after search is completed in the main GTK thread
+            GLib.idle_add(self.enable_gui_after_search)
+            
+    def enable_gui_after_search(self):
+        # This method is called in the main GTK thread to enable GUI after search is completed
         self.search_entry.set_sensitive(True)
         self.search_button.set_sensitive(True)
         self.treeview.set_sensitive(True)
@@ -578,7 +589,7 @@ class SearchApp(Gtk.Window):
                             num_results = len(packages)  # Calculate the number of results
                             if num_results > 0:
                                 # Update the status message after appending data to liststore
-                                GLib.idle_add(self.set_status_message, f"Found {len(self.liststore)} results matching '{self.last_search}'")
+                                self.set_status_message(f"Found {len(self.liststore)} results matching '{self.last_search}'")
                             else:
                                 self.set_status_message("No results")
 
@@ -602,10 +613,10 @@ class SearchApp(Gtk.Window):
             self.set_status_message("Error executing the search command")
         finally:
             # Enable GUI after search is completed
-            self.enable_gui()
+            GLib.idle_add(self.enable_gui)
 
             # Stop the spinner animation
-            self.stop_spinner()
+            GLib.idle_add(self.stop_spinner)
 
     def add_action_buttons(self):
         # Create a button for the "Action" column
@@ -727,7 +738,7 @@ class SearchApp(Gtk.Window):
             print(f"Error uninstalling package: {str(e)}")
         finally:
             # Enable GUI after uninstallation is completed or if an error occurs
-            self.enable_gui()
+            GLib.idle_add(self.enable_gui)
 
     def confirm_install(self, iter):
         category = self.liststore.get_value(iter, 0)
