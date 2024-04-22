@@ -280,6 +280,12 @@ class SearchApp(Gtk.Window):
             # Not running as root, display a message and close button
             self.init_permission_error_ui()
 
+        # Define the protected_applications dictionary
+        self.protected_applications = {
+            "system/luet": "This package is protected and can't be removed",
+            # Add more protected applications as needed
+        }
+
     def show_about_dialog(self, widget):
         about_dialog = AboutDialog(self)
         about_dialog.show_all()
@@ -582,7 +588,14 @@ class SearchApp(Gtk.Window):
                                 version = package_info.get("version", "")
                                 repository = package_info.get("repository", "")
                                 installed = package_info.get("installed", False)
-                                action_text = "Remove" if installed else "Install"
+                                package_key = f"{category}/{name}"
+                                # Check if the package is in the protected_applications dictionary
+                                if package_key in self.protected_applications:
+                                    # Set the action for the package to "Protected"
+                                    action_text = "Protected"
+                                else:
+                                    action_text = "Remove" if installed else "Install"
+
                                 # Append a new column for "Details"
                                 self.liststore.append([category, name, version, repository, action_text, "Details"])
 
@@ -653,6 +666,9 @@ class SearchApp(Gtk.Window):
                     iter = self.liststore.get_iter(row)
                     action = self.liststore.get_value(iter, 4)  # Get the action text
 
+                    if action == "Protected":
+                        self.show_protected_popup(row)  # Pass the row index
+
                     if action == "Install":
                         self.confirm_install(iter)
                     elif action == "Remove":
@@ -675,6 +691,26 @@ class SearchApp(Gtk.Window):
                         }
                         self.show_package_details_popup(package_info)
 
+    def show_protected_popup(self, row):
+        category = self.liststore[row][0]  # Extract category from the row
+        name = self.liststore[row][1]      # Extract name from the row
+        package_key = f"{category}/{name}"
+
+        if package_key in self.protected_applications:
+            message = self.protected_applications[package_key]
+        else:
+            message = f"This package ({category}/{name}) is protected and can't be removed."
+        
+        dialog = Gtk.MessageDialog(
+            parent=self,
+            modal=True,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text=message,
+        )
+        dialog.run()
+        dialog.destroy()
+    
     def run_installation(self, install_command, package_name):
         try:
             # Update the status bar with "Installing [package name]"
