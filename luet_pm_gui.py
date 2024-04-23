@@ -283,6 +283,9 @@ class SearchApp(Gtk.Window):
         # Define the protected_applications dictionary
         self.protected_applications = {
             "system/luet": "This package is protected and can't be removed",
+            "layers/system-x": "This layer is protected and can't be removed",
+            "layers/sys-fs": "This layer is protected and can't be removed",
+            "layers/X": "This layer is protected and can't be removed",
             # Add more protected applications as needed
         }
 
@@ -683,13 +686,13 @@ class SearchApp(Gtk.Window):
                     if event.x >= cell_x and event.x <= cell_x + cell_width and \
                     event.y >= cell_y and event.y <= cell_y + cell_height:
                         iter = self.liststore.get_iter(row)
-                        package_info = {
-                            "category": self.liststore.get_value(iter, 0),
-                            "name": self.liststore.get_value(iter, 1),
-                            "version": self.liststore.get_value(iter, 2),
-                            "installed": self.liststore.get_value(iter, 4) == "Remove"
-                        }
-                        self.show_package_details_popup(package_info)
+                    package_info = {
+                        "category": self.liststore.get_value(iter, 0),
+                        "name": self.liststore.get_value(iter, 1),
+                        "version": self.liststore.get_value(iter, 2),
+                        "installed": self.liststore.get_value(iter, 4) in ["Remove", "Protected"]  # Check if action is "Remove" or "Protected"
+                    }
+                    self.show_package_details_popup(package_info)
 
     def show_protected_popup(self, row):
         category = self.liststore[row][0]  # Extract category from the row
