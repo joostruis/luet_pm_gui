@@ -55,6 +55,28 @@ class AboutDialog(Gtk.AboutDialog):
         except Exception as e:
             print("Error opening link:", e)
 
+class RepositoryUpdater:
+    @staticmethod
+    def run_repo_update(app):
+        try:
+            # Run the repository update command
+            update_command = "luet repo update"
+            result = subprocess.run(["sh", "-c", update_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if result.returncode == 0:
+                # Update status message
+                app.set_status_message("Repositories updated")
+            else:
+                app.set_status_message("Error updating repositories")
+        except Exception as e:
+            # Handle exceptions
+            print(f"Error updating repositories: {str(e)}")
+        finally:
+            # Re-enable GUI after update process completes
+            with app.lock:
+                GLib.idle_add(app.enable_gui)
+                GLib.idle_add(app.stop_spinner)
+                if result.returncode == 0:
+                    GLib.idle_add(app.set_status_message, "Repositories updated")
 
 class PackageDetailsPopup(Gtk.Window):
     def __init__(self, package_info):
@@ -394,29 +416,8 @@ class SearchApp(Gtk.Window):
 
         # Run the update process in a separate thread
         with self.lock:
-            self.repo_update_thread = threading.Thread(target=self.run_repo_update)
+            self.repo_update_thread = threading.Thread(target=RepositoryUpdater.run_repo_update, args=(self,))
             self.repo_update_thread.start()
-
-    def run_repo_update(self):
-        try:
-            # Run the repository update command
-            update_command = "luet repo update"
-            result = subprocess.run(["sh", "-c", update_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if result.returncode == 0:
-                # Update status message
-                self.set_status_message("Repositories updated")
-            else:
-                self.set_status_message("Error updating repositories")
-        except Exception as e:
-            # Handle exceptions
-            print(f"Error updating repositories: {str(e)}")
-        finally:
-            # Re-enable GUI after update process completes
-            with self.lock:
-                GLib.idle_add(self.enable_gui)
-                GLib.idle_add(self.stop_spinner)
-                if result.returncode == 0:
-                    GLib.idle_add(self.set_status_message, "Repositories updated")
 
     def check_system(self, widget):
          # Disable GUI while check system is running
