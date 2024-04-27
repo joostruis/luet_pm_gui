@@ -194,7 +194,7 @@ class PackageOperations:
             print(f"Error installing package: {str(e)}")
         finally:
             # Enable GUI after installation is completed or if an error occurs
-            app.enable_gui()
+            GLib.idle_add(app.enable_gui)
 
     @staticmethod
     def run_uninstallation(app, uninstall_command, category, package_name):
