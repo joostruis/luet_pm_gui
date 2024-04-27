@@ -78,6 +78,95 @@ class RepositoryUpdater:
                 if result.returncode == 0:
                     GLib.idle_add(app.set_status_message, "Repositories updated")
 
+import threading
+from gi.repository import GLib
+
+class SystemChecker:
+    def __init__(self, search_app_instance):
+        self.search_app_instance = search_app_instance
+        self.lock = threading.Lock()
+
+    def run_check_system(self):
+        try:
+            # Run 'luet oscheck' command
+            oscheck_command = "luet oscheck"
+            result = subprocess.run(["sh", "-c", oscheck_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # Stop the spinner animation
+            GLib.idle_add(self.search_app_instance.stop_spinner)
+
+            # Update the status bar message based on the result
+            if "missing" not in result.stdout:
+                message = "System is fine!"
+                # Update the status bar message
+                GLib.idle_add(self.search_app_instance.set_status_message, message)
+            else:
+                message = "Missing files: reinstalling packages "
+                repair = 1
+
+                for i in range(5, 0, -1):
+                    count_down_message = message + str(i)
+                    # Update the status bar message
+                    GLib.idle_add(self.search_app_instance.set_status_message, count_down_message)
+                    time.sleep(1)
+
+                words = result.stdout.split()
+                words_dict = {}
+
+                # Loop through words
+                for word in words:
+
+                    if '/' in word:
+                        # Find the index of the first '-' followed by a number using regular expressions
+                        match = re.search(r'-\d', word)
+                        index = match.start()
+                        word = word[:index]
+                        words_dict[word] = True
+
+                for word in words_dict:
+                    spinner_text = "Reinstalling " + word
+                    # Start the spinner animation with the current package message
+                    GLib.idle_add(self.search_app_instance.start_spinner, spinner_text)
+
+                    reinstall_command = "luet reinstall -y " + word
+                    result = subprocess.run(["sh", "-c", reinstall_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                    if result.returncode != 0:
+                        # If reinstallation fails, update the status message and stop the spinner animation
+                        GLib.idle_add(self.search_app_instance.set_status_message, "Failed installing")
+                        GLib.idle_add(self.search_app_instance.stop_spinner)
+                        repair = 0
+                    else:
+                        # If reinstallation succeeds, update the status message
+                        repair = 1
+
+                    # Wait for a short time to show the spinner animation
+                    GLib.idle_add(self.search_app_instance.stop_spinner)
+                    time.sleep(1)
+
+                # After the loop completes, update the status message based on the repair result
+                if repair == 0:
+                    GLib.idle_add(self.search_app_instance.set_status_message, "Could not repair")
+                else:
+                    GLib.idle_add(self.search_app_instance.set_status_message, "System fixed!")
+
+                # Stop the spinner animation after the loop completes
+                GLib.idle_add(self.search_app_instance.stop_spinner)
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            # Update the status bar with an error message
+            GLib.idle_add(self.search_app_instance.set_status_message, "Error occurred during system check.")
+        finally:
+            # Re-enable the GUI after the check is completed or if an error occurs
+            GLib.idle_add(self.search_app_instance.enable_gui)
+
+    def acquire_lock(self):
+        self.lock.acquire()
+
+    def release_lock(self):
+        self.lock.release()
+
 class PackageOperations:
     @staticmethod
     def run_installation(app, install_command, package_name):
@@ -488,91 +577,16 @@ class SearchApp(Gtk.Window):
             self.repo_update_thread.start()
 
     def check_system(self, widget):
-         # Disable GUI while check system is running
+        # Disable GUI while check system is running
         self.disable_gui()
 
         # Start the spinner animation
         self.start_spinner("Checking system for missing files...")
 
-        # Create a new thread for the oscheck process
-        self.repo_update_thread = threading.Thread(target=self.run_check_system)
+        # Create an instance of SystemChecker and run the check_system method
+        system_checker = SystemChecker(self)
+        self.repo_update_thread = threading.Thread(target=system_checker.run_check_system)
         self.repo_update_thread.start()
-
-    def run_check_system(self):
-        try:
-            # Run 'luet oscheck' command
-            oscheck_command = "luet oscheck"
-            result = subprocess.run(["sh", "-c", oscheck_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-            # Stop the spinner animation
-            GLib.idle_add(self.stop_spinner)
-
-            # Update the status bar message based on the result
-            if "missing" not in result.stdout:
-                message = "System is fine!"
-                # Update the status bar message
-                GLib.idle_add(self.set_status_message, message)
-            else:
-                message = "Missing files: reinstalling packages "
-                repair = 1
-
-                for i in range(5, 0, -1):
-                    count_down_message = message + str(i)
-                    # Update the status bar message
-                    GLib.idle_add(self.set_status_message, count_down_message)
-                    time.sleep(1)
-
-                words = result.stdout.split()
-                words_dict = {}
-
-                # Loop through words
-                for word in words:
-
-                    if '/' in word:
-                        # Find the index of the first '-' followed by a number using regular expressions
-                        match = re.search(r'-\d', word)
-                        index = match.start()
-                        word = word[:index]
-                        words_dict[word] = True
-
-                for word in words_dict:
-                    spinner_text = "Reinstalling " + word
-                    # Start the spinner animation with the current package message
-                    GLib.idle_add(self.start_spinner, spinner_text)
-
-                    reinstall_command = "luet reinstall -y " + word
-                    result = subprocess.run(["sh", "-c", reinstall_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                    if result.returncode != 0:
-                        # If reinstallation fails, update the status message and stop the spinner animation
-                        GLib.idle_add(self.set_status_message, "Failed installing")
-                        GLib.idle_add(self.stop_spinner)
-                        repair = 0
-                    else:
-                        # If reinstallation succeeds, update the status message
-                        repair = 1
-
-                    # Wait for a short time to show the spinner animation
-                    GLib.idle_add(self.stop_spinner)
-                    time.sleep(1)
-
-                # After the loop completes, update the status message based on the repair result
-                if repair == 0:
-                    GLib.idle_add(self.set_status_message, "Could not repair")
-                else:
-                    GLib.idle_add(self.set_status_message, "System fixed!")
-
-                # Stop the spinner animation after the loop completes
-                GLib.idle_add(self.stop_spinner)
-
-
-        except Exception as e:
-            print(f"Error occurred: {str(e)}")
-            # Update the status bar with an error message
-            GLib.idle_add(self.set_status_message, "Error occurred during system check.")
-        finally:
-            # Re-enable the GUI after the check is completed or if an error occurs
-            GLib.idle_add(self.enable_gui)
 
     def disable_gui(self):
         # Disable GUI elements
