@@ -605,7 +605,7 @@ class SearchApp(Gtk.Window):
                             num_results = len(packages)  # Calculate the number of results
                             if num_results > 0:
                                 # Update the status message after appending data to liststore
-                                self.set_status_message(f"Found {len(self.liststore)} results matching '{self.last_search}'")
+                                self.set_status_message(f"Found {num_results} results matching '{self.last_search}'")
                             else:
                                 self.set_status_message("No results")
 
