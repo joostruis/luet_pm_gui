@@ -58,41 +58,35 @@ class AboutDialog(Gtk.AboutDialog):
 
 class PackageDetailsPopup(Gtk.Window):
     def __init__(self, package_info):
-        Gtk.Window.__init__(self, title="Package Details")
-        self.set_default_size(800, 300)  # Set width to be twice the default width
+        super().__init__(title="Package Details")
+        self.set_default_size(800, 300)
 
         self.package_info = package_info
-        self.loaded_package_files = {}  # Dictionary to store loaded package files information
-        self.required_by_info = None  # Store required by info
+        self.loaded_package_files = {}
+        self.required_by_info = None
 
-        # Extract package information
         category = package_info.get("category", "")
         name = package_info.get("name", "")
         version = package_info.get("version", "")
         installed = package_info.get("installed", False)
 
-        # Create labels to display package details
         package_name_label = Gtk.Label(label=f"Package: {category}/{name}")
         version_label = Gtk.Label(label=f"Version: {version}")
         installed_label = Gtk.Label(label=f"Installed: {'Yes' if installed else 'No'}")
 
-        # Create a box to arrange widgets vertically with spacing and margins
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         box.set_margin_start(10)
         box.set_margin_end(10)
         box.set_margin_top(10)
         box.set_margin_bottom(10)
 
-        # Add package name, version, and installed labels to the main box
         box.pack_start(package_name_label, False, False, 0)
         box.pack_start(version_label, False, False, 0)
         box.pack_start(installed_label, False, False, 0)
 
-        # Create an expander for required by information
         self.required_by_expander = Gtk.Expander(label="Required by")
-        self.required_by_expander.set_expanded(False)  # Start collapsed
+        self.required_by_expander.set_expanded(False)
 
-        # Create a text view for required by information
         self.required_by_textview = Gtk.TextView()
         self.required_by_textview.set_editable(False)
         self.required_by_textview.set_wrap_mode(Gtk.WrapMode.WORD)
@@ -100,42 +94,32 @@ class PackageDetailsPopup(Gtk.Window):
         required_by_scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         required_by_scrolled_window.add(self.required_by_textview)
 
-        # Add the text view to the required by expander
         self.required_by_expander.add(required_by_scrolled_window)
 
-        # Add the required by expander to the main box only if package is installed
         if installed:
             box.pack_start(self.required_by_expander, False, False, 0)
-            # Trigger loading of required by information
             self.load_required_by_info()
 
-        # Create an expander for package files information
         self.package_files_expander = Gtk.Expander(label="Package files")
-        self.package_files_expander.set_expanded(False)  # Start collapsed
+        self.package_files_expander.set_expanded(False)
 
-        # Create a text view for package files information
         self.package_files_textview = Gtk.TextView()
         self.package_files_textview.set_editable(False)
         self.package_files_textview.set_wrap_mode(Gtk.WrapMode.WORD)
         package_files_scrolled_window = Gtk.ScrolledWindow()
         package_files_scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        package_files_scrolled_window.set_min_content_height(150)  # Set minimum height
+        package_files_scrolled_window.set_min_content_height(150)
         package_files_scrolled_window.add(self.package_files_textview)
 
-        # Add the text view to the package files expander
         self.package_files_expander.add(package_files_scrolled_window)
 
-        # Add the package files expander to the main box
         box.pack_start(self.package_files_expander, False, False, 0)
 
-        # Connect signal to load package files information when the expander is expanded
         self.package_files_expander.connect("activate", self.load_package_files_info)
 
-        # Create a close button
         close_button = Gtk.Button(label="Close")
         close_button.connect("clicked", self.on_close_button_clicked)
 
-        # Add the close button to the main box
         box.pack_end(close_button, False, False, 0)
 
         self.add(box)
@@ -143,8 +127,6 @@ class PackageDetailsPopup(Gtk.Window):
     def load_required_by_info(self):
         category = self.package_info.get("category", "")
         name = self.package_info.get("name", "")
-
-        # Start a new thread to load required by information
         thread = threading.Thread(target=self.retrieve_required_by_info, args=(category, name))
         thread.start()
 
@@ -156,15 +138,12 @@ class PackageDetailsPopup(Gtk.Window):
             self.update_expander_label(self.required_by_expander, required_by_count)
             if sorted_required_by_info:
                 required_by_text = "\n".join(sorted_required_by_info)
-                # Adjust the height of the scrolled window if there are more than 4 results
                 if required_by_count > 4:
-                    self.required_by_textview.set_size_request(-1, -1)  # Remove previous size request
+                    self.required_by_textview.set_size_request(-1, -1)
             else:
                 required_by_text = "There are no packages installed that require this package."
-            # Update the text in the text view
             self.update_textview(self.required_by_textview, required_by_text)
         else:
-            # Update the text in the text view
             self.update_textview(self.required_by_textview, "Error retrieving required by information.")
 
     def load_package_files_info(self, *args):
@@ -174,10 +153,7 @@ class PackageDetailsPopup(Gtk.Window):
             files_info = self.loaded_package_files[(category, name)]
             self.update_package_files_text(files_info)
         else:
-            # Display "Loading..." text while fetching package files info
             self.update_textview(self.package_files_textview, "Loading...")
-
-            # Start a new thread to load package files info
             thread = threading.Thread(target=self.retrieve_package_files_info, args=(category, name))
             thread.start()
 
@@ -196,7 +172,6 @@ class PackageDetailsPopup(Gtk.Window):
         else:
             files_text = "Error retrieving package files information."
 
-        # Update the text in the text view from the main thread
         GLib.idle_add(lambda: self.update_textview(self.package_files_textview, files_text))
 
     def update_expander_label(self, expander, count):
@@ -209,19 +184,17 @@ class PackageDetailsPopup(Gtk.Window):
 
     def get_required_by_info(self, category, name):
         try:
-            # Run 'luet search --revdeps' command with -o json option
             revdeps_command = f"luet search --revdeps {category}/{name} -q --installed -o json"
             result = subprocess.run(["sh", "-c", revdeps_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if result.returncode == 0:
-                # Parse the JSON output
                 revdeps_json = json.loads(result.stdout)
                 if revdeps_json is not None:
                     if "packages" in revdeps_json and revdeps_json["packages"]:
                         return [package["category"] + "/" + package["name"] for package in revdeps_json["packages"]]
                     else:
-                        return []  # Return an empty list here
+                        return []
                 else:
-                    return []  # Return an empty list here
+                    return []
             else:
                 print("Error executing revdeps command:", result.stderr)
                 return None
@@ -231,11 +204,9 @@ class PackageDetailsPopup(Gtk.Window):
 
     def get_package_files_info(self, category, name):
         try:
-            # Run 'luet search' command with -o json option
             search_command = f"luet search {category}/{name} -o json"
             result = subprocess.run(["sh", "-c", search_command], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if result.returncode == 0:
-                # Parse the JSON output
                 search_json = json.loads(result.stdout)
                 if search_json is not None:
                     if "packages" in search_json and search_json["packages"]:
@@ -243,11 +214,11 @@ class PackageDetailsPopup(Gtk.Window):
                         if "files" in package_info:
                             return package_info["files"]
                         else:
-                            return []  # Return an empty list here
+                            return []
                     else:
-                        return []  # Return an empty list here
+                        return []
                 else:
-                    return []  # Return an empty list here
+                    return []
             else:
                 print("Error executing search command:", result.stderr)
                 return None
