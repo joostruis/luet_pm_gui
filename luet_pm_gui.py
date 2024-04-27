@@ -78,9 +78,6 @@ class RepositoryUpdater:
                 if result.returncode == 0:
                     GLib.idle_add(app.set_status_message, "Repositories updated")
 
-import threading
-from gi.repository import GLib
-
 class SystemChecker:
     def __init__(self, search_app_instance):
         self.search_app_instance = search_app_instance
