@@ -535,9 +535,9 @@ class SearchApp(Gtk.Window):
         file_menu.append(update_repositories_item)
 
         # Create "Check system" item under "File"
-        update_repositories_item = Gtk.MenuItem(label="Check system")
-        update_repositories_item.connect("activate", self.check_system)
-        file_menu.append(update_repositories_item)
+        check_system_item = Gtk.MenuItem(label="Check system")
+        check_system_item.connect("activate", self.check_system)
+        file_menu.append(check_system_item)
 
         # Create "Quit" item under "File"
         quit_item = Gtk.MenuItem(label="Quit")
