@@ -590,6 +590,7 @@ class SearchApp(Gtk.Window):
         self.search_entry.set_sensitive(False)
         self.search_button.set_sensitive(False)
         self.treeview.set_sensitive(False)
+        self.disable_menu_items()
 
     def enable_gui(self):
         # Acquire lock before modifying GUI elements
@@ -599,9 +600,24 @@ class SearchApp(Gtk.Window):
             self.search_button.set_sensitive(True)
             self.treeview.set_sensitive(True)
 
+            # Enable menu items
+            self.enable_menu_items()
+
             # Schedule enabling GUI after search is completed in the main GTK thread
             GLib.idle_add(self.enable_gui_after_search)
-            
+
+    def disable_menu_items(self):
+        # Disable menu items
+        for menu_item in self.menu_bar.get_children():
+            if isinstance(menu_item, Gtk.MenuItem):
+                menu_item.set_sensitive(False)
+
+    def enable_menu_items(self):
+        # Enable menu items
+        for menu_item in self.menu_bar.get_children():
+            if isinstance(menu_item, Gtk.MenuItem):
+                menu_item.set_sensitive(True)
+
     def enable_gui_after_search(self):
         # This method is called in the main GTK thread to enable GUI after search is completed
         self.search_entry.set_sensitive(True)
