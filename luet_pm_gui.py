@@ -429,6 +429,7 @@ class SearchApp(Gtk.Window):
 
         # Define the protected_applications dictionary
         self.protected_applications = {
+            "apps/grub": "This package is protected and can't be removed",
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
@@ -830,8 +831,11 @@ class SearchApp(Gtk.Window):
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
-            uninstall_command = f"luet uninstall -y {category}/{name}"
-
+            if category == "apps":
+                # If we uninstall a single app, try to also remove the reverse deps.
+                uninstall_command = f"luet uninstall -y {category}/{name} --full"
+            else:
+                uninstall_command = f"luet uninstall -y {category}/{name}"
             # Disable GUI while uninstallation is running
             self.disable_gui()
 
