@@ -680,8 +680,13 @@ class SearchApp(Gtk.Window):
                         GLib.idle_add(append_to_liststore)
                     else:
                         # Clear the liststore when 'packages' is None
-                        self.liststore.clear()
-                        self.set_status_message("No results")
+                        def clear_liststore_and_status():
+                            self.liststore.clear()
+                            self.set_status_message("No results")
+
+                        # Schedule clearing liststore and updating status message in the main GTK thread
+                        GLib.idle_add(clear_liststore_and_status)
+
                 except json.JSONDecodeError:
                     self.result_label.set_text("Invalid JSON output.")
                     # Update the status bar with "Invalid JSON output" message
