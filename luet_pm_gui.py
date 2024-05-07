@@ -850,7 +850,17 @@ class SearchApp(Gtk.Window):
 
     def show_package_details_popup(self, package_info):
         package_details_popup = PackageDetailsPopup(package_info)
+        package_details_popup.set_modal(True)  # Make the popup modal
+        package_details_popup.connect("destroy", self.on_package_details_popup_closed)
         package_details_popup.show_all()
+        self.disable_gui()
+
+    def on_package_details_popup_closed(self, widget):
+        # This method will be called when the popup window is closed
+        # Re-enable interactions with the parent window here
+        self.set_sensitive(True)  # Assuming self is the parent window
+        self.enable_gui()
+        
 
     def start_search_thread(self, search_command):
         # Disable GUI while search is running
