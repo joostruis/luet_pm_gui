@@ -800,7 +800,8 @@ class SearchApp(Gtk.Window):
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
-            install_command = f"luet install -y {category}/{name}"
+            # TODO: Unless we implement xdg-desktop-menu forceupdate in finalize for collections we hardcode it here.This command updates the KDE Plasma menu instantly.
+            install_command = f"luet install -y {category}/{name} && xdg-desktop-menu forceupdate"
 
             # Disable GUI while installation is running
             self.disable_gui()
