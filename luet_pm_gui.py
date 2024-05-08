@@ -833,14 +833,16 @@ class SearchApp(Gtk.Window):
         if response == Gtk.ResponseType.YES:
             if category == "apps":
                 # If we uninstall a single app, try to also remove the reverse deps.
-                uninstall_command = f"luet uninstall -y {category}/{name} --full"
+                uninstall_command = f"luet uninstall -y {category}/{name} --full --solver-concurrent"
+                spinner_text = f"Uninstalling {name}... Please be patient we will also remove unneeded reverse deps"
             else:
                 uninstall_command = f"luet uninstall -y {category}/{name}"
+                spinner_text = f"Uninstalling {name}..."
             # Disable GUI while uninstallation is running
             self.disable_gui()
 
             # Start the spinner animation
-            self.start_spinner(f"Uninstalling {name}...")
+            self.start_spinner(spinner_text)
 
             # Create a new thread for the uninstallation process
             uninstall_thread = threading.Thread(target=PackageOperations.run_uninstallation, args=(self, uninstall_command, category, name))
