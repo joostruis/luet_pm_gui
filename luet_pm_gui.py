@@ -437,6 +437,66 @@ class SearchApp(Gtk.Window):
             # Add more protected applications as needed
         }
 
+    def create_menu(self, menu_bar):
+        # Create the "File" menu
+        file_menu = Gtk.Menu()
+
+        # Create "Update repositories" item under "File"
+        update_repositories_item = Gtk.MenuItem(label="Update Repositories")
+        update_repositories_item.connect("activate", self.update_repositories)
+        file_menu.append(update_repositories_item)
+
+        # Create "Check system" item under "File"
+        check_system_item = Gtk.MenuItem(label="Check system")
+        check_system_item.connect("activate", self.check_system)
+        file_menu.append(check_system_item)
+
+        # Create "Quit" item under "File"
+        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item.connect("activate", Gtk.main_quit)
+        file_menu.append(quit_item)
+
+        # Create the "Help" menu
+        help_menu = Gtk.Menu()
+
+        # Create "About" item under "Help"
+        about_item = Gtk.MenuItem(label="About")
+        about_item.connect("activate", self.show_about_dialog)
+        help_menu.append(about_item)
+
+        # Create "File" and "Help" menu items in the menu bar
+        file_menu_item = Gtk.MenuItem(label="File")
+        file_menu_item.set_submenu(file_menu)
+        help_menu_item = Gtk.MenuItem(label="Help")
+        help_menu_item.set_submenu(help_menu)
+
+        menu_bar.append(file_menu_item)
+        menu_bar.append(help_menu_item)
+
+    def update_repositories(self, widget):
+        # Disable GUI while update is running
+        self.disable_gui()
+
+        # Start the spinner animation
+        self.start_spinner("Updating repositories...")
+
+        # Run the update process in a separate thread
+        with self.lock:
+            self.repo_update_thread = threading.Thread(target=RepositoryUpdater.run_repo_update, args=(self,))
+            self.repo_update_thread.start()
+
+    def check_system(self, widget):
+        # Disable GUI while check system is running
+        self.disable_gui()
+
+        # Start the spinner animation
+        self.start_spinner("Checking system for missing files...")
+
+        # Create an instance of SystemChecker and run the check_system method
+        system_checker = SystemChecker(self)
+        self.repo_update_thread = threading.Thread(target=system_checker.run_check_system)
+        self.repo_update_thread.start()
+
     def show_about_dialog(self, widget):
         about_dialog = AboutDialog(self)
         about_dialog.show_all()
@@ -525,66 +585,6 @@ class SearchApp(Gtk.Window):
         self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.spinner_counter = 0
         self.spinner_timeout_id = None
-
-    def create_menu(self, menu_bar):
-        # Create the "File" menu
-        file_menu = Gtk.Menu()
-
-        # Create "Update repositories" item under "File"
-        update_repositories_item = Gtk.MenuItem(label="Update Repositories")
-        update_repositories_item.connect("activate", self.update_repositories)
-        file_menu.append(update_repositories_item)
-
-        # Create "Check system" item under "File"
-        check_system_item = Gtk.MenuItem(label="Check system")
-        check_system_item.connect("activate", self.check_system)
-        file_menu.append(check_system_item)
-
-        # Create "Quit" item under "File"
-        quit_item = Gtk.MenuItem(label="Quit")
-        quit_item.connect("activate", Gtk.main_quit)
-        file_menu.append(quit_item)
-
-        # Create the "Help" menu
-        help_menu = Gtk.Menu()
-
-        # Create "About" item under "Help"
-        about_item = Gtk.MenuItem(label="About")
-        about_item.connect("activate", self.show_about_dialog)
-        help_menu.append(about_item)
-
-        # Create "File" and "Help" menu items in the menu bar
-        file_menu_item = Gtk.MenuItem(label="File")
-        file_menu_item.set_submenu(file_menu)
-        help_menu_item = Gtk.MenuItem(label="Help")
-        help_menu_item.set_submenu(help_menu)
-
-        menu_bar.append(file_menu_item)
-        menu_bar.append(help_menu_item)
-
-    def update_repositories(self, widget):
-        # Disable GUI while update is running
-        self.disable_gui()
-
-        # Start the spinner animation
-        self.start_spinner("Updating repositories...")
-
-        # Run the update process in a separate thread
-        with self.lock:
-            self.repo_update_thread = threading.Thread(target=RepositoryUpdater.run_repo_update, args=(self,))
-            self.repo_update_thread.start()
-
-    def check_system(self, widget):
-        # Disable GUI while check system is running
-        self.disable_gui()
-
-        # Start the spinner animation
-        self.start_spinner("Checking system for missing files...")
-
-        # Create an instance of SystemChecker and run the check_system method
-        system_checker = SystemChecker(self)
-        self.repo_update_thread = threading.Thread(target=system_checker.run_check_system)
-        self.repo_update_thread.start()
 
     def disable_gui(self):
         # Disable GUI elements
