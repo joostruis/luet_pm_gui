@@ -20,7 +20,7 @@ class AboutDialog(Gtk.AboutDialog):
         )
 
         self.set_program_name("Luet Package Search")
-        self.set_version("0.3.2")
+        self.set_version("0.4.0")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
@@ -507,14 +507,21 @@ class SearchApp(Gtk.Window):
         self.menu_bar = Gtk.MenuBar()
         self.create_menu(self.menu_bar)
 
+        # Create a box to hold the search input and checkbox
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+
+        # Create the search entry
         self.search_entry = Gtk.Entry()
         self.search_entry.set_placeholder_text("Enter package name")
-
-        # Connect the "activate" signal to the search method
         self.search_entry.connect("activate", self.on_search_clicked)
 
-        self.search_button = Gtk.Button(label="Search")
-        self.search_button.connect("clicked", self.on_search_clicked)
+        # Create the "Enable advanced search" checkbox
+        self.advanced_search_checkbox = Gtk.CheckButton(label="Advanced")
+        self.advanced_search_checkbox.set_tooltip_text("Check to enable advanced search")
+
+        # Pack the search entry and checkbox into the search box
+        search_box.pack_start(self.search_entry, True, True, 0)  # Place the search entry to the left
+        search_box.pack_start(self.advanced_search_checkbox, False, False, 0)  # Place the checkbox to the right
 
         # Create a spacer box with fixed height to add space between top and search bar
         spacer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -560,9 +567,9 @@ class SearchApp(Gtk.Window):
         self.set_status_message("Ready")  # Initialize the status bar message
 
         # Create a box for the search area
-        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        search_box.pack_start(self.search_entry, True, True, 0)
-        search_box.pack_start(self.search_button, False, False, 0)
+        self.search_button = Gtk.Button(label="Search")  # Define the search button
+        self.search_button.connect("clicked", self.on_search_clicked)  # Connect the "clicked" signal to the search method
+        search_box.pack_start(self.search_button, False, False, 0)  # Pack the search button into the search box
 
         # Create a box for the spacer and add it before the search box
         main_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -589,6 +596,7 @@ class SearchApp(Gtk.Window):
     def disable_gui(self):
         # Disable GUI elements
         self.search_entry.set_sensitive(False)
+        self.advanced_search_checkbox.set_sensitive(False)
         self.search_button.set_sensitive(False)
         self.treeview.set_sensitive(False)
         self.disable_menu_items()
@@ -598,6 +606,7 @@ class SearchApp(Gtk.Window):
         with self.lock:
             # Enable GUI elements
             self.search_entry.set_sensitive(True)
+            self.advanced_search_checkbox.set_sensitive(True)
             self.search_button.set_sensitive(True)
             self.treeview.set_sensitive(True)
 
@@ -628,7 +637,12 @@ class SearchApp(Gtk.Window):
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text()
         if package_name:
-            search_command = f"luet search -o json -q {package_name}"
+            if self.advanced_search_checkbox.get_active():  # Check if the checkbox is checked
+                # Modify the search command for advanced search
+                search_command = f"luet search -o json --by-label-regex {package_name}"
+            else:
+                # Use the regular search command
+                search_command = f"luet search -o json -q {package_name}"
             self.last_search = package_name
             if self.search_thread and self.search_thread.is_alive():
                 self.search_thread.join()
