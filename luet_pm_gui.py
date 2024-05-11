@@ -166,7 +166,7 @@ class SystemChecker:
 
 class PackageOperations:
     @staticmethod
-    def run_installation(app, install_command, package_name):
+    def run_installation(app, install_command, package_name, advanced_search):
         try:
             # Update the status bar with "Installing [package name]"
             app.set_status_message(f"Installing {package_name}...")
@@ -178,6 +178,8 @@ class PackageOperations:
                     # Disable GUI while search is running
                     app.disable_gui()
                     search_command = f"luet search -o json -q {app.last_search}"
+                    if advanced_search:
+                        search_command = f"luet search -o json --by-label-regex {app.last_search}"
                     # Stop the spinner animation
                     app.stop_spinner()
                     # Update the status bar to indicate searching again
@@ -197,7 +199,7 @@ class PackageOperations:
             GLib.idle_add(app.enable_gui)
 
     @staticmethod
-    def run_uninstallation(app, uninstall_command, category, package_name):
+    def run_uninstallation(app, uninstall_command, category, package_name, advanced_search):
         try:
             # Update the status bar with "Uninstalling [package name]"
             app.set_status_message(f"Uninstalling {package_name}...")
@@ -211,6 +213,8 @@ class PackageOperations:
             if process.returncode == 0:
                 if app.last_search:
                     search_command = f"luet search -o json -q {app.last_search}"
+                    if advanced_search:
+                        search_command = f"luet search -o json --by-label-regex {app.last_search}"
                     # Stop the spinner animation
                     app.stop_spinner()
                     # Update the status bar to indicate searching again
@@ -637,11 +641,10 @@ class SearchApp(Gtk.Window):
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text()
         if package_name:
-            if self.advanced_search_checkbox.get_active():  # Check if the checkbox is checked
-                # Modify the search command for advanced search
+            advanced_search = self.advanced_search_checkbox.get_active()
+            if advanced_search:  
                 search_command = f"luet search -o json --by-label-regex {package_name}"
             else:
-                # Use the regular search command
                 search_command = f"luet search -o json -q {package_name}"
             self.last_search = package_name
             if self.search_thread and self.search_thread.is_alive():
@@ -815,7 +818,7 @@ class SearchApp(Gtk.Window):
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
-            # TODO: Unless we implement xdg-desktop-menu forceupdate in finalize for collections we hardcode it here.This command updates the KDE Plasma menu instantly.
+            advanced_search = self.advanced_search_checkbox.get_active()
             install_command = f"luet install -y {category}/{name} && xdg-desktop-menu forceupdate"
 
             # Disable GUI while installation is running
@@ -825,7 +828,7 @@ class SearchApp(Gtk.Window):
             self.start_spinner(f"Installing {name}...")
 
             # Create a new thread for the installation process
-            install_thread = threading.Thread(target=PackageOperations.run_installation, args=(self, install_command, name))
+            install_thread = threading.Thread(target=PackageOperations.run_installation, args=(self, install_command, name, advanced_search))
             install_thread.start()
 
             # Schedule clearing the liststore after installation on the main GTK thread
@@ -845,6 +848,7 @@ class SearchApp(Gtk.Window):
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.YES:
+            advanced_search = self.advanced_search_checkbox.get_active()
             if category == "apps":
                 # If we uninstall a single app, try to also remove the reverse deps.
                 uninstall_command = f"luet uninstall -y {category}/{name} --full --solver-concurrent"
@@ -859,7 +863,7 @@ class SearchApp(Gtk.Window):
             self.start_spinner(spinner_text)
 
             # Create a new thread for the uninstallation process
-            uninstall_thread = threading.Thread(target=PackageOperations.run_uninstallation, args=(self, uninstall_command, category, name))
+            uninstall_thread = threading.Thread(target=PackageOperations.run_uninstallation, args=(self, uninstall_command, category, name, advanced_search))
             uninstall_thread.start()
 
             # Schedule clearing the liststore after uninstallation on the main GTK thread
