@@ -30,8 +30,8 @@ class AboutDialog(Gtk.AboutDialog):
             label="GitHub Repository"
         )
 
-        # Connect the "activate-link" signal of the link button to the open_link method
-        github_link.connect("activate-link", self.open_link, "https://github.com/joostruis/luet_pm_gui")
+        # Connect the "activate-link" signal to the open_link method
+        github_link.connect("activate-link", self.open_link)
 
         about_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         about_content.set_margin_start(10)
@@ -48,8 +48,9 @@ class AboutDialog(Gtk.AboutDialog):
         # Connect the response signal to destroy the dialog
         self.connect("response", lambda dialog, response_id: dialog.destroy())
 
-    def open_link(self, button, uri):
-        # Attempt to open the URI using webbrowser module
+    def open_link(self, button):
+        # Open the link from the button directly
+        uri = button.get_uri()
         try:
             webbrowser.open(uri, new=2)
         except Exception as e:
