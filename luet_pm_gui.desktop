@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Luet Package Search
-Exec=pkexec /usr/bin/luet_pm_gui.sh
+Exec=/usr/bin/luet_pm_gui.sh
 Icon=luet_pm_gui.png
 Terminal=false
 Type=Application
