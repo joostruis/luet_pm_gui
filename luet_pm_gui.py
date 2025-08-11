@@ -21,7 +21,7 @@ class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
         self.set_program_name("Luet Package Search")
-        self.set_version("0.4.2")
+        self.set_version("0.4.3")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
@@ -30,7 +30,6 @@ class AboutDialog(Gtk.AboutDialog):
             uri="https://github.com/joostruis/luet_pm_gui",
             label="GitHub Repository"
         )
-        github_link.connect("activate-link", self.open_link)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box.set_margin_start(10)
@@ -44,13 +43,6 @@ class AboutDialog(Gtk.AboutDialog):
         self.get_content_area().add(box)
 
         self.connect("response", lambda d, r: d.destroy())
-
-    def open_link(self, button):
-        uri = button.get_uri()
-        try:
-            webbrowser.open(uri, new=2)
-        except Exception as e:
-            print("Error opening link:", e)
 
 # -------------------------
 # Helpers: repo updater, system checker, package operations
