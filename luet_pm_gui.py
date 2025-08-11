@@ -146,14 +146,6 @@ class PackageOperations:
 
     @staticmethod
     def run_uninstallation(app, uninstall_cmd_list, category, package_name, advanced_search):
-        """
-        Uninstall flow (run in background thread):
-        - For category == 'apps' try uninstall with reverse-deps cleanup first:
-            luet uninstall -y <cat>/<name> --full --solver-concurrent
-          If that returns non-zero OR contains 'Nothing to do' in stdout, try the fallback:
-            luet uninstall -y <cat>/<name>
-        - For other categories just run: luet uninstall -y <cat>/<name>
-        """
         pkg_fullname = f"{category}/{package_name}"
         try:
             GLib.idle_add(app.set_status_message, f"Uninstalling {pkg_fullname}...")
@@ -354,7 +346,7 @@ class SearchApp(Gtk.Window):
     def __init__(self):
         super().__init__(title="Luet Package Search")
         self.set_default_size(1000, 540)
-        self.set_icon_name("luet_pm_gui")
+        self.set_icon_name("luet_pm_gui") 
 
         self.last_search = ""
         self.search_thread = None
