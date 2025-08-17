@@ -187,7 +187,8 @@ class PackageOperations:
             GLib.idle_add(app.set_status_message, "Error uninstalling package")
         finally:
             GLib.idle_add(app.enable_gui)
-            GLib.idle_add(app.stop_spinner)
+            # Removed GLib.idle_add(app.stop_spinner) from here.
+            # The spinner will now be stopped by the run_search function's finally block.
 
 # -------------------------
 # Package Details popup (uses app.run_command so elevation works)
