@@ -122,11 +122,36 @@ class SystemChecker:
 
 class PackageOperations:
     @staticmethod
+    def _run_kbuildsycoca6():
+        """Helper to run kbuildsycoca6 if available.
+        This function now runs silently without printing to stdout/stderr.
+        """
+        kbuild_path = shutil.which("kbuildsycoca6")
+        if kbuild_path:
+            try:
+                # Run the command as the current user, capturing output silently
+                subprocess.run(
+                    [kbuild_path],
+                    capture_output=True, # Capture stdout and stderr
+                    text=True,           # Decode stdout/stderr as text
+                    check=False          # Do not raise an exception for non-zero exit codes
+                )
+            except Exception:
+                # Silently ignore errors, as per the request not to print
+                pass
+        else:
+            # Silently skip if kbuildsycoca6 is not found
+            pass
+
+    @staticmethod
     def run_installation(app, install_cmd_list, package_name, advanced_search):
         try:
             GLib.idle_add(app.set_status_message, f"Installing {package_name}...")
             res = app.run_command(install_cmd_list, require_root=True)
             if res.returncode == 0:
+                # Run kbuildsycoca6 after successful installation
+                PackageOperations._run_kbuildsycoca6()
+
                 if app.last_search:
                     search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
                     if advanced_search:
@@ -169,6 +194,9 @@ class PackageOperations:
 
             # Now handle final result
             if res.returncode == 0:
+                # Run kbuildsycoca6 after successful uninstallation
+                PackageOperations._run_kbuildsycoca6()
+
                 # Refresh search if present
                 if app.last_search:
                     search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
@@ -187,8 +215,9 @@ class PackageOperations:
             GLib.idle_add(app.set_status_message, "Error uninstalling package")
         finally:
             GLib.idle_add(app.enable_gui)
-            # Removed GLib.idle_add(app.stop_spinner) from here.
-            # The spinner will now be stopped by the run_search function's finally block.
+            # Removed GLib.idle_add(app.stop_spinner) from here,
+            # as it's now handled by the run_search function's finally block
+            # or if no search is performed, the main enable_gui will clean up.
 
 # -------------------------
 # Package Details popup (uses app.run_command so elevation works)
