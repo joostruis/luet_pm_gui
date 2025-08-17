@@ -123,13 +123,9 @@ class SystemChecker:
 class PackageOperations:
     @staticmethod
     def _run_kbuildsycoca6():
-        """Helper to run kbuildsycoca6 if available.
-        This function now runs silently without printing to stdout/stderr.
-        """
         kbuild_path = shutil.which("kbuildsycoca6")
         if kbuild_path:
             try:
-                # Run the command as the current user, capturing output silently
                 subprocess.run(
                     [kbuild_path],
                     capture_output=True, # Capture stdout and stderr
@@ -137,7 +133,7 @@ class PackageOperations:
                     check=False          # Do not raise an exception for non-zero exit codes
                 )
             except Exception:
-                # Silently ignore errors, as per the request not to print
+                # Silently ignore errors
                 pass
         else:
             # Silently skip if kbuildsycoca6 is not found
@@ -215,9 +211,6 @@ class PackageOperations:
             GLib.idle_add(app.set_status_message, "Error uninstalling package")
         finally:
             GLib.idle_add(app.enable_gui)
-            # Removed GLib.idle_add(app.stop_spinner) from here,
-            # as it's now handled by the run_search function's finally block
-            # or if no search is performed, the main enable_gui will clean up.
 
 # -------------------------
 # Package Details popup (uses app.run_command so elevation works)
