@@ -252,10 +252,13 @@ class PackageDetailsPopup(Gtk.Window):
         self.required_by_textview.set_right_margin(6)
         self.required_by_textview.set_pixels_above_lines(2)
         self.required_by_textview.set_pixels_below_lines(2)
-        required_by_scrolled = Gtk.ScrolledWindow()
-        required_by_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        required_by_scrolled.add(self.required_by_textview)
-        self.required_by_expander.add(required_by_scrolled)
+
+        # Keep reference to scrolled window so we can resize it later
+        self.required_by_scrolled = Gtk.ScrolledWindow()
+        self.required_by_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.required_by_scrolled.add(self.required_by_textview)
+
+        self.required_by_expander.add(self.required_by_scrolled)
 
         if installed:
             box.pack_start(self.required_by_expander, False, False, 0)
@@ -332,6 +335,15 @@ class PackageDetailsPopup(Gtk.Window):
     def update_expander_label(self, expander, count):
         label_text = f"{expander.get_label().split(' (')[0]} ({count})"
         expander.set_label(label_text)
+
+        # Adjust height of the "Required by" box dynamically
+        if expander == self.required_by_expander:
+            if count <= 2:
+                self.required_by_scrolled.set_min_content_height(-1)  # shrink to fit
+            else:
+                # ~20 px per line, max 200px so it doesn't take over the window
+                new_height = min(20 * count, 200)
+                self.required_by_scrolled.set_min_content_height(new_height)
 
     def update_textview(self, textview, text):
         buf = textview.get_buffer()
