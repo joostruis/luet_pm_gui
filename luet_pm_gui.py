@@ -483,7 +483,7 @@ class SearchApp(Gtk.Window):
         self.search_entry.connect("activate", self.on_search_clicked)
 
         self.advanced_search_checkbox = Gtk.CheckButton(label="Advanced")
-        self.advanced_search_checkbox.set_tooltip_text("Check to enable advanced search")
+        self.advanced_search_checkbox.set_tooltip_text("Check this box to also search inside filenames and labels")
 
         self.search_button = Gtk.Button(label="Search")
         self.search_button.connect("clicked", self.on_search_clicked)
