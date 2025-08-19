@@ -21,7 +21,7 @@ class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
         self.set_program_name("Luet Package Search")
-        self.set_version("0.4.5")
+        self.set_version("0.4.6")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
@@ -35,7 +35,7 @@ class AboutDialog(Gtk.AboutDialog):
         box.set_margin_start(10)
         box.set_margin_end(10)
 
-        label = Gtk.Label(label="© 2023 - 2025 MocaccinoOS org. All Rights Reserved")
+        label = Gtk.Label(label="© 2023 - 2025 MocaccinoOS. All Rights Reserved")
         label.set_line_wrap(True)
 
         box.pack_start(label, False, False, 0)
@@ -389,7 +389,7 @@ class SearchApp(Gtk.Window):
     def __init__(self):
         super().__init__(title="Luet Package Search")
         self.set_default_size(1000, 540)
-        self.set_icon_name("luet_pm_gui") 
+        self.set_icon_name("luet_pm_gui")
 
         self.last_search = ""
         self.search_thread = None
@@ -513,13 +513,22 @@ class SearchApp(Gtk.Window):
             c.set_clickable(True)
             self.treeview.append_column(c)
 
+        # Make Action and Details columns non-resizable and non-expandable for better visual consistency
+        col_action.set_resizable(False)
+        col_action.set_expand(False)
         col_details = Gtk.TreeViewColumn("Details", Gtk.CellRendererText(), text=5)
-        col_details.set_resizable(True)
-        col_details.set_expand(True)
-        col_details.set_clickable(True)
+        col_details.set_resizable(False)
+        col_details.set_expand(False)
         self.treeview.append_column(col_details)
-
+        
+        # Connect mouse events
         self.treeview.connect("button-press-event", self.on_treeview_button_clicked)
+        self.treeview.connect("motion-notify-event", self.on_treeview_motion)
+        self.treeview.connect("leave-notify-event", self.on_treeview_leave)
+        
+        # Enable pointer motion events
+        self.treeview.set_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK | Gdk.EventMask.BUTTON_PRESS_MASK)
+
 
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -688,6 +697,27 @@ class SearchApp(Gtk.Window):
             return True
 
         return False
+
+    def on_treeview_motion(self, treeview, event):
+        hit = treeview.get_path_at_pos(int(event.x), int(event.y))
+
+        if hit:
+            path, col, _, _ = hit
+                      
+            if col == treeview.get_column(4) or col == treeview.get_column(5):
+                self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer'))
+            else:
+                self.set_cursor(None)
+        else:
+            self.set_cursor(None)
+
+    def on_treeview_leave(self, treeview, event):
+            self.set_cursor(None)
+
+    def set_cursor(self, cursor):
+        window = self.get_window()
+        if window:
+            window.set_cursor(cursor)
 
     def show_protected_popup(self, path_or_row):
         if isinstance(path_or_row, Gtk.TreePath):
