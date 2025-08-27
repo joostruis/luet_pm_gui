@@ -253,12 +253,16 @@ class PackageDetailsPopup(Gtk.Window):
         self.required_by_textview.set_pixels_above_lines(2)
         self.required_by_textview.set_pixels_below_lines(2)
 
-        # Keep reference to scrolled window so we can resize it later
         self.required_by_scrolled = Gtk.ScrolledWindow()
         self.required_by_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.required_by_scrolled.add(self.required_by_textview)
 
         self.required_by_expander.add(self.required_by_scrolled)
+
+        # add cursor change handlers
+        self.required_by_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.required_by_expander.connect("enter-notify-event", self.on_hover_cursor)
+        self.required_by_expander.connect("leave-notify-event", self.on_leave_cursor)
 
         if installed:
             box.pack_start(self.required_by_expander, False, False, 0)
@@ -274,12 +278,19 @@ class PackageDetailsPopup(Gtk.Window):
         self.package_files_textview.set_right_margin(6)
         self.package_files_textview.set_pixels_above_lines(2)
         self.package_files_textview.set_pixels_below_lines(2)
+
         package_files_sw = Gtk.ScrolledWindow()
         package_files_sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         package_files_sw.set_min_content_height(150)
         package_files_sw.add(self.package_files_textview)
+
         self.package_files_expander.add(package_files_sw)
         self.package_files_expander.connect("activate", self.load_package_files_info)
+
+        # add cursor change handlers
+        self.package_files_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.package_files_expander.connect("enter-notify-event", self.on_hover_cursor)
+        self.package_files_expander.connect("leave-notify-event", self.on_leave_cursor)
 
         box.pack_start(self.package_files_expander, False, False, 0)
 
@@ -289,6 +300,16 @@ class PackageDetailsPopup(Gtk.Window):
 
         self.add(box)
         self.show_all()
+
+    def on_hover_cursor(self, widget, event):
+        window = widget.get_window()
+        if window:
+            window.set_cursor(Gdk.Cursor.new_from_name(widget.get_display(), 'pointer'))
+
+    def on_leave_cursor(self, widget, event):
+        window = widget.get_window()
+        if window:
+            window.set_cursor(None)
 
     def load_required_by_info(self):
         category = self.package_info.get("category", "")
@@ -336,12 +357,10 @@ class PackageDetailsPopup(Gtk.Window):
         label_text = f"{expander.get_label().split(' (')[0]} ({count})"
         expander.set_label(label_text)
 
-        # Adjust height of the "Required by" box dynamically
         if expander == self.required_by_expander:
             if count <= 2:
-                self.required_by_scrolled.set_min_content_height(-1)  # shrink to fit
+                self.required_by_scrolled.set_min_content_height(-1)
             else:
-                # ~20 px per line, max 200px so it doesn't take over the window
                 new_height = min(20 * count, 200)
                 self.required_by_scrolled.set_min_content_height(new_height)
 
