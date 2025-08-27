@@ -27,6 +27,9 @@ class AboutDialog(Gtk.AboutDialog):
         self.set_website("https://www.mocaccino.org")
         self.set_website_label("Visit our website")
         self.set_authors(["Joost Ruis"])
+        icon_theme = Gtk.IconTheme.get_default()
+        icon = icon_theme.load_icon("luet_pm_gui", 64, 0)
+        self.set_logo(icon)
 
         github_link = Gtk.LinkButton.new_with_label(
             uri="https://github.com/joostruis/luet_pm_gui",
