@@ -14,6 +14,8 @@ import webbrowser
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk
 
+GLib.set_prgname('luet_pm_gui')
+
 # -------------------------
 # About dialog
 # -------------------------
