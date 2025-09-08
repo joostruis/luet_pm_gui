@@ -227,232 +227,6 @@ class PackageDetailsPopup(Gtk.Window):
         self.app = app
         self.package_info = package_info
         self.loaded_package_files = {}
-        self.all_files = []  # full file list for filtering
-
-        category = package_info.get("category", "")
-        name = package_info.get("name", "")
-        version = package_info.get("version", "")
-        installed = package_info.get("installed", False)
-
-        package_name_label = Gtk.Label(label=f"Package: {category}/{name}")
-        version_label = Gtk.Label(label=f"Version: {version}")
-        installed_label = Gtk.Label(label=f"Installed: {'Yes' if installed else 'No'}")
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        box.set_margin_start(10)
-        box.set_margin_end(10)
-        box.set_margin_top(10)
-        box.set_margin_bottom(10)
-
-        box.pack_start(package_name_label, False, False, 0)
-        box.pack_start(version_label, False, False, 0)
-        box.pack_start(installed_label, False, False, 0)
-
-        # required by expander
-        self.required_by_expander = Gtk.Expander(label="Required by")
-        self.required_by_expander.set_expanded(False)
-        self.required_by_textview = Gtk.TextView()
-        self.required_by_textview.set_editable(False)
-        self.required_by_textview.set_wrap_mode(Gtk.WrapMode.WORD)
-        self.required_by_textview.set_left_margin(6)
-        self.required_by_textview.set_right_margin(6)
-        self.required_by_textview.set_pixels_above_lines(2)
-        self.required_by_textview.set_pixels_below_lines(2)
-
-        self.required_by_scrolled = Gtk.ScrolledWindow()
-        self.required_by_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.required_by_scrolled.add(self.required_by_textview)
-
-        self.required_by_expander.add(self.required_by_scrolled)
-
-        # cursor handlers
-        self.required_by_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
-        self.required_by_expander.connect("enter-notify-event", self.on_hover_cursor)
-        self.required_by_expander.connect("leave-notify-event", self.on_leave_cursor)
-
-        if installed:
-            box.pack_start(self.required_by_expander, False, False, 0)
-            self.load_required_by_info()
-
-        # package files expander with search + treeview
-        self.package_files_expander = Gtk.Expander(label="Package files")
-        self.package_files_expander.set_expanded(False)
-
-        # search row (label + entry)
-        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        search_box.set_margin_top(8)  # extra spacing above filter row
-
-        filter_label = Gtk.Label(label="Filter:")
-        filter_label.set_halign(Gtk.Align.START)
-
-        self.files_search_entry = Gtk.Entry()
-        self.files_search_entry.set_placeholder_text("type to filter")
-        self.files_search_entry.connect("changed", self.on_files_search_changed)
-
-        search_box.pack_start(filter_label, False, False, 0)
-        search_box.pack_start(self.files_search_entry, True, True, 0)
-
-        # liststore + treeview
-        self.files_liststore = Gtk.ListStore(str)
-        self.files_treeview = Gtk.TreeView(model=self.files_liststore)
-        renderer = Gtk.CellRendererText()
-        col = Gtk.TreeViewColumn("File", renderer, text=0)
-        col.set_resizable(True)
-        col.set_expand(True)
-        self.files_treeview.append_column(col)
-
-        files_sw = Gtk.ScrolledWindow()
-        files_sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        files_sw.set_min_content_height(150)
-        files_sw.add(self.files_treeview)
-
-        files_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        files_vbox.pack_start(search_box, False, False, 0)
-        files_vbox.pack_start(files_sw, True, True, 0)
-
-        self.package_files_expander.add(files_vbox)
-        self.package_files_expander.connect("activate", self.load_package_files_info)
-
-        # cursor handlers
-        self.package_files_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
-        self.package_files_expander.connect("enter-notify-event", self.on_hover_cursor)
-        self.package_files_expander.connect("leave-notify-event", self.on_leave_cursor)
-
-        box.pack_start(self.package_files_expander, False, False, 0)
-
-        close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", lambda b: self.destroy())
-        box.pack_end(close_button, False, False, 0)
-
-        self.add(box)
-        self.show_all()
-
-    def on_hover_cursor(self, widget, event):
-        window = widget.get_window()
-        if window:
-            window.set_cursor(Gdk.Cursor.new_from_name(widget.get_display(), 'pointer'))
-
-    def on_leave_cursor(self, widget, event):
-        window = widget.get_window()
-        if window:
-            window.set_cursor(None)
-
-    def load_required_by_info(self):
-        category = self.package_info.get("category", "")
-        name = self.package_info.get("name", "")
-        threading.Thread(target=self.retrieve_required_by_info, args=(category, name), daemon=True).start()
-
-    def retrieve_required_by_info(self, category, name):
-        required_by_info = self.get_required_by_info(category, name)
-        if required_by_info is None:
-            GLib.idle_add(self.update_textview, self.required_by_textview, "Error retrieving required by information.")
-            return
-        sorted_required_by = sorted(required_by_info)
-        count = len(sorted_required_by)
-        GLib.idle_add(self.update_expander_label, self.required_by_expander, count)
-        if sorted_required_by:
-            GLib.idle_add(self.update_textview, self.required_by_textview, "\n".join(sorted_required_by))
-        else:
-            GLib.idle_add(self.update_textview, self.required_by_textview, "There are no packages installed that require this package.")
-
-    def load_package_files_info(self, *args):
-        category = self.package_info.get("category", "")
-        name = self.package_info.get("name", "")
-        if (category, name) in self.loaded_package_files:
-            files = self.loaded_package_files[(category, name)]
-            GLib.idle_add(self.update_package_files_list, files)
-            return
-
-        # Show loading indicator
-        self.all_files = []
-        self.files_liststore.clear()
-        self.files_liststore.append(["Loading..."])
-
-        threading.Thread(
-            target=self.retrieve_package_files_info, args=(category, name), daemon=True
-        ).start()
-
-    def retrieve_package_files_info(self, category, name):
-        files = self.get_package_files_info(category, name)
-        self.loaded_package_files[(category, name)] = files if files is not None else []
-        GLib.idle_add(self.update_package_files_list, files)
-
-    def update_package_files_list(self, files_info):
-        self.files_liststore.clear()
-        if files_info is None:
-            self.all_files = []
-            self.files_liststore.append(["Error retrieving package files information."])
-        elif not files_info:
-            self.all_files = []
-            self.files_liststore.append(["No files found for this package."])
-        else:
-            self.all_files = sorted(files_info)
-            self.apply_files_filter("")
-
-    def on_files_search_changed(self, entry):
-        text = entry.get_text().lower()
-        self.apply_files_filter(text)
-
-    def apply_files_filter(self, filter_text):
-        self.files_liststore.clear()
-        for f in self.all_files:
-            if filter_text in f.lower():
-                self.files_liststore.append([f])
-
-    def update_expander_label(self, expander, count):
-        label_text = f"{expander.get_label().split(' (')[0]} ({count})"
-        expander.set_label(label_text)
-
-        if expander == self.required_by_expander:
-            if count <= 2:
-                self.required_by_scrolled.set_min_content_height(-1)
-            else:
-                new_height = min(20 * count, 200)
-                self.required_by_scrolled.set_min_content_height(new_height)
-
-    def update_textview(self, textview, text):
-        buf = textview.get_buffer()
-        buf.set_text(text)
-
-    def get_required_by_info(self, category, name):
-        try:
-            cmd = ["luet", "search", "--revdeps", f"{category}/{name}", "-q", "--installed", "-o", "json"]
-            res = self.app.run_command(cmd, require_root=True)
-            if res.returncode != 0:
-                print("revdeps failed:", res.stderr)
-                return None
-            revdeps_json = json.loads(res.stdout or "{}")
-            packages = []
-            if isinstance(revdeps_json, dict) and revdeps_json.get("packages"):
-                for p in revdeps_json["packages"]:
-                    packages.append(p.get("category", "") + "/" + p.get("name", ""))
-            return packages
-        except Exception as e:
-            print("Error retrieving required by info:", e)
-            return None
-
-    def get_package_files_info(self, category, name):
-        try:
-            cmd = ["luet", "search", f"{category}/{name}", "-o", "json"]
-            res = self.app.run_command(cmd, require_root=True)
-            if res.returncode != 0:
-                print("search for package failed:", res.stderr)
-                return None
-            search_json = json.loads(res.stdout or "{}")
-            if isinstance(search_json, dict) and search_json.get("packages"):
-                pinfo = search_json["packages"][0]
-                return pinfo.get("files", [])
-            return []
-        except Exception as e:
-            print("Error retrieving package files info:", e)
-            return None
-
-    def __init__(self, app, package_info):
-        super().__init__(title="Package Details")
-        self.set_default_size(900, 400)
-        self.app = app
-        self.package_info = package_info
-        self.loaded_package_files = {}
         self.all_files = []  # keep full file list for filtering
 
         category = package_info.get("category", "")
@@ -517,6 +291,9 @@ class PackageDetailsPopup(Gtk.Window):
         col.set_resizable(True)
         col.set_expand(True)
         self.files_treeview.append_column(col)
+        
+        # Connect right-click event for the context menu
+        self.files_treeview.connect("button-press-event", self.on_files_treeview_button_press)
 
         files_sw = Gtk.ScrolledWindow()
         files_sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -553,6 +330,42 @@ class PackageDetailsPopup(Gtk.Window):
         window = widget.get_window()
         if window:
             window.set_cursor(None)
+
+    def on_files_treeview_button_press(self, widget, event):
+        # Check for right-click (button 3)
+        if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
+            # Create a new Gtk.Menu
+            menu = Gtk.Menu()
+
+            # Create the "Copy All" menu item
+            copy_all_item = Gtk.MenuItem(label="Copy All Files")
+            copy_all_item.connect("activate", self.on_copy_all_files)
+            menu.append(copy_all_item)
+
+            # Show the menu
+            menu.show_all()
+            menu.popup_at_pointer(event)
+            return True # Indicate that the event has been handled
+        return False
+
+    def on_copy_all_files(self, widget):
+        # Get the clipboard
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+
+        # Build the text from the currently filtered liststore
+        all_files_text = ""
+        # Use iter_children(None) to get the first row, then iterate over all of them
+        iter_ = self.files_liststore.get_iter_first()
+        while iter_ is not None:
+            file_path = self.files_liststore.get_value(iter_, 0)
+            all_files_text += file_path + "\n"
+            iter_ = self.files_liststore.iter_next(iter_)
+        
+        # Remove the trailing newline character, if any
+        all_files_text = all_files_text.strip()
+        
+        # Set the text on the clipboard
+        clipboard.set_text(all_files_text, -1)
 
     def load_required_by_info(self):
         category = self.package_info.get("category", "")
@@ -593,7 +406,6 @@ class PackageDetailsPopup(Gtk.Window):
         files = self.get_package_files_info(category, name)
         self.loaded_package_files[(category, name)] = files if files is not None else []
         GLib.idle_add(self.update_package_files_list, files)
-
 
     def update_package_files_list(self, files_info):
         self.files_liststore.clear()
@@ -664,7 +476,6 @@ class PackageDetailsPopup(Gtk.Window):
         except Exception as e:
             print("Error retrieving package files info:", e)
             return None
-
 # -------------------------
 # Main application window
 # -------------------------
