@@ -9,10 +9,11 @@ import threading
 import time
 import subprocess
 import shutil
+import yaml
 import webbrowser
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk
+from gi.repository import Gtk, GLib, Gdk, Pango
 
 GLib.set_prgname('luet_pm_gui')
 
@@ -220,6 +221,7 @@ class PackageOperations:
 # -------------------------
 # Package Details popup (uses app.run_command so elevation works)
 # -------------------------
+
 class PackageDetailsPopup(Gtk.Window):
     def __init__(self, app, package_info):
         super().__init__(title="Package Details")
@@ -227,28 +229,122 @@ class PackageDetailsPopup(Gtk.Window):
         self.app = app
         self.package_info = package_info
         self.loaded_package_files = {}
-        self.all_files = []  # keep full file list for filtering
+        self.all_files = []
 
         category = package_info.get("category", "")
         name = package_info.get("name", "")
         version = package_info.get("version", "")
+        repository = package_info.get("repository", "")
         installed = package_info.get("installed", False)
 
-        package_name_label = Gtk.Label(label=f"Package: {category}/{name}")
-        version_label = Gtk.Label(label=f"Version: {version}")
-        installed_label = Gtk.Label(label=f"Installed: {'Yes' if installed else 'No'}")
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        main_box.set_margin_start(10)
+        main_box.set_margin_end(10)
+        main_box.set_margin_top(10)
+        main_box.set_margin_bottom(10)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        box.set_margin_start(10)
-        box.set_margin_end(10)
-        box.set_margin_top(10)
-        box.set_margin_bottom(10)
+        # --- Two-column container ---
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
 
-        box.pack_start(package_name_label, False, False, 0)
-        box.pack_start(version_label, False, False, 0)
-        box.pack_start(installed_label, False, False, 0)
+        # --- Left grid (Package basics + Homepage) ---
+        left_grid = Gtk.Grid()
+        left_grid.set_column_spacing(12)
+        left_grid.set_row_spacing(6)
 
-        # required by expander
+        def add_left(row, field, widget, top_align=False):
+            label = Gtk.Label(label=field)
+            label.set_xalign(1.0)
+            if top_align:
+                label.set_valign(Gtk.Align.START)
+            
+            # Align the value widget to the left
+            if isinstance(widget, Gtk.Label):
+                widget.set_xalign(0.0)
+            else:
+                widget.set_halign(Gtk.Align.START)
+                
+            left_grid.attach(label, 0, row, 1, 1)
+            left_grid.attach(widget, 1, row, 1, 1)
+
+        add_left(0, "Package:", Gtk.Label(label=f"{category}/{name}"))
+        add_left(1, "Version:", Gtk.Label(label=version))
+        add_left(2, "Installed:", Gtk.Label(label="Yes" if installed else "No"))
+
+        # --- Right grid (Description + License) ---
+        right_grid = Gtk.Grid()
+        right_grid.set_column_spacing(12)
+        right_grid.set_row_spacing(6)
+
+        def add_right(row, field, widget):
+            label = Gtk.Label(label=field)
+            label.set_xalign(1.0)
+            label.set_valign(Gtk.Align.START)  # top align important
+            right_grid.attach(label, 0, row, 1, 1)
+            right_grid.attach(widget, 1, row, 1, 1)
+
+        definition_data = self.load_definition_yaml(repository, category, name, version)
+        if definition_data:
+            description = definition_data.get("description", "")
+
+            license_ = (
+                definition_data.get("license")
+                or definition_data.get("licenses")
+                or ""
+            )
+            if isinstance(license_, list):
+                license_ = ", ".join(license_)
+
+            uri = definition_data.get("uri") or definition_data.get("source") or ""
+            if isinstance(uri, list):
+                uri = uri[0] if uri else ""
+
+            # Homepage goes under Installed (left column)
+            if uri:
+                # Use a Gtk.Label with Pango markup to ensure perfect alignment
+                uri_label = Gtk.Label()
+                escaped_uri = GLib.markup_escape_text(uri)
+                uri_label.set_markup(f'<a href="{escaped_uri}">{escaped_uri}</a>')
+                uri_label.connect("activate-link", lambda w, u: webbrowser.open(u))
+
+                # Add events and connect signals for cursor change
+                uri_label.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+                uri_label.connect("enter-notify-event", self.on_hover_cursor)
+                uri_label.connect("leave-notify-event", self.on_leave_cursor)
+                
+                add_left(3, "Homepage:", uri_label, top_align=True)
+
+            # --- Populate right column ---
+            next_right_row = 0
+
+            # Repository in right column
+            if repository:
+                repo_label = Gtk.Label(label=repository)
+                repo_label.set_xalign(0)
+                add_right(next_right_row, "Repository:", repo_label)
+                next_right_row += 1
+                
+            # Description in right column
+            if description:
+                desc_label = Gtk.Label(label=description)
+                desc_label.set_line_wrap(True)
+                desc_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+                desc_label.set_xalign(0)
+                desc_label.set_max_width_chars(40)
+                add_right(next_right_row, "Description:", desc_label)
+                next_right_row += 1
+
+            # License in right column
+            if license_:
+                lic_label = Gtk.Label(label=license_)
+                lic_label.set_xalign(0)
+                add_right(next_right_row, "License:", lic_label)
+                next_right_row += 1
+
+        hbox.pack_start(left_grid, True, True, 0)
+        hbox.pack_start(right_grid, True, True, 0)
+        main_box.pack_start(hbox, False, False, 0)
+
+        # --- Required by expander ---
         self.required_by_expander = Gtk.Expander(label="Required by")
         self.required_by_expander.set_expanded(False)
         self.required_by_textview = Gtk.TextView()
@@ -262,28 +358,24 @@ class PackageDetailsPopup(Gtk.Window):
         self.required_by_scrolled = Gtk.ScrolledWindow()
         self.required_by_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.required_by_scrolled.add(self.required_by_textview)
-
         self.required_by_expander.add(self.required_by_scrolled)
 
-        # cursor handlers
         self.required_by_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.required_by_expander.connect("enter-notify-event", self.on_hover_cursor)
         self.required_by_expander.connect("leave-notify-event", self.on_leave_cursor)
 
         if installed:
-            box.pack_start(self.required_by_expander, False, False, 0)
+            main_box.pack_start(self.required_by_expander, False, False, 0)
             self.load_required_by_info()
 
-        # package files expander with search + treeview
+        # --- Package files expander ---
         self.package_files_expander = Gtk.Expander(label="Package files")
         self.package_files_expander.set_expanded(False)
 
-        # search entry
         self.files_search_entry = Gtk.Entry()
         self.files_search_entry.set_placeholder_text("Filter files...")
         self.files_search_entry.connect("changed", self.on_files_search_changed)
 
-        # liststore + treeview
         self.files_liststore = Gtk.ListStore(str)
         self.files_treeview = Gtk.TreeView(model=self.files_liststore)
         renderer = Gtk.CellRendererText()
@@ -291,8 +383,7 @@ class PackageDetailsPopup(Gtk.Window):
         col.set_resizable(True)
         col.set_expand(True)
         self.files_treeview.append_column(col)
-        
-        # Connect right-click event for the context menu
+
         self.files_treeview.connect("button-press-event", self.on_files_treeview_button_press)
 
         files_sw = Gtk.ScrolledWindow()
@@ -307,20 +398,34 @@ class PackageDetailsPopup(Gtk.Window):
         self.package_files_expander.add(files_vbox)
         self.package_files_expander.connect("activate", self.load_package_files_info)
 
-        # cursor handlers
         self.package_files_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.package_files_expander.connect("enter-notify-event", self.on_hover_cursor)
         self.package_files_expander.connect("leave-notify-event", self.on_leave_cursor)
 
-        box.pack_start(self.package_files_expander, False, False, 0)
+        main_box.pack_start(self.package_files_expander, False, False, 0)
 
+        # --- Close button ---
         close_button = Gtk.Button(label="Close")
         close_button.connect("clicked", lambda b: self.destroy())
-        box.pack_end(close_button, False, False, 0)
+        main_box.pack_end(close_button, False, False, 0)
 
-        self.add(box)
+        self.add(main_box)
         self.show_all()
 
+    # --- helper for definition.yaml ---
+    def load_definition_yaml(self, repository, category, name, version):
+        try:
+            path = f"/var/luet/db/repos/{repository}/treefs/{category}/{name}/{version}/definition.yaml"
+            res = self.app.run_command(["cat", path], require_root=True)
+            if res.returncode != 0:
+                print("Error reading definition.yaml:", res.stderr)
+                return None
+            return yaml.safe_load(res.stdout) if res.stdout else None
+        except Exception as e:
+            print("Error loading definition.yaml:", e)
+            return None
+
+    # --- cursor handlers ---
     def on_hover_cursor(self, widget, event):
         window = widget.get_window()
         if window:
@@ -331,42 +436,30 @@ class PackageDetailsPopup(Gtk.Window):
         if window:
             window.set_cursor(None)
 
+    # --- files treeview context menu ---
     def on_files_treeview_button_press(self, widget, event):
-        # Check for right-click (button 3)
         if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
-            # Create a new Gtk.Menu
             menu = Gtk.Menu()
-
-            # Create the "Copy All" menu item
             copy_all_item = Gtk.MenuItem(label="Copy All Files")
             copy_all_item.connect("activate", self.on_copy_all_files)
             menu.append(copy_all_item)
-
-            # Show the menu
             menu.show_all()
             menu.popup_at_pointer(event)
-            return True # Indicate that the event has been handled
+            return True
         return False
 
     def on_copy_all_files(self, widget):
-        # Get the clipboard
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
-
-        # Build the text from the currently filtered liststore
         all_files_text = ""
-        # Use iter_children(None) to get the first row, then iterate over all of them
         iter_ = self.files_liststore.get_iter_first()
         while iter_ is not None:
             file_path = self.files_liststore.get_value(iter_, 0)
             all_files_text += file_path + "\n"
             iter_ = self.files_liststore.iter_next(iter_)
-        
-        # Remove the trailing newline character, if any
         all_files_text = all_files_text.strip()
-        
-        # Set the text on the clipboard
         clipboard.set_text(all_files_text, -1)
 
+    # --- required by handling ---
     def load_required_by_info(self):
         category = self.package_info.get("category", "")
         name = self.package_info.get("name", "")
@@ -385,6 +478,7 @@ class PackageDetailsPopup(Gtk.Window):
         else:
             GLib.idle_add(self.update_textview, self.required_by_textview, "There are no packages installed that require this package.")
 
+    # --- package files handling ---
     def load_package_files_info(self, *args):
         category = self.package_info.get("category", "")
         name = self.package_info.get("name", "")
@@ -393,7 +487,6 @@ class PackageDetailsPopup(Gtk.Window):
             GLib.idle_add(self.update_package_files_list, files)
             return
 
-        # Show loading indicator
         self.all_files = []
         self.files_liststore.clear()
         self.files_liststore.append(["Loading..."])
@@ -417,7 +510,7 @@ class PackageDetailsPopup(Gtk.Window):
             self.files_liststore.append(["No files found for this package."])
         else:
             self.all_files = sorted(files_info)
-            self.apply_files_filter("")  # populates full list
+            self.apply_files_filter("")
 
     def on_files_search_changed(self, entry):
         text = entry.get_text().lower()
@@ -429,6 +522,7 @@ class PackageDetailsPopup(Gtk.Window):
             if filter_text in f.lower():
                 self.files_liststore.append([f])
 
+    # --- utility helpers ---
     def update_expander_label(self, expander, count):
         label_text = f"{expander.get_label().split(' (')[0]} ({count})"
         expander.set_label(label_text)
@@ -476,6 +570,7 @@ class PackageDetailsPopup(Gtk.Window):
         except Exception as e:
             print("Error retrieving package files info:", e)
             return None
+
 # -------------------------
 # Main application window
 # -------------------------
@@ -785,6 +880,7 @@ class SearchApp(Gtk.Window):
                 "category": self.liststore.get_value(iter_, 0),
                 "name": self.liststore.get_value(iter_, 1),
                 "version": self.liststore.get_value(iter_, 2),
+                "repository": self.liststore.get_value(iter_, 3),
                 "installed": self.liststore.get_value(iter_, 4) in ["Remove", "Protected"]
             }
             self.show_package_details_popup(package_info)
@@ -867,6 +963,22 @@ class SearchApp(Gtk.Window):
         self.liststore.clear()
 
     def show_package_details_popup(self, package_info):
+        # Extend package_info with repository from the liststore
+        category = package_info.get("category", "")
+        name = package_info.get("name", "")
+
+        # Find the matching row in the liststore to fetch repository
+        repository = ""
+        iter_ = self.liststore.get_iter_first()
+        while iter_:
+            if (self.liststore.get_value(iter_, 0) == category and
+                self.liststore.get_value(iter_, 1) == name):
+                repository = self.liststore.get_value(iter_, 3)
+                break
+            iter_ = self.liststore.iter_next(iter_)
+
+        package_info["repository"] = repository
+
         popup = PackageDetailsPopup(self, package_info)
         popup.set_modal(True)
         popup.connect("destroy", lambda w: self.enable_gui())
