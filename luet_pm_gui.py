@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import yaml
 import webbrowser
+import datetime
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango
@@ -60,6 +61,8 @@ class RepositoryUpdater:
             result = app.run_command(["luet", "repo", "update"], require_root=True)
             if result.returncode == 0:
                 GLib.idle_add(app.set_status_message, "Repositories updated")
+                # Refresh the sync timestamp shown in the UI
+                GLib.idle_add(app.update_sync_info_label)
             else:
                 GLib.idle_add(app.set_status_message, "Error updating repositories")
                 print("repo update stderr:", result.stderr)
@@ -304,10 +307,10 @@ class PackageDetailsPopup(Gtk.Window):
                 uri_label = Gtk.Label()
                 escaped_uri = GLib.markup_escape_text(uri)
                 uri_label.set_markup(f'<a href="{escaped_uri}">{escaped_uri}</a>')
-                uri_label.connect("activate-link", lambda w, u: webbrowser.open(u))
-
-                # Add events and connect signals for cursor change
-                uri_label.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+                # Gtk.Label "activate-link" not available; use LinkButton if you prefer clickable behaviour.
+                # We'll open in browser when clicked via event handling if needed.
+                uri_label.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+                uri_label.connect("button-press-event", lambda w, e: webbrowser.open(uri))
                 uri_label.connect("enter-notify-event", self.on_hover_cursor)
                 uri_label.connect("leave-notify-event", self.on_leave_cursor)
                 
@@ -730,13 +733,24 @@ class SearchApp(Gtk.Window):
         self.status_bar_context_id = self.status_bar.get_context_id("Status")
         self.set_status_message("Ready")
 
+        # --- Sync info label (right side of status area) ---
+        self.sync_info_label = Gtk.Label()
+        self.sync_info_label.set_xalign(1.0)
+        self.sync_info_label.set_margin_end(10)
+
+        # Pack status_bar (left) and sync_info_label (right) in a horizontal box
+        status_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        status_hbox.pack_start(self.status_bar, True, True, 0)
+        status_hbox.pack_end(self.sync_info_label, False, False, 0)
+
         main_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         main_vbox.pack_start(self.menu_bar, False, False, 0)
         main_vbox.pack_start(spacer, False, False, 0)
         main_vbox.pack_start(search_box, False, False, 0)
         main_vbox.pack_start(scrolled, True, True, 0)
         main_vbox.pack_start(self.result_label, False, False, 0)
-        main_vbox.pack_start(self.status_bar, False, False, 0)
+        # replaced: main_vbox.pack_start(self.status_bar, False, False, 0)
+        main_vbox.pack_start(status_hbox, False, False, 0)
 
         main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         main_box.set_margin_start(10)
@@ -749,6 +763,9 @@ class SearchApp(Gtk.Window):
         self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self.spinner_counter = 0
         self.spinner_timeout_id = None
+
+        # Initialize sync label
+        GLib.idle_add(self.update_sync_info_label)
 
     def disable_gui(self):
         self.search_entry.set_sensitive(False)
@@ -1027,6 +1044,61 @@ class SearchApp(Gtk.Window):
         checker = SystemChecker(self)
         t = threading.Thread(target=checker.run_check_system, daemon=True)
         t.start()
+
+    # -------------------------
+    # Sync time helpers
+    # -------------------------
+    def get_last_sync_time(self):
+        sync_file_path = "/var/luet/db/repos/luet/SYNCTIME"
+        try:
+            with open(sync_file_path, 'r') as f:
+                timestamp = f.read().strip()
+                sync_dt = self.parse_timestamp(timestamp)
+                if sync_dt:
+                    time_ago = self.humanize_time_ago(sync_dt)
+                    return {"datetime": sync_dt.strftime("%Y-%m-%dT%H:%M:%S"), "ago": time_ago}
+        except (IOError, ValueError):
+            pass
+        return {"datetime": "N/A", "ago": "repositories not synced"}
+
+    def parse_timestamp(self, ts):
+        try:
+            # Accept ISO format, possibly ending with Z
+            if ts.endswith('Z'):
+                ts = ts[:-1]
+            # Try with timezone-aware parsing first
+            try:
+                return datetime.datetime.fromisoformat(ts)
+            except Exception:
+                # Last resort: try to parse as naive ISO
+                return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            return None
+
+    def humanize_time_ago(self, dt):
+        # Use naive datetime compare in local time if dt is naive
+        if dt.tzinfo is None:
+            now = datetime.datetime.now()
+        else:
+            now = datetime.datetime.now(dt.tzinfo)
+        delta = now - dt
+
+        if delta.days > 0:
+            return f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
+        elif delta.seconds >= 3600:
+            hours = delta.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif delta.seconds >= 60:
+            minutes = delta.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "just now"
+
+    def update_sync_info_label(self):
+        sync_info = self.get_last_sync_time()
+        display_time = f"Last sync: {sync_info['datetime'].replace('T', ' @ ')}"
+        GLib.idle_add(self.sync_info_label.set_text, display_time)
+        GLib.idle_add(self.sync_info_label.set_tooltip_text, sync_info["ago"])
 
 # -------------------------
 # Entrypoint
