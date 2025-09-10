@@ -1096,9 +1096,9 @@ class SearchApp(Gtk.Window):
 
     def update_sync_info_label(self):
         sync_info = self.get_last_sync_time()
-        display_time = f"Last sync: {sync_info['datetime'].replace('T', ' @ ')}"
-        GLib.idle_add(self.sync_info_label.set_text, display_time)
-        GLib.idle_add(self.sync_info_label.set_tooltip_text, sync_info["ago"])
+        display_time = f"{sync_info['datetime'].replace('T', ' @ ')}"
+        GLib.idle_add(self.sync_info_label.set_text, f"Last sync: {sync_info["ago"]}")
+        GLib.idle_add(self.sync_info_label.set_tooltip_text, display_time)
 
 # -------------------------
 # Entrypoint
