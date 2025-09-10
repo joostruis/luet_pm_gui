@@ -648,6 +648,10 @@ class SearchApp(Gtk.Window):
         file_menu.append(quit_item)
 
         help_menu = Gtk.Menu()
+
+        documentation_item = Gtk.MenuItem(label="Documentation")
+        documentation_item.connect("activate", self.show_documentation)
+        help_menu.append(documentation_item)
         about_item = Gtk.MenuItem(label="About")
         about_item.connect("activate", self.show_about_dialog)
         help_menu.append(about_item)
@@ -659,6 +663,9 @@ class SearchApp(Gtk.Window):
 
         menu_bar.append(file_menu_item)
         menu_bar.append(help_menu_item)
+
+    def show_documentation(self, widget):
+        webbrowser.open("https://www.mocaccino.org/docs/")
 
     def show_about_dialog(self, widget=None):
         dlg = AboutDialog(self)
