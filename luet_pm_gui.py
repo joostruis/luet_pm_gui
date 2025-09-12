@@ -161,6 +161,7 @@ class PackageOperations:
                     search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
                     if advanced_search:
                         search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
+                    GLib.idle_add(app.clear_liststore)
                     GLib.idle_add(app.start_spinner, f"Searching again for '{app.last_search}'...")
                     app.start_search_thread(search_cmd)  # run_command inside run_search will request root if needed
                 else:
@@ -207,6 +208,7 @@ class PackageOperations:
                     search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
                     if advanced_search:
                         search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
+                    GLib.idle_add(app.clear_liststore)
                     GLib.idle_add(app.start_spinner, f"Searching again for '{app.last_search}'...")
                     app.start_search_thread(search_cmd)
                 else:
@@ -982,7 +984,6 @@ class SearchApp(Gtk.Window):
         self.start_spinner(f"Installing {name}...")
         t = threading.Thread(target=PackageOperations.run_installation, args=(self, install_cmd, name, advanced), daemon=True)
         t.start()
-        GLib.idle_add(self.clear_liststore)
 
     def confirm_uninstall(self, iter_):
         category = self.liststore.get_value(iter_, 0)
@@ -1003,7 +1004,6 @@ class SearchApp(Gtk.Window):
         self.start_spinner(spinner_txt)
         t = threading.Thread(target=PackageOperations.run_uninstallation, args=(self, uninstall_cmd, category, name, advanced), daemon=True)
         t.start()
-        GLib.idle_add(self.clear_liststore)
 
     def clear_liststore(self):
         self.liststore.clear()
