@@ -14,7 +14,7 @@ import webbrowser
 import datetime
 
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk, Pango
+from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 
 GLib.set_prgname('luet_pm_gui')
 
@@ -578,8 +578,8 @@ class PackageDetailsPopup(Gtk.Window):
 # Main application window
 # -------------------------
 class SearchApp(Gtk.Window):
-    def __init__(self):
-        super().__init__(title="Luet Package Search")
+    def __init__(self, app):
+        super().__init__(title="Luet Package Search", application=app)
         self.set_default_size(1000, 540)
         self.set_icon_name("luet_pm_gui")
 
@@ -1110,11 +1110,27 @@ class SearchApp(Gtk.Window):
 # -------------------------
 # Entrypoint
 # -------------------------
+class LuetApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="org.mocaccino.LuetSearch",
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        # If already active, just present the window
+        if hasattr(self, "win") and self.win:
+            self.win.present()
+            return
+
+        # First activation → create window
+        self.win = SearchApp(self)
+        self.win.show_all()
+
 def main():
-    win = SearchApp()
-    win.connect("destroy", Gtk.main_quit)
-    win.show_all()
-    Gtk.main()
+    app = LuetApp()
+    app.run(None)
+
 
 if __name__ == "__main__":
     main()
