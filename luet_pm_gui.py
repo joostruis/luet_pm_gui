@@ -601,11 +601,28 @@ class SearchApp(Gtk.Window):
 
         # protected packages
         self.protected_applications = {
+            "repository/luet": "This repository is protected and can't be removed",
+            "repository/mocaccino-repository-index": "This repository is protected and can't be removed",
             "apps/grub": "This package is protected and can't be removed",
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
             "layers/X": "This layer is protected and can't be removed",
+        }
+
+        # hidden packages (won't be shown at all)
+        self.hidden_packages = {
+            "repository/mocaccino-stage3": "Old repository, not in use anymore",
+            "repository/mocaccino-portage": "Old repository, not in use anymore",
+            "repository/mocaccino-portage-stable": "Old repository, not in use anymore",
+            "repository/mocaccino-kernel": "Old repository, not in use anymore",
+            "repository/mocaccino-kernel-stable": "Old repository, not in use anymore",
+            "kernel-5.9/debian-full": "Old repository, not in use anymore",
+            "repository/mocaccino-extra-arm": "Old repository, not in use anymore",
+            "repository/mocaccino-musl-universe": "Hide musl repo",
+            "repository/mocaccino-musl-universe-stable": "Hide musl repo",
+            "repository/mocaccino-micro": "Hide micro repo",
+            "repository/mocaccino-micro-stable": "Hide micro repo",
         }
 
         self.init_search_ui()
@@ -848,6 +865,11 @@ class SearchApp(Gtk.Window):
                     repository = pkg.get("repository", "")
                     installed = pkg.get("installed", False)
                     key = f"{category}/{name}"
+                    
+                    # Skip if package is hidden
+                    if key in self.hidden_packages:
+                        continue
+
                     if key in self.protected_applications:
                         action_text = "Protected"
                     else:
