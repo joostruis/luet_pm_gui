@@ -644,7 +644,7 @@ class SearchApp(Gtk.Window):
         file_menu.append(check_system_item)
 
         quit_item = Gtk.MenuItem(label="Quit")
-        quit_item.connect("activate", Gtk.main_quit)
+        quit_item.connect("activate", lambda w: self.get_application().quit())
         file_menu.append(quit_item)
 
         help_menu = Gtk.Menu()
