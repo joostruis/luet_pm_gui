@@ -177,6 +177,102 @@ class SystemChecker:
             GLib.idle_add(self.app.set_status_message, "Error during system check")
             GLib.idle_add(self.app.enable_gui)
 
+class SystemUpgrader:
+    def __init__(self, app):
+        self.app = app
+        self.collected_lines = []
+
+    def start_upgrade(self):
+        """Starts the first step of the upgrade process."""
+        try:
+            # We use 'sh -c' to correctly handle the '&&' operator
+            upgrade_cmd = ["sh", "-c", "luet repo update && luet upgrade -y"]
+            self.app.run_command_realtime(
+                upgrade_cmd,
+                require_root=True,
+                on_line_received=self._on_line_first_run,
+                on_finished=self._on_first_run_done
+            )
+        except Exception as e:
+            print("Exception during system upgrade:", e)
+            self._finalize(-1, "Error starting upgrade process")
+
+    def _on_line_first_run(self, line):
+        """Handles output from the first run, collecting it for analysis."""
+        self.collected_lines.append(line)
+        buf = self.app.output_textview.get_buffer()
+        buf.insert(buf.get_end_iter(), line, -1)
+        try:
+            adj = self.app.output_expander.get_child().get_vadjustment()
+            adj.set_value(adj.get_upper() - adj.get_page_size())
+        except Exception:
+            pass
+
+    def _on_first_run_done(self, returncode):
+        """Called after the first run. Analyzes output and decides if a second run is needed."""
+        if returncode != 0:
+            self._finalize(returncode, "Error during initial upgrade step")
+            return
+
+        upgraded_packages = []
+        for line in self.collected_lines:
+            # Identify upgrade lines by splitting by '|'
+            parts = [p.strip() for p in line.split('|')]
+            if len(parts) >= 2:
+                package_name = parts[1]
+                # Heuristic to identify a package name vs. a table header
+                if '/' in package_name and 'new version' not in package_name.lower():
+                    upgraded_packages.append(package_name)
+
+        # Check if any packages were upgraded and if ALL of them were repository packages
+        if upgraded_packages and all(p.startswith('repository/') for p in upgraded_packages):
+            GLib.idle_add(self._run_second_upgrade)
+        else:
+            # If other packages were upgraded or no packages were upgraded, we are done.
+            self._finalize(returncode, "System upgrade completed successfully")
+
+    def _run_second_upgrade(self):
+        """Initiates the second 'luet upgrade -y' command."""
+        status_msg = "\n--- Repositories updated, continuing with package upgrade... ---\n\n"
+        GLib.idle_add(self.app.set_status_message, "Continuing with package upgrade...")
+        buf = self.app.output_textview.get_buffer()
+        buf.insert(buf.get_end_iter(), status_msg, -1)
+
+        try:
+            second_upgrade_cmd = ["luet", "upgrade", "-y"]
+            self.app.run_command_realtime(
+                second_upgrade_cmd,
+                require_root=True,
+                on_line_received=self._on_line_second_run,
+                on_finished=lambda rc: self._finalize(rc, "System upgrade completed successfully")
+            )
+        except Exception as e:
+            print("Exception during second upgrade step:", e)
+            self._finalize(-1, "Error starting second upgrade step")
+
+    def _on_line_second_run(self, line):
+        """Handles output for the second run (no collection needed)."""
+        buf = self.app.output_textview.get_buffer()
+        buf.insert(buf.get_end_iter(), line, -1)
+        try:
+            adj = self.app.output_expander.get_child().get_vadjustment()
+            adj.set_value(adj.get_upper() - adj.get_page_size())
+        except Exception:
+            pass
+
+    def _finalize(self, returncode, success_message):
+        """Final cleanup actions for the GUI, run after all steps are complete."""
+        GLib.idle_add(self.app.stop_spinner)
+        if returncode == 0:
+            GLib.idle_add(self.app.set_status_message, success_message)
+            GLib.idle_add(self.app.update_sync_info_label)
+            PackageOperations._run_kbuildsycoca6()
+        else:
+            # Use the provided error message if returncode is not 0
+            error_msg = "Error during system upgrade" if success_message.startswith("System") else success_message
+            GLib.idle_add(self.app.set_status_message, error_msg)
+        GLib.idle_add(self.app.enable_gui)
+
 class PackageOperations:
     @staticmethod
     def _run_kbuildsycoca6():
@@ -712,9 +808,14 @@ class SearchApp(Gtk.Window):
     def create_menu(self, menu_bar):
         file_menu = Gtk.Menu()
 
-        update_repositories_item = Gtk.MenuItem(label="Update Repositories")
+        update_repositories_item = Gtk.MenuItem(label="Update repositories")
         update_repositories_item.connect("activate", self.update_repositories)
         file_menu.append(update_repositories_item)
+
+        file_menu.append(Gtk.SeparatorMenuItem())
+        full_upgrade_item = Gtk.MenuItem(label="Full system upgrade")
+        full_upgrade_item.connect("activate", self.on_full_system_upgrade)
+        file_menu.append(full_upgrade_item)
 
         check_system_item = Gtk.MenuItem(label="Check system")
         check_system_item.connect("activate", self.check_system)
@@ -1177,6 +1278,34 @@ class SearchApp(Gtk.Window):
         checker = SystemChecker(self)
         t = threading.Thread(target=checker.run_check_system, daemon=True)
         t.start()
+
+    def on_full_system_upgrade(self, widget):
+        """Shows a confirmation dialog and starts the full system upgrade process."""
+        dlg = Gtk.MessageDialog(
+            parent=self,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Perform a full system upgrade?",
+        )
+        dlg.format_secondary_text(
+            "This will update all repositories and then upgrade all installed packages. This action may take some time and requires an internet connection."
+        )
+        response = dlg.run()
+        dlg.destroy()
+
+        if response == Gtk.ResponseType.YES:
+            self.disable_gui()
+            self.start_spinner("Performing full system upgrade...")
+            # Clear output, show and expand the expander
+            self.output_textview.get_buffer().set_text("")
+            self.output_expander.show()
+            self.output_expander.set_expanded(True)
+            
+            # Create an upgrader instance and run it in a thread
+            upgrader = SystemUpgrader(self)
+            t = threading.Thread(target=upgrader.start_upgrade, daemon=True)
+            t.start()
 
     def get_last_sync_time(self):
         sync_file_path = "/var/luet/db/repos/luet/SYNCTIME"
