@@ -1292,7 +1292,7 @@ class SearchApp(Gtk.Window):
             if not self.inhibit_cookie:
                 self.inhibit_cookie = self.get_application().inhibit(
                     self,
-                    Gio.ApplicationInhibitFlags.IDLE,
+                    Gtk.ApplicationInhibitFlags.IDLE,
                     "Performing full system upgrade"
                 )
 
