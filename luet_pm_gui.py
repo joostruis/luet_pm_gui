@@ -263,6 +263,7 @@ class SystemUpgrader:
             error_msg = "Error during system upgrade" if success_message.startswith("System") else success_message
             GLib.idle_add(self.app.set_status_message, error_msg)
         GLib.idle_add(self.app.enable_gui)
+        GLib.idle_add(self.app.set_status_message, "Ready")
 
 class PackageOperations:
     @staticmethod
