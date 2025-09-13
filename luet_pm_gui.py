@@ -524,6 +524,18 @@ class PackageDetailsPopup(Gtk.Window):
         self.loaded_package_files[(category, name)] = files if files is not None else []
         GLib.idle_add(self.update_package_files_list, files)
 
+    def update_package_files_list(self, files_info):
+        self.files_liststore.clear()
+        if files_info is None:
+            self.all_files = []
+            self.files_liststore.append(["Error retrieving package files information."])
+        elif not files_info:
+            self.all_files = []
+            self.files_liststore.append(["No files found for this package."])
+        else:
+            self.all_files = sorted(files_info)
+            self.apply_files_filter("")
+
     def on_files_search_changed(self, entry):
         text = entry.get_text().lower()
         self.apply_files_filter(text)
