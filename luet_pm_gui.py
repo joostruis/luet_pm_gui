@@ -183,7 +183,6 @@ class SystemUpgrader:
         self.collected_lines = []
 
     def start_upgrade(self):
-        """Starts the first step of the upgrade process."""
         try:
             # We use 'sh -c' to correctly handle the '&&' operator
             upgrade_cmd = ["sh", "-c", "luet repo update && luet upgrade -y"]
@@ -198,7 +197,6 @@ class SystemUpgrader:
             self._finalize(-1, "Error starting upgrade process")
 
     def _on_line_first_run(self, line):
-        """Handles output from the first run, collecting it for analysis."""
         self.collected_lines.append(line)
         buf = self.app.output_textview.get_buffer()
         buf.insert(buf.get_end_iter(), line, -1)
@@ -209,30 +207,19 @@ class SystemUpgrader:
             pass
 
     def _on_first_run_done(self, returncode):
-        """Called after the first run. Analyzes output and decides if a second run is needed."""
         if returncode != 0:
             self._finalize(returncode, "Error during initial upgrade step")
             return
 
-        upgraded_packages = []
-        for line in self.collected_lines:
-            # Identify upgrade lines by splitting by '|'
-            parts = [p.strip() for p in line.split('|')]
-            if len(parts) >= 2:
-                package_name = parts[1]
-                # Heuristic to identify a package name vs. a table header
-                if '/' in package_name and 'new version' not in package_name.lower():
-                    upgraded_packages.append(package_name)
+        needs_second_run = any("Executing finalizer for repo-updater/" in line for line in self.collected_lines)
 
-        # Check if any packages were upgraded and if ALL of them were repository packages
-        if upgraded_packages and all(p.startswith('repository/') for p in upgraded_packages):
+        if needs_second_run:
             GLib.idle_add(self._run_second_upgrade)
         else:
-            # If other packages were upgraded or no packages were upgraded, we are done.
+            # If the finalizer didn't run, the upgrade is complete.
             self._finalize(returncode, "System upgrade completed successfully")
 
     def _run_second_upgrade(self):
-        """Initiates the second 'luet upgrade -y' command."""
         status_msg = "\n--- Repositories updated, continuing with package upgrade... ---\n\n"
         GLib.idle_add(self.app.set_status_message, "Continuing with package upgrade...")
         buf = self.app.output_textview.get_buffer()
@@ -251,7 +238,6 @@ class SystemUpgrader:
             self._finalize(-1, "Error starting second upgrade step")
 
     def _on_line_second_run(self, line):
-        """Handles output for the second run (no collection needed)."""
         buf = self.app.output_textview.get_buffer()
         buf.insert(buf.get_end_iter(), line, -1)
         try:
@@ -261,7 +247,6 @@ class SystemUpgrader:
             pass
 
     def _finalize(self, returncode, success_message):
-        """Final cleanup actions for the GUI, run after all steps are complete."""
         GLib.idle_add(self.app.stop_spinner)
         if returncode == 0:
             GLib.idle_add(self.app.set_status_message, success_message)
