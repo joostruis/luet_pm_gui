@@ -247,6 +247,12 @@ class SystemUpgrader:
             pass
 
     def _finalize(self, returncode, success_message):
+
+        # Uninhibit idle/screensaver now that the task is done
+        if self.app.inhibit_cookie:
+            self.app.get_application().uninhibit(self.app.inhibit_cookie)
+            self.app.inhibit_cookie = None
+
         GLib.idle_add(self.app.stop_spinner)
         if returncode == 0:
             GLib.idle_add(self.app.set_status_message, success_message)
@@ -685,6 +691,7 @@ class SearchApp(Gtk.Window):
         self.set_default_size(1000, 600)
         self.set_icon_name("luet_pm_gui")
 
+        self.inhibit_cookie = None
         self.last_search = ""
         self.search_thread = None
         self.repo_update_thread = None
@@ -1280,6 +1287,15 @@ class SearchApp(Gtk.Window):
         dlg.destroy()
 
         if response == Gtk.ResponseType.YES:
+
+            # Inhibit idle/screensaver before starting the long task
+            if not self.inhibit_cookie:
+                self.inhibit_cookie = self.get_application().inhibit(
+                    self,
+                    Gio.ApplicationInhibitFlags.IDLE,
+                    "Performing full system upgrade"
+                )
+
             self.disable_gui()
             self.start_spinner("Performing full system upgrade...")
             # Clear output, show and expand the expander
