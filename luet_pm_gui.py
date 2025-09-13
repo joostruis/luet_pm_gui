@@ -666,6 +666,10 @@ class SearchApp(Gtk.Window):
             r.stderr = str(e)
             return r
 
+    def periodic_sync_check(self):
+            self.update_sync_info_label()
+            return True  # Return True to keep the timer running
+
     # Command runner for real-time output
     def run_command_realtime(self, cmd_list, require_root, on_line_received, on_finished):
         final = list(cmd_list)
@@ -879,6 +883,8 @@ class SearchApp(Gtk.Window):
         self.spinner_timeout_id = None
 
         GLib.idle_add(self.update_sync_info_label)
+        # Start a recurring timer to check the sync time every 3 minutes
+        GLib.timeout_add_seconds(180, self.periodic_sync_check)
 
     def on_expander_hover(self, widget, event):
         window = widget.get_window()
