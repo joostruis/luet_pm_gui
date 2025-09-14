@@ -265,6 +265,88 @@ class SystemUpgrader:
         GLib.idle_add(self.app.enable_gui)
         GLib.idle_add(self.app.set_status_message, "Ready")
 
+class CacheCleaner:
+    def __init__(self, app):
+        self.app = app
+
+    @staticmethod
+    def get_cache_size():
+        """Return human-readable size string or None if error"""
+        try:
+            res = subprocess.run(
+                ["du", "-hs", "/var/luet/db/packages/"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            if res.returncode == 0:
+                return res.stdout.strip().split("\t", 1)[0]
+        except Exception as e:
+            print("Error checking Luet cache size:", e)
+        return None
+
+    def update_menu_item(self):
+        size = self.get_cache_size()
+        if size and size not in ("4.0K", "0", "0B", "0K", "0M"):
+            self.app.clear_cache_item.set_sensitive(True)
+            self.app.clear_cache_item.set_label(f"Clear Luet cache ({size})")
+        else:
+            self.app.clear_cache_item.set_sensitive(False)
+            self.app.clear_cache_item.set_label("Clear Luet cache")
+
+    def run_cleanup(self):
+        dlg = Gtk.MessageDialog(
+            parent=self.app,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Clear Luet cache?",
+        )
+        dlg.format_secondary_text(
+            "This will run 'luet cleanup' and remove cached package data."
+        )
+        response = dlg.run()
+        dlg.destroy()
+        if response != Gtk.ResponseType.YES:
+            return
+
+        # Prepare output area
+        self.app.output_textview.get_buffer().set_text("")
+        self.app.output_expander.show()
+        self.app.output_expander.set_expanded(True)
+
+        self.app.disable_gui()
+        self.app.start_spinner("Clearing Luet cache...")
+
+        def on_line(line):
+            buf = self.app.output_textview.get_buffer()
+            buf.insert(buf.get_end_iter(), line, -1)
+            try:
+                adj = self.app.output_expander.get_child().get_vadjustment()
+                adj.set_value(adj.get_upper() - adj.get_page_size())
+            except Exception:
+                pass
+
+        def on_done(returncode):
+            GLib.idle_add(self.app.stop_spinner)
+            if returncode != 0:
+                GLib.idle_add(self.app.set_status_message, "Error clearing Luet cache")
+            else:
+                GLib.idle_add(self.app.set_status_message, "Ready")
+
+            GLib.idle_add(self.app.enable_gui)
+            GLib.idle_add(self.update_menu_item)  # refresh state
+
+
+        t = threading.Thread(
+            target=lambda: self.app.run_command_realtime(
+                ["luet", "cleanup"],
+                require_root=True,
+                on_line_received=on_line,
+                on_finished=on_done
+            ),
+            daemon=True
+        )
+        t.start()
+
 class PackageOperations:
     @staticmethod
     def _run_kbuildsycoca6():
@@ -814,6 +896,10 @@ class SearchApp(Gtk.Window):
         check_system_item.connect("activate", self.check_system)
         file_menu.append(check_system_item)
 
+        self.clear_cache_item = Gtk.MenuItem(label="Clear Luet cache")
+        self.clear_cache_item.connect("activate", lambda w: self.cache_cleaner.run_cleanup())
+        file_menu.append(self.clear_cache_item)
+
         quit_item = Gtk.MenuItem(label="Quit")
         quit_item.connect("activate", lambda w: self.get_application().quit())
         file_menu.append(quit_item)
@@ -979,6 +1065,10 @@ class SearchApp(Gtk.Window):
         GLib.idle_add(self.update_sync_info_label)
         # Start a recurring timer to check the sync time every 3 minutes
         GLib.timeout_add_seconds(180, self.periodic_sync_check)
+
+        self.cache_cleaner = CacheCleaner(self)
+        GLib.idle_add(self.cache_cleaner.update_menu_item)
+        GLib.timeout_add_seconds(180, lambda: self.cache_cleaner.update_menu_item() or True)
 
     def on_expander_hover(self, widget, event):
         window = widget.get_window()
