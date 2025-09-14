@@ -82,11 +82,11 @@ class RepositoryUpdater:
 
         try:
             GLib.idle_add(app.set_status_message, "Updating repositories...")
-            # Clear output and show expander
+
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
+            GLib.idle_add(app.output_expander.set_expanded, True)
 
-            # Run realtime command using app's runner
             app.run_command_realtime(
                 ["luet", "repo", "update"],
                 require_root=True,
@@ -103,7 +103,6 @@ class SystemChecker:
         self.app = app
 
     def run_check_system(self):
-        # We'll collect lines to inspect the final output for "missing"
         collected_lines = []
 
         def on_line(line):
@@ -116,56 +115,71 @@ class SystemChecker:
             except Exception:
                 pass
 
+        def reinstall_packages(candidates):
+            repair_ok = True
+
+            for pkg in sorted(candidates.keys()):
+                GLib.idle_add(self.app.start_spinner, f"Reinstalling {pkg}...")
+
+                def reinstall_done(returncode, pkg=pkg):
+                    nonlocal repair_ok
+                    GLib.idle_add(self.app.stop_spinner)
+                    if returncode != 0:
+                        repair_ok = False
+                        GLib.idle_add(self.app.set_status_message, f"Failed reinstalling {pkg}")
+
+                # run reinstall with realtime streaming to log
+                self.app.run_command_realtime(
+                    ["luet", "reinstall", "-y", pkg],
+                    require_root=True,
+                    on_line_received=on_line,
+                    on_finished=reinstall_done
+                )
+
+                time.sleep(0.5)  # let spinner/status updates show
+
+            if not repair_ok:
+                GLib.idle_add(self.app.set_status_message, "Could not repair some packages")
+
+            # Always finish in Ready state
+            GLib.idle_add(self.app.set_status_message, "Ready")
+            GLib.idle_add(self.app.enable_gui)
+
         def on_done(returncode):
             output = "".join(collected_lines)
             GLib.idle_add(self.app.stop_spinner)
-            # If returncode 0 and output doesn't mention missing -> ok
+
+            # If returncode is clean and no missing files → just Ready
             if returncode == 0 and "missing" not in output:
-                GLib.idle_add(self.app.set_status_message, "System is fine!")
+                GLib.idle_add(self.app.set_status_message, "Ready")
                 GLib.idle_add(self.app.enable_gui)
                 return
 
-            # else attempt to repair as before, but show messages and keep expander visible
+            # Otherwise: prepare reinstall
             GLib.idle_add(self.app.set_status_message, "Missing files: preparing to reinstall...")
 
-            # small countdown in status
+            # Small countdown in status
             for i in range(5, 0, -1):
                 GLib.idle_add(self.app.set_status_message, f"Reinstalling packages in {i}...")
                 time.sleep(1)
 
+            # Parse missing package names from output
             words = output.split()
             candidates = {}
             for w in words:
                 if '/' in w:
                     m = re.search(r'(-\d+)|(:\S+)$', w)
-                    if m:
-                        wclean = w[:m.start()]
-                    else:
-                        wclean = w
+                    wclean = w[:m.start()] if m else w
                     candidates[wclean] = True
 
-            repair_ok = True
-            for pkg in sorted(candidates.keys()):
-                GLib.idle_add(self.app.start_spinner, f"Reinstalling {pkg}...")
-                res = self.app.run_command(["luet", "reinstall", "-y", pkg], require_root=True)
-                if res.returncode != 0:
-                    repair_ok = False
-                    GLib.idle_add(self.app.set_status_message, f"Failed reinstalling {pkg}")
-                    print("reinstall stderr:", res.stderr)
-                time.sleep(0.8)
-                GLib.idle_add(self.app.stop_spinner)
-
-            if repair_ok:
-                GLib.idle_add(self.app.set_status_message, "System fixed!")
-            else:
-                GLib.idle_add(self.app.set_status_message, "Could not repair some packages")
-            GLib.idle_add(self.app.enable_gui)
+            reinstall_packages(candidates)
 
         try:
             GLib.idle_add(self.app.set_status_message, "Checking system for missing files...")
             GLib.idle_add(self.app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(self.app.output_expander.show)
-            # Stream oscheck output and process on finish
+            GLib.idle_add(self.app.output_expander.set_expanded, True)
+
             self.app.run_command_realtime(
                 ["luet", "oscheck"],
                 require_root=True,
@@ -216,7 +230,6 @@ class SystemUpgrader:
         if needs_second_run:
             GLib.idle_add(self._run_second_upgrade)
         else:
-            # If the finalizer didn't run, the upgrade is complete.
             self._finalize(returncode, "System upgrade completed successfully")
 
     def _run_second_upgrade(self):
@@ -389,6 +402,7 @@ class PackageOperations:
             GLib.idle_add(app.set_status_message, f"Installing {package_name}...")
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
+            GLib.idle_add(app.output_expander.set_expanded, True)
             app.run_command_realtime(install_cmd_list, require_root=True, on_line_received=on_line, on_finished=on_done)
         except Exception as e:
             print("Exception launching installation thread:", e)
@@ -430,6 +444,7 @@ class PackageOperations:
             GLib.idle_add(app.set_status_message, f"Uninstalling {pkg_fullname}...")
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
+            GLib.idle_add(app.output_expander.set_expanded, True)
             app.run_command_realtime(uninstall_cmd_list, require_root=True, on_line_received=on_line, on_finished=on_done)
         except Exception as e:
             print("Exception launching uninstallation thread:", e)
@@ -1007,7 +1022,6 @@ class SearchApp(Gtk.Window):
         self.output_expander.set_use_markup(False)
         self.output_expander.set_label("Toggle output log")
         
-        # Add padding below the expander
         self.output_expander.set_margin_bottom(12)
 
         self.output_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
