@@ -1,16 +1,16 @@
 # German translations for luet_pm_gui package.
 # Copyright (C) 2025 MocaccinoOS
 # This file is distributed under the same license as the luet_pm_gui package.
-# Automatically generated, 2025.
-#
+# Joost Ruis, 2025.
+
 msgid ""
 msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-16 21:20+0200\n"
-"PO-Revision-Date: 2025-09-16 21:20+0200\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2025-09-16 20:56+0200\n"
+"Last-Translator: Joost Ruis \n"
+"Language-Team: German \n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -19,430 +19,423 @@ msgstr ""
 
 #: luet_pm_gui.py:40 luet_pm_gui.py:753
 msgid "Luet Package Search"
-msgstr ""
+msgstr "Luet Paket-Suche"
 
 #: luet_pm_gui.py:43
 msgid "Visit our website"
-msgstr ""
+msgstr "Besuche unsere Webseite"
 
 #: luet_pm_gui.py:54
 msgid "GitHub Repository"
-msgstr ""
+msgstr "GitHub Repository"
 
 #: luet_pm_gui.py:61
-msgid "© 2023 - 2025 MocaccinoOS. All Rights Reserved"
-msgstr ""
+msgid "© 2023 - 2025 MocaccinoOS.\nAll Rights Reserved"
+msgstr "© 2023 - 2025 MocaccinoOS.\nAlle Rechte vorbehalten"
 
 #: luet_pm_gui.py:79
 msgid "Repositories updated"
-msgstr ""
+msgstr "Repositorien aktualisiert"
 
 #: luet_pm_gui.py:82 luet_pm_gui.py:101
 msgid "Error updating repositories"
-msgstr ""
+msgstr "Fehler beim Aktualisieren der Repositorien"
 
 #: luet_pm_gui.py:87 luet_pm_gui.py:1347
 msgid "Updating repositories..."
-msgstr ""
+msgstr "Repositorien werden aktualisiert..."
 
 #: luet_pm_gui.py:119
 msgid "Reinstalling {}..."
-msgstr ""
+msgstr "Neuinstallation von {}..."
 
 #: luet_pm_gui.py:126
 msgid "Failed reinstalling {}"
-msgstr ""
+msgstr "Fehler beim Neuinstallieren von {}"
 
 #: luet_pm_gui.py:139
 msgid "Could not repair some packages"
-msgstr ""
+msgstr "Einige Pakete konnten nicht repariert werden"
 
 #: luet_pm_gui.py:142 luet_pm_gui.py:151 luet_pm_gui.py:261 luet_pm_gui.py:319
 #: luet_pm_gui.py:361 luet_pm_gui.py:399 luet_pm_gui.py:918 luet_pm_gui.py:1311
 #: luet_pm_gui.py:1326
 msgid "Ready"
-msgstr ""
+msgstr "Bereit"
 
 #: luet_pm_gui.py:156
 msgid "Missing files: preparing to reinstall..."
-msgstr ""
+msgstr "Fehlende Dateien: Vorbereitung zur Neuinstallation..."
 
 #: luet_pm_gui.py:160
 msgid "Reinstalling packages in {}..."
-msgstr ""
+msgstr "Pakete in {} werden neu installiert..."
 
 #: luet_pm_gui.py:175 luet_pm_gui.py:1353
 msgid "Checking system for missing files..."
-msgstr ""
+msgstr "System wird auf fehlende Dateien geprüft..."
 
 #: luet_pm_gui.py:188
 msgid "Error during system check"
-msgstr ""
+msgstr "Fehler während der Systemprüfung"
 
 #: luet_pm_gui.py:208
 msgid "Error starting upgrade process"
-msgstr ""
+msgstr "Fehler beim Start des Upgrade-Prozesses"
 
 #: luet_pm_gui.py:216
 msgid "Error during initial upgrade step"
-msgstr ""
+msgstr "Fehler im ersten Upgrade-Schritt"
 
 #: luet_pm_gui.py:224 luet_pm_gui.py:238
 msgid "System upgrade completed successfully"
-msgstr ""
+msgstr "System-Upgrade erfolgreich abgeschlossen"
 
 #: luet_pm_gui.py:227
-msgid ""
-"\n"
-"--- Repositories updated, continuing with package upgrade... ---\n"
-"\n"
-msgstr ""
+msgid "\n--- Repositories updated, continuing with package upgrade...\n---\n"
+msgstr "\n--- Repositorien aktualisiert, fahre mit Package-Upgrade fort...\n---\n"
 
 #: luet_pm_gui.py:228
 msgid "Continuing with package upgrade..."
-msgstr ""
+msgstr "Package-Upgrade wird fortgesetzt..."
 
 #: luet_pm_gui.py:242
 msgid "Error starting second upgrade step"
-msgstr ""
+msgstr "Fehler beim Start des zweiten Upgrade-Schritts"
 
 #: luet_pm_gui.py:258
 msgid "Error during system upgrade"
-msgstr ""
+msgstr "Fehler beim System-Upgrade"
 
 #: luet_pm_gui.py:285
 msgid "Clear Luet cache ({})"
-msgstr ""
+msgstr "Leere Luet-Cache ({})"
 
 #: luet_pm_gui.py:288 luet_pm_gui.py:879
 msgid "Clear Luet cache"
-msgstr ""
+msgstr "Luet-Cache leeren"
 
 #: luet_pm_gui.py:296
 msgid "Clear Luet cache?"
-msgstr ""
+msgstr "Luet-Cache leeren?"
 
 #: luet_pm_gui.py:299
 msgid "This will run 'luet cleanup' and remove cached package data."
-msgstr ""
+msgstr "Dies führt ‘luet cleanup’ aus und entfernt zwischengespeicherte Paketdaten."
 
 #: luet_pm_gui.py:312
 msgid "Clearing Luet cache..."
-msgstr ""
+msgstr "Luet-Cache wird geleert..."
 
 #: luet_pm_gui.py:317
 msgid "Error clearing Luet cache"
-msgstr ""
+msgstr "Fehler beim Leeren des Luet-Cache"
 
 #: luet_pm_gui.py:358 luet_pm_gui.py:396
 msgid "Searching again for '{}'..."
-msgstr ""
+msgstr "Suche erneut nach '{}'..."
 
 #: luet_pm_gui.py:363 luet_pm_gui.py:379
 msgid "Error installing package"
-msgstr ""
+msgstr "Fehler bei der Paketinstallation"
 
 #: luet_pm_gui.py:367 luet_pm_gui.py:1252
 msgid "Installing {}..."
-msgstr ""
+msgstr "Installiere {}..."
 
 #: luet_pm_gui.py:401
 msgid "Error uninstalling package: '{}'"
-msgstr ""
+msgstr "Fehler beim Deinstallieren des Pakets: '{}'"
 
 #: luet_pm_gui.py:405 luet_pm_gui.py:1272
 msgid "Uninstalling {}..."
-msgstr ""
+msgstr "Deinstalliere {}..."
 
 #: luet_pm_gui.py:417
 msgid "Error uninstalling package"
-msgstr ""
+msgstr "Fehler bei der Deinstallation des Pakets"
 
 #: luet_pm_gui.py:426
 msgid "Package Details"
-msgstr ""
+msgstr "Paketdetails"
 
 #: luet_pm_gui.py:467
 msgid "Package:"
-msgstr ""
+msgstr "Paket:"
 
 #: luet_pm_gui.py:468
 msgid "Version:"
-msgstr ""
+msgstr "Version:"
 
 #: luet_pm_gui.py:469
 msgid "Installed:"
-msgstr ""
+msgstr "Installiert:"
 
 #: luet_pm_gui.py:469
 msgid "Yes"
-msgstr ""
+msgstr "Ja"
 
 #: luet_pm_gui.py:469
 msgid "No"
-msgstr ""
+msgstr "Nein"
 
 #: luet_pm_gui.py:510
 msgid "Repository:"
-msgstr ""
+msgstr "Repository:"
 
 #: luet_pm_gui.py:519
 msgid "Description:"
-msgstr ""
+msgstr "Beschreibung:"
 
 #: luet_pm_gui.py:525
 msgid "License:"
-msgstr ""
+msgstr "Lizenz:"
 
 #: luet_pm_gui.py:532
 msgid "Required by"
-msgstr ""
+msgstr "Benötigt von"
 
 #: luet_pm_gui.py:555
 msgid "Package files"
-msgstr ""
+msgstr "Paketdateien"
 
 #: luet_pm_gui.py:559
 msgid "Filter files..."
-msgstr ""
+msgstr "Dateien filtern..."
 
 #: luet_pm_gui.py:565 luet_pm_gui.py:895
 msgid "File"
-msgstr ""
+msgstr "Datei"
 
 #: luet_pm_gui.py:590
 msgid "Close"
-msgstr ""
+msgstr "Schließen"
 
 #: luet_pm_gui.py:622
 msgid "Copy All Files"
-msgstr ""
+msgstr "Alle Dateien kopieren"
 
 #: luet_pm_gui.py:649
 msgid "Error retrieving required by information."
-msgstr ""
+msgstr "Fehler beim Abrufen der ‚benötigt von‘-Information."
 
 #: luet_pm_gui.py:657
 msgid "There are no packages installed that require this package."
-msgstr ""
+msgstr "Es sind keine Pakete installiert, die dieses Paket benötigen."
 
 #: luet_pm_gui.py:669
 msgid "Loading..."
-msgstr ""
+msgstr "Laden..."
 
 #: luet_pm_gui.py:682
 msgid "Error retrieving package files information."
-msgstr ""
+msgstr "Fehler beim Abrufen der Paketdateiinformationen."
 
 #: luet_pm_gui.py:685
 msgid "No files found for this package."
-msgstr ""
+msgstr "Für dieses Paket wurden keine Dateien gefunden."
 
 #: luet_pm_gui.py:720
 msgid "revdeps failed:"
-msgstr ""
+msgstr "Abhängigkeiten (revdeps) fehlgeschlagen:"
 
 #: luet_pm_gui.py:729
 msgid "Error retrieving required by info:"
-msgstr ""
+msgstr "Fehler beim Abrufen der ‚benötigt von‘-Info:"
 
 #: luet_pm_gui.py:737
 msgid "search for package failed:"
-msgstr ""
+msgstr "Suche nach Paket fehlgeschlagen:"
 
 #: luet_pm_gui.py:745
 msgid "Error retrieving package files info:"
-msgstr ""
+msgstr "Fehler beim Abrufen der Paketdatei-Infos:"
 
 #: luet_pm_gui.py:800
 msgid "Warning: no pkexec/sudo found — admin actions will fail"
-msgstr ""
+msgstr "Warnung: kein pkexec/sudo gefunden — Administrator-Aktionen werden fehlschlagen"
 
 #: luet_pm_gui.py:809
 msgid "No elevation helper available"
-msgstr ""
+msgstr "Kein Hilfsprogramm zur Erhöhung der Rechte verfügbar"
 
 #: luet_pm_gui.py:856
-msgid ""
-"\n"
-"Error executing command: {}\n"
-msgstr ""
+msgid "\nError executing command: {}\n"
+msgstr "\nFehler beim Ausführen des Befehls: {}\n"
 
 #: luet_pm_gui.py:866
 msgid "Update repositories"
-msgstr ""
+msgstr "Repositorien aktualisieren"
 
 #: luet_pm_gui.py:871
 msgid "Full system upgrade"
-msgstr ""
+msgstr "Vollständiges System-Upgrade"
 
 #: luet_pm_gui.py:875
 msgid "Check system"
-msgstr ""
+msgstr "System prüfen"
 
 #: luet_pm_gui.py:883
 msgid "Quit"
-msgstr ""
+msgstr "Beenden"
 
 #: luet_pm_gui.py:888
 msgid "Documentation"
-msgstr ""
+msgstr "Dokumentation"
 
 #: luet_pm_gui.py:891
 msgid "About"
-msgstr ""
+msgstr "Über"
 
 #: luet_pm_gui.py:897
 msgid "Help"
-msgstr ""
+msgstr "Hilfe"
 
 #: luet_pm_gui.py:933
 msgid "Enter package name"
-msgstr ""
+msgstr "Paketname eingeben"
 
 #: luet_pm_gui.py:936
 msgid "Advanced"
-msgstr ""
+msgstr "Erweitert"
 
 #: luet_pm_gui.py:937
 msgid "Check this box to also search inside filenames and labels"
-msgstr ""
+msgstr "Dieses Feld aktivieren, um auch in Dateinamen und Labels zu suchen"
 
 #: luet_pm_gui.py:939
 msgid "Search"
-msgstr ""
+msgstr "Suchen"
 
 #: luet_pm_gui.py:954
 msgid "Category"
-msgstr ""
+msgstr "Kategorie"
 
 #: luet_pm_gui.py:955
 msgid "Name"
-msgstr ""
+msgstr "Name"
 
 #: luet_pm_gui.py:956
 msgid "Version"
-msgstr ""
+msgstr "Version"
 
 #: luet_pm_gui.py:957
 msgid "Repository"
-msgstr ""
+msgstr "Repository"
 
 #: luet_pm_gui.py:958
 msgid "Action"
-msgstr ""
+msgstr "Aktion"
 
 #: luet_pm_gui.py:969 luet_pm_gui.py:1148
 msgid "Details"
-msgstr ""
+msgstr "Details"
 
 #: luet_pm_gui.py:988
 msgid "Toggle output log"
-msgstr ""
+msgstr "Ausgabe-Protokoll umschalten"
 
 #: luet_pm_gui.py:1099
 msgid "Searching for {}..."
-msgstr ""
+msgstr "Suche nach {}..."
 
 #: luet_pm_gui.py:1109 luet_pm_gui.py:1159
 msgid "Error executing the search command."
-msgstr ""
+msgstr "Fehler beim Ausführen des Suchbefehls."
 
 #: luet_pm_gui.py:1110 luet_pm_gui.py:1160
 msgid "Error executing the search command"
-msgstr ""
+msgstr "Fehler beim Ausführen des Suchbefehls"
 
 #: luet_pm_gui.py:1117
 msgid "Invalid JSON output."
-msgstr ""
+msgstr "Ungültige JSON-Ausgabe."
 
 #: luet_pm_gui.py:1118
 msgid "Invalid JSON output"
-msgstr ""
+msgstr "Ungültige JSON-Ausgabe"
 
 #: luet_pm_gui.py:1124 luet_pm_gui.py:1153
 msgid "No results"
-msgstr ""
+msgstr "Keine Ergebnisse"
 
 #: luet_pm_gui.py:1145 luet_pm_gui.py:1187 luet_pm_gui.py:1201
 msgid "Protected"
-msgstr ""
+msgstr "Geschützt"
 
 #: luet_pm_gui.py:1147 luet_pm_gui.py:1191 luet_pm_gui.py:1201
 msgid "Remove"
-msgstr ""
+msgstr "Entfernen"
 
 #: luet_pm_gui.py:1147 luet_pm_gui.py:1189
 msgid "Install"
-msgstr ""
+msgstr "Installieren"
 
 #: luet_pm_gui.py:1151
 msgid "Found {} results matching '{}'"
-msgstr ""
+msgstr "Gefunden: {} Ergebnisse, die zu '{}' passen"
 
 #: luet_pm_gui.py:1158
 msgid "Error running search:"
-msgstr ""
+msgstr "Fehler bei der Suchausführung:"
 
 #: luet_pm_gui.py:1235
 msgid "This package ({}) is protected and can't be removed."
-msgstr ""
+msgstr "Dieses Paket ({}) ist geschützt und kann nicht entfernt werden."
 
 #: luet_pm_gui.py:1243
 msgid "Do you want to install {}?"
-msgstr ""
+msgstr "Möchtest du {} installieren?"
 
 #: luet_pm_gui.py:1259
 msgid "Do you want to uninstall {}?"
-msgstr ""
+msgstr "Möchtest du {} deinstallieren?"
 
 #: luet_pm_gui.py:1365
 msgid "Perform a full system upgrade?"
-msgstr ""
+msgstr "Vollständiges System-Upgrade durchführen?"
 
 #: luet_pm_gui.py:1368
-msgid ""
-"This will update all repositories and then upgrade all installed packages. "
-"This action may take some time and requires an internet connection."
-msgstr ""
+msgid "This will update all repositories and then upgrade all installed packages.\nThis action may take some time and requires an internet connection."
+msgstr "Dies wird alle Repositorien aktualisieren und anschließend alle installierten Pakete upgraden.\nDieser Vorgang kann einige Zeit in Anspruch nehmen und erfordert eine Internetverbindung."
 
 #: luet_pm_gui.py:1380
 msgid "Performing full system upgrade"
-msgstr ""
+msgstr "Vollständiges System-Upgrade wird durchgeführt"
 
 #: luet_pm_gui.py:1384
 msgid "Performing full system upgrade..."
-msgstr ""
+msgstr "Vollständiges System-Upgrade wird durchgeführt..."
 
 #: luet_pm_gui.py:1406
 msgid "repositories not synced"
-msgstr ""
+msgstr "Repositorien nicht synchronisiert"
 
 #: luet_pm_gui.py:1428
-#, python-format
+# , python-format
 msgid "%d day ago"
 msgid_plural "%d days ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d Tag zuvor"
+msgstr[1] "%d Tage zuvor"
 
 #: luet_pm_gui.py:1433
-#, python-format
+# , python-format
 msgid "%d hour ago"
 msgid_plural "%d hours ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d Stunde zuvor"
+msgstr[1] "%d Stunden zuvor"
 
 #: luet_pm_gui.py:1438
-#, python-format
+# , python-format
 msgid "%d minute ago"
 msgid_plural "%d minutes ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d Minute zuvor"
+msgstr[1] "%d Minuten zuvor"
 
 #: luet_pm_gui.py:1441
 msgid "just now"
-msgstr ""
+msgstr "gerade eben"
 
 #: luet_pm_gui.py:1446
 msgid "Last sync: {}"
-msgstr ""
+msgstr "Letzte Synchronisierung: {}"
