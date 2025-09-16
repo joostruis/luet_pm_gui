@@ -1,0 +1,251 @@
+# Copyright (C) 2025 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <joostruis@mocaccino.org>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-16 16:06+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: luet_pm_gui.py:37
+msgid "Luet Package Search"
+msgstr ""
+
+#: luet_pm_gui.py:40
+msgid "Visit our website"
+msgstr ""
+
+#: luet_pm_gui.py:77
+msgid "Repositories updated"
+msgstr ""
+
+#: luet_pm_gui.py:80
+msgid "Error updating repositories"
+msgstr ""
+
+#: luet_pm_gui.py:85 luet_pm_gui.py:1344
+msgid "Updating repositories..."
+msgstr ""
+
+#: luet_pm_gui.py:117
+#, python-brace-format
+msgid "Reinstalling {pkg}..."
+msgstr ""
+
+#: luet_pm_gui.py:124
+#, python-brace-format
+msgid "Failed reinstalling {pkg}"
+msgstr ""
+
+#: luet_pm_gui.py:137
+msgid "Could not repair some packages"
+msgstr ""
+
+#: luet_pm_gui.py:173 luet_pm_gui.py:1350
+msgid "Checking system for missing files..."
+msgstr ""
+
+#: luet_pm_gui.py:236
+msgid "System upgrade completed successfully"
+msgstr ""
+
+#: luet_pm_gui.py:283
+#, python-brace-format
+msgid "Clear Luet cache ({size})"
+msgstr ""
+
+#: luet_pm_gui.py:286 luet_pm_gui.py:876
+msgid "Clear Luet cache"
+msgstr ""
+
+#: luet_pm_gui.py:294
+msgid "Clear Luet cache?"
+msgstr ""
+
+#: luet_pm_gui.py:297
+msgid "This will run 'luet cleanup' and remove cached package data."
+msgstr ""
+
+#: luet_pm_gui.py:310
+msgid "Clearing Luet cache..."
+msgstr ""
+
+#: luet_pm_gui.py:464
+msgid "Package:"
+msgstr ""
+
+#: luet_pm_gui.py:465
+msgid "Version:"
+msgstr ""
+
+#: luet_pm_gui.py:466
+msgid "Installed:"
+msgstr ""
+
+#: luet_pm_gui.py:501
+msgid "Homepage:"
+msgstr ""
+
+#: luet_pm_gui.py:507
+msgid "Repository:"
+msgstr ""
+
+#: luet_pm_gui.py:516
+msgid "Description:"
+msgstr ""
+
+#: luet_pm_gui.py:522
+msgid "License:"
+msgstr ""
+
+#: luet_pm_gui.py:529
+msgid "Required by"
+msgstr ""
+
+#: luet_pm_gui.py:552
+msgid "Package files"
+msgstr ""
+
+#: luet_pm_gui.py:556
+msgid "Filter files..."
+msgstr ""
+
+#: luet_pm_gui.py:562 luet_pm_gui.py:892
+msgid "File"
+msgstr ""
+
+#: luet_pm_gui.py:587
+msgid "Close"
+msgstr ""
+
+#: luet_pm_gui.py:619
+msgid "Copy All Files"
+msgstr ""
+
+#: luet_pm_gui.py:863
+msgid "Update repositories"
+msgstr ""
+
+#: luet_pm_gui.py:868
+msgid "Full system upgrade"
+msgstr ""
+
+#: luet_pm_gui.py:872
+msgid "Check system"
+msgstr ""
+
+#: luet_pm_gui.py:880
+msgid "Quit"
+msgstr ""
+
+#: luet_pm_gui.py:885
+msgid "Documentation"
+msgstr ""
+
+#: luet_pm_gui.py:888
+msgid "About"
+msgstr ""
+
+#: luet_pm_gui.py:894
+msgid "Help"
+msgstr ""
+
+#: luet_pm_gui.py:915 luet_pm_gui.py:1308
+msgid "Ready"
+msgstr ""
+
+#: luet_pm_gui.py:930
+msgid "Enter package name"
+msgstr ""
+
+#: luet_pm_gui.py:934
+msgid "Check this box to also search inside filenames and labels"
+msgstr ""
+
+#: luet_pm_gui.py:936
+msgid "Search"
+msgstr ""
+
+#: luet_pm_gui.py:951
+msgid "Category"
+msgstr ""
+
+#: luet_pm_gui.py:952
+msgid "Name"
+msgstr ""
+
+#: luet_pm_gui.py:953
+msgid "Version"
+msgstr ""
+
+#: luet_pm_gui.py:954
+msgid "Repository"
+msgstr ""
+
+#: luet_pm_gui.py:955
+msgid "Action"
+msgstr ""
+
+#: luet_pm_gui.py:966
+msgid "Details"
+msgstr ""
+
+#: luet_pm_gui.py:985
+msgid "Toggle output log"
+msgstr ""
+
+#: luet_pm_gui.py:1096
+#, python-brace-format
+msgid "Searching for {package_name}..."
+msgstr ""
+
+#: luet_pm_gui.py:1121 luet_pm_gui.py:1150
+msgid "No results"
+msgstr ""
+
+#: luet_pm_gui.py:1148
+#, python-brace-format
+msgid "Found {n} results matching '{self.last_search}'"
+msgstr ""
+
+#: luet_pm_gui.py:1232
+#, python-brace-format
+msgid "This package ({key}) is protected and can't be removed."
+msgstr ""
+
+#: luet_pm_gui.py:1240
+#, python-brace-format
+msgid "Do you want to install {name}?"
+msgstr ""
+
+#: luet_pm_gui.py:1256
+#, python-brace-format
+msgid "Do you want to uninstall {name}?"
+msgstr ""
+
+#: luet_pm_gui.py:1362
+msgid "Perform a full system upgrade?"
+msgstr ""
+
+#: luet_pm_gui.py:1365
+msgid ""
+"This will update all repositories and then upgrade all installed packages. "
+"This action may take some time and requires an internet connection."
+msgstr ""
+
+#: luet_pm_gui.py:1377
+msgid "Performing full system upgrade"
+msgstr ""
+
+#: luet_pm_gui.py:1381
+msgid "Performing full system upgrade..."
+msgstr ""
