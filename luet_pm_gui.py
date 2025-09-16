@@ -60,16 +60,7 @@ class AboutDialog(Gtk.AboutDialog):
 class RepositoryUpdater:
     @staticmethod
     def run_repo_update(app):
-        # Collect lines if needed (not strictly necessary)
-        def on_line(line):
-            buf = app.output_textview.get_buffer()
-            # Append text and auto-scroll
-            buf.insert(buf.get_end_iter(), line, -1)
-            try:
-                adj = app.output_expander.get_child().get_vadjustment()
-                adj.set_value(adj.get_upper() - adj.get_page_size())
-            except Exception:
-                pass
+        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             if returncode == 0:
@@ -90,7 +81,7 @@ class RepositoryUpdater:
             app.run_command_realtime(
                 ["luet", "repo", "update"],
                 require_root=True,
-                on_line_received=on_line,
+                on_line_received=app.append_to_log, # <-- Refactored
                 on_finished=on_done
             )
         except Exception as e:
@@ -107,13 +98,7 @@ class SystemChecker:
 
         def on_line(line):
             collected_lines.append(line)
-            buf = self.app.output_textview.get_buffer()
-            buf.insert(buf.get_end_iter(), line, -1)
-            try:
-                adj = self.app.output_expander.get_child().get_vadjustment()
-                adj.set_value(adj.get_upper() - adj.get_page_size())
-            except Exception:
-                pass
+            self.app.append_to_log(line) # <-- Refactored
 
         def reinstall_packages(candidates):
             repair_ok = True
@@ -132,7 +117,7 @@ class SystemChecker:
                 self.app.run_command_realtime(
                     ["luet", "reinstall", "-y", pkg],
                     require_root=True,
-                    on_line_received=on_line,
+                    on_line_received=self.app.append_to_log, # <-- Refactored
                     on_finished=reinstall_done
                 )
 
@@ -212,13 +197,7 @@ class SystemUpgrader:
 
     def _on_line_first_run(self, line):
         self.collected_lines.append(line)
-        buf = self.app.output_textview.get_buffer()
-        buf.insert(buf.get_end_iter(), line, -1)
-        try:
-            adj = self.app.output_expander.get_child().get_vadjustment()
-            adj.set_value(adj.get_upper() - adj.get_page_size())
-        except Exception:
-            pass
+        self.app.append_to_log(line) # <-- Refactored
 
     def _on_first_run_done(self, returncode):
         if returncode != 0:
@@ -243,21 +222,14 @@ class SystemUpgrader:
             self.app.run_command_realtime(
                 second_upgrade_cmd,
                 require_root=True,
-                on_line_received=self._on_line_second_run,
+                on_line_received=self.app.append_to_log, # <-- Refactored
                 on_finished=lambda rc: self._finalize(rc, "System upgrade completed successfully")
             )
         except Exception as e:
             print("Exception during second upgrade step:", e)
             self._finalize(-1, "Error starting second upgrade step")
 
-    def _on_line_second_run(self, line):
-        buf = self.app.output_textview.get_buffer()
-        buf.insert(buf.get_end_iter(), line, -1)
-        try:
-            adj = self.app.output_expander.get_child().get_vadjustment()
-            adj.set_value(adj.get_upper() - adj.get_page_size())
-        except Exception:
-            pass
+    # The _on_line_second_run method is no longer needed and has been removed.
 
     def _finalize(self, returncode, success_message):
 
@@ -329,14 +301,7 @@ class CacheCleaner:
         self.app.disable_gui()
         self.app.start_spinner("Clearing Luet cache...")
 
-        def on_line(line):
-            buf = self.app.output_textview.get_buffer()
-            buf.insert(buf.get_end_iter(), line, -1)
-            try:
-                adj = self.app.output_expander.get_child().get_vadjustment()
-                adj.set_value(adj.get_upper() - adj.get_page_size())
-            except Exception:
-                pass
+        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             GLib.idle_add(self.app.stop_spinner)
@@ -348,12 +313,11 @@ class CacheCleaner:
             GLib.idle_add(self.app.enable_gui)
             GLib.idle_add(self.update_menu_item)  # refresh state
 
-
         t = threading.Thread(
             target=lambda: self.app.run_command_realtime(
                 ["luet", "cleanup"],
                 require_root=True,
-                on_line_received=on_line,
+                on_line_received=self.app.append_to_log, # <-- Refactored
                 on_finished=on_done
             ),
             daemon=True
@@ -372,14 +336,7 @@ class PackageOperations:
 
     @staticmethod
     def run_installation(app, install_cmd_list, package_name, advanced_search):
-        def on_line(line):
-            buf = app.output_textview.get_buffer()
-            buf.insert(buf.get_end_iter(), line, -1)
-            try:
-                adj = app.output_expander.get_child().get_vadjustment()
-                adj.set_value(adj.get_upper() - adj.get_page_size())
-            except Exception:
-                pass
+        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             GLib.idle_add(app.stop_spinner)
@@ -403,7 +360,12 @@ class PackageOperations:
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
             GLib.idle_add(app.output_expander.set_expanded, True)
-            app.run_command_realtime(install_cmd_list, require_root=True, on_line_received=on_line, on_finished=on_done)
+            app.run_command_realtime(
+                install_cmd_list,
+                require_root=True,
+                on_line_received=app.append_to_log, # <-- Refactored
+                on_finished=on_done
+            )
         except Exception as e:
             print("Exception launching installation thread:", e)
             GLib.idle_add(app.set_status_message, "Error installing package")
@@ -414,14 +376,7 @@ class PackageOperations:
     def run_uninstallation(app, uninstall_cmd_list, category, package_name, advanced_search):
         pkg_fullname = f"{category}/{package_name}"
 
-        def on_line(line):
-            buf = app.output_textview.get_buffer()
-            buf.insert(buf.get_end_iter(), line, -1)
-            try:
-                adj = app.output_expander.get_child().get_vadjustment()
-                adj.set_value(adj.get_upper() - adj.get_page_size())
-            except Exception:
-                pass
+        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             GLib.idle_add(app.stop_spinner)
@@ -445,7 +400,12 @@ class PackageOperations:
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
             GLib.idle_add(app.output_expander.set_expanded, True)
-            app.run_command_realtime(uninstall_cmd_list, require_root=True, on_line_received=on_line, on_finished=on_done)
+            app.run_command_realtime(
+                uninstall_cmd_list,
+                require_root=True,
+                on_line_received=app.append_to_log, # <-- Refactored
+                on_finished=on_done
+            )
         except Exception as e:
             print("Exception launching uninstallation thread:", e)
             GLib.idle_add(app.set_status_message, "Error uninstalling package")
@@ -782,7 +742,6 @@ class PackageDetailsPopup(Gtk.Window):
 # -------------------------
 # Main application window
 # -------------------------
-
 class SearchApp(Gtk.Window):
     def __init__(self, app):
         super().__init__(title="Luet Package Search", application=app)
@@ -1362,6 +1321,22 @@ class SearchApp(Gtk.Window):
                 style_context.remove_class("dimmed")
             else:
                 style_context.add_class("dimmed")
+
+    def append_to_log(self, text):
+        """Appends text to the output log and ensures it's scrolled to the end."""
+        buf = self.output_textview.get_buffer()
+        buf.insert(buf.get_end_iter(), text, -1)
+
+        # Use GLib.idle_add to ensure scrolling happens after the text view has resized,
+        # which is more robust.
+        def scroll_to_end():
+            scrollable = self.output_expander.get_child()
+            if scrollable:
+                adj = scrollable.get_vadjustment()
+                adj.set_value(adj.get_upper() - adj.get_page_size())
+            return False # Prevents the function from being called again
+        
+        GLib.idle_add(scroll_to_end)
 
     def update_repositories(self, widget):
         self.disable_gui()
