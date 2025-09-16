@@ -1,0 +1,448 @@
+# Hindi translations for PACKAGE package.
+# Copyright (C) 2025 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Automatically generated, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-16 21:20+0200\n"
+"PO-Revision-Date: 2025-09-16 21:20+0200\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: luet_pm_gui.py:40 luet_pm_gui.py:753
+msgid "Luet Package Search"
+msgstr ""
+
+#: luet_pm_gui.py:43
+msgid "Visit our website"
+msgstr ""
+
+#: luet_pm_gui.py:54
+msgid "GitHub Repository"
+msgstr ""
+
+#: luet_pm_gui.py:61
+msgid "© 2023 - 2025 MocaccinoOS. All Rights Reserved"
+msgstr ""
+
+#: luet_pm_gui.py:79
+msgid "Repositories updated"
+msgstr ""
+
+#: luet_pm_gui.py:82 luet_pm_gui.py:101
+msgid "Error updating repositories"
+msgstr ""
+
+#: luet_pm_gui.py:87 luet_pm_gui.py:1347
+msgid "Updating repositories..."
+msgstr ""
+
+#: luet_pm_gui.py:119
+msgid "Reinstalling {}..."
+msgstr ""
+
+#: luet_pm_gui.py:126
+msgid "Failed reinstalling {}"
+msgstr ""
+
+#: luet_pm_gui.py:139
+msgid "Could not repair some packages"
+msgstr ""
+
+#: luet_pm_gui.py:142 luet_pm_gui.py:151 luet_pm_gui.py:261 luet_pm_gui.py:319
+#: luet_pm_gui.py:361 luet_pm_gui.py:399 luet_pm_gui.py:918 luet_pm_gui.py:1311
+#: luet_pm_gui.py:1326
+msgid "Ready"
+msgstr ""
+
+#: luet_pm_gui.py:156
+msgid "Missing files: preparing to reinstall..."
+msgstr ""
+
+#: luet_pm_gui.py:160
+msgid "Reinstalling packages in {}..."
+msgstr ""
+
+#: luet_pm_gui.py:175 luet_pm_gui.py:1353
+msgid "Checking system for missing files..."
+msgstr ""
+
+#: luet_pm_gui.py:188
+msgid "Error during system check"
+msgstr ""
+
+#: luet_pm_gui.py:208
+msgid "Error starting upgrade process"
+msgstr ""
+
+#: luet_pm_gui.py:216
+msgid "Error during initial upgrade step"
+msgstr ""
+
+#: luet_pm_gui.py:224 luet_pm_gui.py:238
+msgid "System upgrade completed successfully"
+msgstr ""
+
+#: luet_pm_gui.py:227
+msgid ""
+"\n"
+"--- Repositories updated, continuing with package upgrade... ---\n"
+"\n"
+msgstr ""
+
+#: luet_pm_gui.py:228
+msgid "Continuing with package upgrade..."
+msgstr ""
+
+#: luet_pm_gui.py:242
+msgid "Error starting second upgrade step"
+msgstr ""
+
+#: luet_pm_gui.py:258
+msgid "Error during system upgrade"
+msgstr ""
+
+#: luet_pm_gui.py:285
+msgid "Clear Luet cache ({})"
+msgstr ""
+
+#: luet_pm_gui.py:288 luet_pm_gui.py:879
+msgid "Clear Luet cache"
+msgstr ""
+
+#: luet_pm_gui.py:296
+msgid "Clear Luet cache?"
+msgstr ""
+
+#: luet_pm_gui.py:299
+msgid "This will run 'luet cleanup' and remove cached package data."
+msgstr ""
+
+#: luet_pm_gui.py:312
+msgid "Clearing Luet cache..."
+msgstr ""
+
+#: luet_pm_gui.py:317
+msgid "Error clearing Luet cache"
+msgstr ""
+
+#: luet_pm_gui.py:358 luet_pm_gui.py:396
+msgid "Searching again for '{}'..."
+msgstr ""
+
+#: luet_pm_gui.py:363 luet_pm_gui.py:379
+msgid "Error installing package"
+msgstr ""
+
+#: luet_pm_gui.py:367 luet_pm_gui.py:1252
+msgid "Installing {}..."
+msgstr ""
+
+#: luet_pm_gui.py:401
+msgid "Error uninstalling package: '{}'"
+msgstr ""
+
+#: luet_pm_gui.py:405 luet_pm_gui.py:1272
+msgid "Uninstalling {}..."
+msgstr ""
+
+#: luet_pm_gui.py:417
+msgid "Error uninstalling package"
+msgstr ""
+
+#: luet_pm_gui.py:426
+msgid "Package Details"
+msgstr ""
+
+#: luet_pm_gui.py:467
+msgid "Package:"
+msgstr ""
+
+#: luet_pm_gui.py:468
+msgid "Version:"
+msgstr ""
+
+#: luet_pm_gui.py:469
+msgid "Installed:"
+msgstr ""
+
+#: luet_pm_gui.py:469
+msgid "Yes"
+msgstr ""
+
+#: luet_pm_gui.py:469
+msgid "No"
+msgstr ""
+
+#: luet_pm_gui.py:510
+msgid "Repository:"
+msgstr ""
+
+#: luet_pm_gui.py:519
+msgid "Description:"
+msgstr ""
+
+#: luet_pm_gui.py:525
+msgid "License:"
+msgstr ""
+
+#: luet_pm_gui.py:532
+msgid "Required by"
+msgstr ""
+
+#: luet_pm_gui.py:555
+msgid "Package files"
+msgstr ""
+
+#: luet_pm_gui.py:559
+msgid "Filter files..."
+msgstr ""
+
+#: luet_pm_gui.py:565 luet_pm_gui.py:895
+msgid "File"
+msgstr ""
+
+#: luet_pm_gui.py:590
+msgid "Close"
+msgstr ""
+
+#: luet_pm_gui.py:622
+msgid "Copy All Files"
+msgstr ""
+
+#: luet_pm_gui.py:649
+msgid "Error retrieving required by information."
+msgstr ""
+
+#: luet_pm_gui.py:657
+msgid "There are no packages installed that require this package."
+msgstr ""
+
+#: luet_pm_gui.py:669
+msgid "Loading..."
+msgstr ""
+
+#: luet_pm_gui.py:682
+msgid "Error retrieving package files information."
+msgstr ""
+
+#: luet_pm_gui.py:685
+msgid "No files found for this package."
+msgstr ""
+
+#: luet_pm_gui.py:720
+msgid "revdeps failed:"
+msgstr ""
+
+#: luet_pm_gui.py:729
+msgid "Error retrieving required by info:"
+msgstr ""
+
+#: luet_pm_gui.py:737
+msgid "search for package failed:"
+msgstr ""
+
+#: luet_pm_gui.py:745
+msgid "Error retrieving package files info:"
+msgstr ""
+
+#: luet_pm_gui.py:800
+msgid "Warning: no pkexec/sudo found — admin actions will fail"
+msgstr ""
+
+#: luet_pm_gui.py:809
+msgid "No elevation helper available"
+msgstr ""
+
+#: luet_pm_gui.py:856
+msgid ""
+"\n"
+"Error executing command: {}\n"
+msgstr ""
+
+#: luet_pm_gui.py:866
+msgid "Update repositories"
+msgstr ""
+
+#: luet_pm_gui.py:871
+msgid "Full system upgrade"
+msgstr ""
+
+#: luet_pm_gui.py:875
+msgid "Check system"
+msgstr ""
+
+#: luet_pm_gui.py:883
+msgid "Quit"
+msgstr ""
+
+#: luet_pm_gui.py:888
+msgid "Documentation"
+msgstr ""
+
+#: luet_pm_gui.py:891
+msgid "About"
+msgstr ""
+
+#: luet_pm_gui.py:897
+msgid "Help"
+msgstr ""
+
+#: luet_pm_gui.py:933
+msgid "Enter package name"
+msgstr ""
+
+#: luet_pm_gui.py:936
+msgid "Advanced"
+msgstr ""
+
+#: luet_pm_gui.py:937
+msgid "Check this box to also search inside filenames and labels"
+msgstr ""
+
+#: luet_pm_gui.py:939
+msgid "Search"
+msgstr ""
+
+#: luet_pm_gui.py:954
+msgid "Category"
+msgstr ""
+
+#: luet_pm_gui.py:955
+msgid "Name"
+msgstr ""
+
+#: luet_pm_gui.py:956
+msgid "Version"
+msgstr ""
+
+#: luet_pm_gui.py:957
+msgid "Repository"
+msgstr ""
+
+#: luet_pm_gui.py:958
+msgid "Action"
+msgstr ""
+
+#: luet_pm_gui.py:969 luet_pm_gui.py:1148
+msgid "Details"
+msgstr ""
+
+#: luet_pm_gui.py:988
+msgid "Toggle output log"
+msgstr ""
+
+#: luet_pm_gui.py:1099
+msgid "Searching for {}..."
+msgstr ""
+
+#: luet_pm_gui.py:1109 luet_pm_gui.py:1159
+msgid "Error executing the search command."
+msgstr ""
+
+#: luet_pm_gui.py:1110 luet_pm_gui.py:1160
+msgid "Error executing the search command"
+msgstr ""
+
+#: luet_pm_gui.py:1117
+msgid "Invalid JSON output."
+msgstr ""
+
+#: luet_pm_gui.py:1118
+msgid "Invalid JSON output"
+msgstr ""
+
+#: luet_pm_gui.py:1124 luet_pm_gui.py:1153
+msgid "No results"
+msgstr ""
+
+#: luet_pm_gui.py:1145 luet_pm_gui.py:1187 luet_pm_gui.py:1201
+msgid "Protected"
+msgstr ""
+
+#: luet_pm_gui.py:1147 luet_pm_gui.py:1191 luet_pm_gui.py:1201
+msgid "Remove"
+msgstr ""
+
+#: luet_pm_gui.py:1147 luet_pm_gui.py:1189
+msgid "Install"
+msgstr ""
+
+#: luet_pm_gui.py:1151
+msgid "Found {} results matching '{}'"
+msgstr ""
+
+#: luet_pm_gui.py:1158
+msgid "Error running search:"
+msgstr ""
+
+#: luet_pm_gui.py:1235
+msgid "This package ({}) is protected and can't be removed."
+msgstr ""
+
+#: luet_pm_gui.py:1243
+msgid "Do you want to install {}?"
+msgstr ""
+
+#: luet_pm_gui.py:1259
+msgid "Do you want to uninstall {}?"
+msgstr ""
+
+#: luet_pm_gui.py:1365
+msgid "Perform a full system upgrade?"
+msgstr ""
+
+#: luet_pm_gui.py:1368
+msgid ""
+"This will update all repositories and then upgrade all installed packages. "
+"This action may take some time and requires an internet connection."
+msgstr ""
+
+#: luet_pm_gui.py:1380
+msgid "Performing full system upgrade"
+msgstr ""
+
+#: luet_pm_gui.py:1384
+msgid "Performing full system upgrade..."
+msgstr ""
+
+#: luet_pm_gui.py:1406
+msgid "repositories not synced"
+msgstr ""
+
+#: luet_pm_gui.py:1428
+#, python-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: luet_pm_gui.py:1433
+#, python-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: luet_pm_gui.py:1438
+#, python-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: luet_pm_gui.py:1441
+msgid "just now"
+msgstr ""
+
+#: luet_pm_gui.py:1446
+msgid "Last sync: {}"
+msgstr ""
