@@ -464,9 +464,9 @@ class PackageDetailsPopup(Gtk.Window):
             left_grid.attach(label, 0, row, 1, 1)
             left_grid.attach(widget, 1, row, 1, 1)
 
-        add_left(0, "Package:", Gtk.Label(label="{}/{}".format(category, name)))
-        add_left(1, "Version:", Gtk.Label(label=version))
-        add_left(2, "Installed:", Gtk.Label(label=_("Yes") if installed else _("No")))
+        add_left(0, _("Package:"), Gtk.Label(label="{}/{}".format(category, name)))
+        add_left(1, _("Version:"), Gtk.Label(label=version))
+        add_left(2, _("Installed:"), Gtk.Label(label=_("Yes") if installed else _("No")))
 
         # --- Right grid (Description + License) ---
         right_grid = Gtk.Grid()
@@ -507,7 +507,7 @@ class PackageDetailsPopup(Gtk.Window):
             if repository:
                 repo_label = Gtk.Label(label=repository)
                 repo_label.set_xalign(0)
-                add_right(next_right_row, "Repository:", repo_label)
+                add_right(next_right_row, _("Repository:"), repo_label)
                 next_right_row += 1
 
             if description:
@@ -516,13 +516,13 @@ class PackageDetailsPopup(Gtk.Window):
                 desc_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
                 desc_label.set_xalign(0)
                 desc_label.set_max_width_chars(40)
-                add_right(next_right_row, "Description:", desc_label)
+                add_right(next_right_row, _("Description:"), desc_label)
                 next_right_row += 1
 
             if license_:
                 lic_label = Gtk.Label(label=license_)
                 lic_label.set_xalign(0)
-                add_right(next_right_row, "License:", lic_label)
+                add_right(next_right_row, _("License:"), lic_label)
                 next_right_row += 1
 
         hbox.pack_start(left_grid, True, True, 0)
@@ -1313,7 +1313,7 @@ class SearchApp(Gtk.Window):
     def _spinner_tick(self, message):
         self.spinner_counter = (self.spinner_counter + 1) % len(self.spinner_frames)
         frame = self.spinner_frames[self.spinner_counter]
-        self.set_status_message(_("{} {}").format(frame, message))
+        self.set_status_message("{} {}".format(frame, message))
         return True
 
     def set_status_message(self, message):
