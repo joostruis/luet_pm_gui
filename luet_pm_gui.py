@@ -12,6 +12,8 @@ import shutil
 import yaml
 import webbrowser
 import datetime
+import gettext
+import locale
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango, Gio
@@ -19,14 +21,15 @@ from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 GLib.set_prgname('luet_pm_gui')
 
 # -------------------------
-# Translation Placeholder
+# Set up locale and translation
 # -------------------------
-def _(text):
-    """
-    Placeholder for a real translation function (e.g., gettext).
-    In a real-world scenario, this would be set up to handle translations.
-    """
-    return text
+
+locale.setlocale(locale.LC_ALL, '')
+localedir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'locale')
+gettext.bindtextdomain('luet_pm_gui', localedir)
+gettext.textdomain('luet_pm_gui')
+_ = gettext.gettext
+ngettext = gettext.ngettext
 
 # -------------------------
 # About dialog
@@ -70,7 +73,6 @@ class AboutDialog(Gtk.AboutDialog):
 class RepositoryUpdater:
     @staticmethod
     def run_repo_update(app):
-        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             if returncode == 0:
@@ -1422,13 +1424,19 @@ class SearchApp(Gtk.Window):
         delta = now - dt
 
         if delta.days > 0:
-            return _("{} day{} ago").format(delta.days, 's' if delta.days > 1 else '')
+            return ngettext(
+                "%d day ago", "%d days ago", delta.days
+            ) % delta.days
         elif delta.seconds >= 3600:
             hours = delta.seconds // 3600
-            return _("{} hour{} ago").format(hours, 's' if hours > 1 else '')
+            return ngettext(
+                "%d hour ago", "%d hours ago", hours
+            ) % hours
         elif delta.seconds >= 60:
             minutes = delta.seconds // 60
-            return _("{} minute{} ago").format(minutes, 's' if minutes > 1 else '')
+            return ngettext(
+                "%d minute ago", "%d minutes ago", minutes
+            ) % minutes
         else:
             return _("just now")
 
