@@ -25,7 +25,7 @@ GLib.set_prgname('luet_pm_gui')
 # -------------------------
 
 locale.setlocale(locale.LC_ALL, '')
-localedir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'locale')
+localedir = '/usr/share/locale'
 gettext.bindtextdomain('luet_pm_gui', localedir)
 gettext.textdomain('luet_pm_gui')
 _ = gettext.gettext
