@@ -781,8 +781,6 @@ class SearchApp(Gtk.Window):
             self.elevation_cmd = None
 
         self.protected_applications = {
-            "repository/luet": "This repository is protected and can't be removed",
-            "repository/mocaccino-repository-index": "This repository is protected and can't be removed",
             "apps/grub": "This package is protected and can't be removed",
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
@@ -791,6 +789,16 @@ class SearchApp(Gtk.Window):
         }
 
         self.hidden_packages = {
+            # Devel repositories we hide for now
+            "repository/mocaccino-desktop": "Devel repository",
+            "repository/mocaccino-os-commons": "Devel repository",
+            "repository/mocaccino-extra": "Devel repository",
+            "repository/mocaccino-community": "Devel repository",
+            # Crucial repositories users should not remove
+            "repository/luet": "This repository is crucial and can't be removed",
+            "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
+            # Repositories we just want ot hide
+            "repository/livecd": "This repository should be hidden",
             "repository/mocaccino-stage3": "Old repository, not in use anymore",
             "repository/mocaccino-portage": "Old repository, not in use anymore",
             "repository/mocaccino-portage-stable": "Old repository, not in use anymore",
