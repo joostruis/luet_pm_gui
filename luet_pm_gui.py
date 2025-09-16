@@ -81,7 +81,7 @@ class RepositoryUpdater:
             app.run_command_realtime(
                 ["luet", "repo", "update"],
                 require_root=True,
-                on_line_received=app.append_to_log, # <-- Refactored
+                on_line_received=app.append_to_log,
                 on_finished=on_done
             )
         except Exception as e:
@@ -98,7 +98,7 @@ class SystemChecker:
 
         def on_line(line):
             collected_lines.append(line)
-            self.app.append_to_log(line) # <-- Refactored
+            self.app.append_to_log(line)
 
         def reinstall_packages(candidates):
             repair_ok = True
@@ -117,7 +117,7 @@ class SystemChecker:
                 self.app.run_command_realtime(
                     ["luet", "reinstall", "-y", pkg],
                     require_root=True,
-                    on_line_received=self.app.append_to_log, # <-- Refactored
+                    on_line_received=self.app.append_to_log,
                     on_finished=reinstall_done
                 )
 
@@ -197,7 +197,7 @@ class SystemUpgrader:
 
     def _on_line_first_run(self, line):
         self.collected_lines.append(line)
-        self.app.append_to_log(line) # <-- Refactored
+        self.app.append_to_log(line)
 
     def _on_first_run_done(self, returncode):
         if returncode != 0:
@@ -222,14 +222,12 @@ class SystemUpgrader:
             self.app.run_command_realtime(
                 second_upgrade_cmd,
                 require_root=True,
-                on_line_received=self.app.append_to_log, # <-- Refactored
+                on_line_received=self.app.append_to_log,
                 on_finished=lambda rc: self._finalize(rc, "System upgrade completed successfully")
             )
         except Exception as e:
             print("Exception during second upgrade step:", e)
             self._finalize(-1, "Error starting second upgrade step")
-
-    # The _on_line_second_run method is no longer needed and has been removed.
 
     def _finalize(self, returncode, success_message):
 
@@ -301,8 +299,6 @@ class CacheCleaner:
         self.app.disable_gui()
         self.app.start_spinner("Clearing Luet cache...")
 
-        # The on_line function is no longer needed here.
-
         def on_done(returncode):
             GLib.idle_add(self.app.stop_spinner)
             if returncode != 0:
@@ -317,7 +313,7 @@ class CacheCleaner:
             target=lambda: self.app.run_command_realtime(
                 ["luet", "cleanup"],
                 require_root=True,
-                on_line_received=self.app.append_to_log, # <-- Refactored
+                on_line_received=self.app.append_to_log,
                 on_finished=on_done
             ),
             daemon=True
@@ -363,7 +359,7 @@ class PackageOperations:
             app.run_command_realtime(
                 install_cmd_list,
                 require_root=True,
-                on_line_received=app.append_to_log, # <-- Refactored
+                on_line_received=app.append_to_log,
                 on_finished=on_done
             )
         except Exception as e:
@@ -375,8 +371,6 @@ class PackageOperations:
     @staticmethod
     def run_uninstallation(app, uninstall_cmd_list, category, package_name, advanced_search):
         pkg_fullname = f"{category}/{package_name}"
-
-        # The on_line function is no longer needed here.
 
         def on_done(returncode):
             GLib.idle_add(app.stop_spinner)
@@ -403,7 +397,7 @@ class PackageOperations:
             app.run_command_realtime(
                 uninstall_cmd_list,
                 require_root=True,
-                on_line_received=app.append_to_log, # <-- Refactored
+                on_line_received=app.append_to_log,
                 on_finished=on_done
             )
         except Exception as e:
@@ -1327,8 +1321,6 @@ class SearchApp(Gtk.Window):
         buf = self.output_textview.get_buffer()
         buf.insert(buf.get_end_iter(), text, -1)
 
-        # Use GLib.idle_add to ensure scrolling happens after the text view has resized,
-        # which is more robust.
         def scroll_to_end():
             scrollable = self.output_expander.get_child()
             if scrollable:
