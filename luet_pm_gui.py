@@ -265,24 +265,35 @@ class CacheCleaner:
         self.app = app
 
     @staticmethod
-    def get_cache_size():
-        """Return human-readable size string or None if error"""
+    def get_cache_size_bytes():
         try:
             res = subprocess.run(
-                ["du", "-hs", "/var/luet/db/packages/"],
+                ["du", "-sb", "/var/luet/db/packages/"],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
             if res.returncode == 0:
-                return res.stdout.strip().split("\t", 1)[0]
+                return int(res.stdout.strip().split("\t", 1)[0])
         except Exception as e:
             print("Error checking Luet cache size:", e)
         return None
 
     def update_menu_item(self):
-        size = self.get_cache_size()
-        if size and size not in ("4.0K", "0", "0B", "0K", "0M"):
+        size_bytes = self.get_cache_size_bytes()
+        if size_bytes and size_bytes > 4096:
+            try:
+                res = subprocess.run(
+                    ["du", "-hs", "/var/luet/db/packages/"],
+                    stdout=subprocess.PIPE, text=True
+                )
+                if res.returncode == 0:
+                    human = res.stdout.split("\t", 1)[0].strip()
+                else:
+                    human = f"{size_bytes}B"
+            except Exception:
+                human = f"{size_bytes}B"
+
             self.app.clear_cache_item.set_sensitive(True)
-            self.app.clear_cache_item.set_label(_("Clear Luet cache ({})").format(size))
+            self.app.clear_cache_item.set_label(_("Clear Luet cache ({})").format(human))
         else:
             self.app.clear_cache_item.set_sensitive(False)
             self.app.clear_cache_item.set_label(_("Clear Luet cache"))
@@ -303,7 +314,6 @@ class CacheCleaner:
         if response != Gtk.ResponseType.YES:
             return
 
-        # Prepare output area
         self.app.output_textview.get_buffer().set_text("")
         self.app.output_expander.show()
         self.app.output_expander.set_expanded(True)
@@ -319,7 +329,7 @@ class CacheCleaner:
                 GLib.idle_add(self.app.set_status_message, _("Ready"))
 
             GLib.idle_add(self.app.enable_gui)
-            GLib.idle_add(self.update_menu_item)  # refresh state
+            GLib.idle_add(self.update_menu_item)
 
         t = threading.Thread(
             target=lambda: self.app.run_command_realtime(
@@ -1043,11 +1053,11 @@ class SearchApp(Gtk.Window):
 
         GLib.idle_add(self.update_sync_info_label)
         # Start a recurring timer to check the sync time every 3 minutes
-        GLib.timeout_add_seconds(180, self.periodic_sync_check)
+        GLib.timeout_add_seconds(60, self.periodic_sync_check)
 
         self.cache_cleaner = CacheCleaner(self)
         GLib.idle_add(self.cache_cleaner.update_menu_item)
-        GLib.timeout_add_seconds(180, lambda: self.cache_cleaner.update_menu_item() or True)
+        GLib.timeout_add_seconds(60, lambda: self.cache_cleaner.update_menu_item() or True)
 
     def on_expander_hover(self, widget, event):
         window = widget.get_window()
