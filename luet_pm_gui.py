@@ -19,15 +19,25 @@ from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 GLib.set_prgname('luet_pm_gui')
 
 # -------------------------
+# Translation Placeholder
+# -------------------------
+def _(text):
+    """
+    Placeholder for a real translation function (e.g., gettext).
+    In a real-world scenario, this would be set up to handle translations.
+    """
+    return text
+
+# -------------------------
 # About dialog
 # -------------------------
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
-        self.set_program_name("Luet Package Search")
+        self.set_program_name(_("Luet Package Search"))
         self.set_version("0.6.5")
         self.set_website("https://www.mocaccino.org")
-        self.set_website_label("Visit our website")
+        self.set_website_label(_("Visit our website"))
         self.set_authors(["Joost Ruis"])
         icon_theme = Gtk.IconTheme.get_default()
         try:
@@ -38,14 +48,14 @@ class AboutDialog(Gtk.AboutDialog):
 
         github_link = Gtk.LinkButton.new_with_label(
             uri="https://github.com/joostruis/luet_pm_gui",
-            label="GitHub Repository"
+            label=_("GitHub Repository")
         )
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         box.set_margin_start(10)
         box.set_margin_end(10)
 
-        label = Gtk.Label(label="© 2023 - 2025 MocaccinoOS. All Rights Reserved")
+        label = Gtk.Label(label=_("© 2023 - 2025 MocaccinoOS. All Rights Reserved"))
         label.set_line_wrap(True)
 
         box.pack_start(label, False, False, 0)
@@ -64,15 +74,15 @@ class RepositoryUpdater:
 
         def on_done(returncode):
             if returncode == 0:
-                GLib.idle_add(app.set_status_message, "Repositories updated")
+                GLib.idle_add(app.set_status_message, _("Repositories updated"))
                 GLib.idle_add(app.update_sync_info_label)
             else:
-                GLib.idle_add(app.set_status_message, "Error updating repositories")
+                GLib.idle_add(app.set_status_message, _("Error updating repositories"))
             GLib.idle_add(app.stop_spinner)
             GLib.idle_add(app.enable_gui)
 
         try:
-            GLib.idle_add(app.set_status_message, "Updating repositories...")
+            GLib.idle_add(app.set_status_message, _("Updating repositories..."))
 
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
@@ -86,7 +96,7 @@ class RepositoryUpdater:
             )
         except Exception as e:
             print("Exception during repo update:", e)
-            GLib.idle_add(app.set_status_message, "Error updating repositories")
+            GLib.idle_add(app.set_status_message, _("Error updating repositories"))
             GLib.idle_add(app.enable_gui)
 
 class SystemChecker:
@@ -104,14 +114,14 @@ class SystemChecker:
             repair_ok = True
 
             for pkg in sorted(candidates.keys()):
-                GLib.idle_add(self.app.start_spinner, f"Reinstalling {pkg}...")
+                GLib.idle_add(self.app.start_spinner, _("Reinstalling {}...").format(pkg))
 
                 def reinstall_done(returncode, pkg=pkg):
                     nonlocal repair_ok
                     GLib.idle_add(self.app.stop_spinner)
                     if returncode != 0:
                         repair_ok = False
-                        GLib.idle_add(self.app.set_status_message, f"Failed reinstalling {pkg}")
+                        GLib.idle_add(self.app.set_status_message, _("Failed reinstalling {}").format(pkg))
 
                 # run reinstall with realtime streaming to log
                 self.app.run_command_realtime(
@@ -124,10 +134,10 @@ class SystemChecker:
                 time.sleep(0.5)  # let spinner/status updates show
 
             if not repair_ok:
-                GLib.idle_add(self.app.set_status_message, "Could not repair some packages")
+                GLib.idle_add(self.app.set_status_message, _("Could not repair some packages"))
 
             # Always finish in Ready state
-            GLib.idle_add(self.app.set_status_message, "Ready")
+            GLib.idle_add(self.app.set_status_message, _("Ready"))
             GLib.idle_add(self.app.enable_gui)
 
         def on_done(returncode):
@@ -136,16 +146,16 @@ class SystemChecker:
 
             # If returncode is clean and no missing files → just Ready
             if returncode == 0 and "missing" not in output:
-                GLib.idle_add(self.app.set_status_message, "Ready")
+                GLib.idle_add(self.app.set_status_message, _("Ready"))
                 GLib.idle_add(self.app.enable_gui)
                 return
 
             # Otherwise: prepare reinstall
-            GLib.idle_add(self.app.set_status_message, "Missing files: preparing to reinstall...")
+            GLib.idle_add(self.app.set_status_message, _("Missing files: preparing to reinstall..."))
 
             # Small countdown in status
             for i in range(5, 0, -1):
-                GLib.idle_add(self.app.set_status_message, f"Reinstalling packages in {i}...")
+                GLib.idle_add(self.app.set_status_message, _("Reinstalling packages in {}...").format(i))
                 time.sleep(1)
 
             # Parse missing package names from output
@@ -160,7 +170,7 @@ class SystemChecker:
             reinstall_packages(candidates)
 
         try:
-            GLib.idle_add(self.app.set_status_message, "Checking system for missing files...")
+            GLib.idle_add(self.app.set_status_message, _("Checking system for missing files..."))
             GLib.idle_add(self.app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(self.app.output_expander.show)
             GLib.idle_add(self.app.output_expander.set_expanded, True)
@@ -173,7 +183,7 @@ class SystemChecker:
             )
         except Exception as e:
             print("Error during system check:", e)
-            GLib.idle_add(self.app.set_status_message, "Error during system check")
+            GLib.idle_add(self.app.set_status_message, _("Error during system check"))
             GLib.idle_add(self.app.enable_gui)
 
 class SystemUpgrader:
@@ -193,7 +203,7 @@ class SystemUpgrader:
             )
         except Exception as e:
             print("Exception during system upgrade:", e)
-            self._finalize(-1, "Error starting upgrade process")
+            self._finalize(-1, _("Error starting upgrade process"))
 
     def _on_line_first_run(self, line):
         self.collected_lines.append(line)
@@ -201,7 +211,7 @@ class SystemUpgrader:
 
     def _on_first_run_done(self, returncode):
         if returncode != 0:
-            self._finalize(returncode, "Error during initial upgrade step")
+            self._finalize(returncode, _("Error during initial upgrade step"))
             return
 
         needs_second_run = any("Executing finalizer for repo-updater/" in line for line in self.collected_lines)
@@ -209,11 +219,11 @@ class SystemUpgrader:
         if needs_second_run:
             GLib.idle_add(self._run_second_upgrade)
         else:
-            self._finalize(returncode, "System upgrade completed successfully")
+            self._finalize(returncode, _("System upgrade completed successfully"))
 
     def _run_second_upgrade(self):
-        status_msg = "\n--- Repositories updated, continuing with package upgrade... ---\n\n"
-        GLib.idle_add(self.app.set_status_message, "Continuing with package upgrade...")
+        status_msg = _("\n--- Repositories updated, continuing with package upgrade... ---\n\n")
+        GLib.idle_add(self.app.set_status_message, _("Continuing with package upgrade..."))
         buf = self.app.output_textview.get_buffer()
         buf.insert(buf.get_end_iter(), status_msg, -1)
 
@@ -223,11 +233,11 @@ class SystemUpgrader:
                 second_upgrade_cmd,
                 require_root=True,
                 on_line_received=self.app.append_to_log,
-                on_finished=lambda rc: self._finalize(rc, "System upgrade completed successfully")
+                on_finished=lambda rc: self._finalize(rc, _("System upgrade completed successfully"))
             )
         except Exception as e:
             print("Exception during second upgrade step:", e)
-            self._finalize(-1, "Error starting second upgrade step")
+            self._finalize(-1, _("Error starting second upgrade step"))
 
     def _finalize(self, returncode, success_message):
 
@@ -243,10 +253,10 @@ class SystemUpgrader:
             PackageOperations._run_kbuildsycoca6()
         else:
             # Use the provided error message if returncode is not 0
-            error_msg = "Error during system upgrade" if success_message.startswith("System") else success_message
+            error_msg = _("Error during system upgrade") if success_message.startswith("System") else success_message
             GLib.idle_add(self.app.set_status_message, error_msg)
         GLib.idle_add(self.app.enable_gui)
-        GLib.idle_add(self.app.set_status_message, "Ready")
+        GLib.idle_add(self.app.set_status_message, _("Ready"))
 
 class CacheCleaner:
     def __init__(self, app):
@@ -270,10 +280,10 @@ class CacheCleaner:
         size = self.get_cache_size()
         if size and size not in ("4.0K", "0", "0B", "0K", "0M"):
             self.app.clear_cache_item.set_sensitive(True)
-            self.app.clear_cache_item.set_label(f"Clear Luet cache ({size})")
+            self.app.clear_cache_item.set_label(_("Clear Luet cache ({})").format(size))
         else:
             self.app.clear_cache_item.set_sensitive(False)
-            self.app.clear_cache_item.set_label("Clear Luet cache")
+            self.app.clear_cache_item.set_label(_("Clear Luet cache"))
 
     def run_cleanup(self):
         dlg = Gtk.MessageDialog(
@@ -281,10 +291,10 @@ class CacheCleaner:
             modal=True,
             message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.YES_NO,
-            text="Clear Luet cache?",
+            text=_("Clear Luet cache?"),
         )
         dlg.format_secondary_text(
-            "This will run 'luet cleanup' and remove cached package data."
+            _("This will run 'luet cleanup' and remove cached package data.")
         )
         response = dlg.run()
         dlg.destroy()
@@ -297,14 +307,14 @@ class CacheCleaner:
         self.app.output_expander.set_expanded(True)
 
         self.app.disable_gui()
-        self.app.start_spinner("Clearing Luet cache...")
+        self.app.start_spinner(_("Clearing Luet cache..."))
 
         def on_done(returncode):
             GLib.idle_add(self.app.stop_spinner)
             if returncode != 0:
-                GLib.idle_add(self.app.set_status_message, "Error clearing Luet cache")
+                GLib.idle_add(self.app.set_status_message, _("Error clearing Luet cache"))
             else:
-                GLib.idle_add(self.app.set_status_message, "Ready")
+                GLib.idle_add(self.app.set_status_message, _("Ready"))
 
             GLib.idle_add(self.app.enable_gui)
             GLib.idle_add(self.update_menu_item)  # refresh state
@@ -343,16 +353,16 @@ class PackageOperations:
                     if advanced_search:
                         search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
                     GLib.idle_add(app.clear_liststore)
-                    GLib.idle_add(app.start_spinner, f"Searching again for '{app.last_search}'...")
+                    GLib.idle_add(app.start_spinner, _("Searching again for '{}'...").format(app.last_search))
                     app.start_search_thread(search_cmd)
                 else:
-                    GLib.idle_add(app.set_status_message, "Ready")
+                    GLib.idle_add(app.set_status_message, _("Ready"))
             else:
-                GLib.idle_add(app.set_status_message, "Error installing package")
+                GLib.idle_add(app.set_status_message, _("Error installing package"))
             GLib.idle_add(app.enable_gui)
 
         try:
-            GLib.idle_add(app.set_status_message, f"Installing {package_name}...")
+            GLib.idle_add(app.set_status_message, _("Installing {}...").format(package_name))
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
             GLib.idle_add(app.output_expander.set_expanded, True)
@@ -364,13 +374,13 @@ class PackageOperations:
             )
         except Exception as e:
             print("Exception launching installation thread:", e)
-            GLib.idle_add(app.set_status_message, "Error installing package")
+            GLib.idle_add(app.set_status_message, _("Error installing package"))
             GLib.idle_add(app.output_expander.hide)
             GLib.idle_add(app.enable_gui)
 
     @staticmethod
     def run_uninstallation(app, uninstall_cmd_list, category, package_name, advanced_search):
-        pkg_fullname = f"{category}/{package_name}"
+        pkg_fullname = "{}/{}".format(category, package_name)
 
         def on_done(returncode):
             GLib.idle_add(app.stop_spinner)
@@ -381,16 +391,16 @@ class PackageOperations:
                     if advanced_search:
                         search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
                     GLib.idle_add(app.clear_liststore)
-                    GLib.idle_add(app.start_spinner, f"Searching again for '{app.last_search}'...")
+                    GLib.idle_add(app.start_spinner, _("Searching again for '{}'...").format(app.last_search))
                     app.start_search_thread(search_cmd)
                 else:
-                    GLib.idle_add(app.set_status_message, "Ready")
+                    GLib.idle_add(app.set_status_message, _("Ready"))
             else:
-                GLib.idle_add(app.set_status_message, f"Error uninstalling package: '{pkg_fullname}'")
+                GLib.idle_add(app.set_status_message, _("Error uninstalling package: '{}'").format(pkg_fullname))
             GLib.idle_add(app.enable_gui)
 
         try:
-            GLib.idle_add(app.set_status_message, f"Uninstalling {pkg_fullname}...")
+            GLib.idle_add(app.set_status_message, _("Uninstalling {}...").format(pkg_fullname))
             GLib.idle_add(app.output_textview.get_buffer().set_text, "")
             GLib.idle_add(app.output_expander.show)
             GLib.idle_add(app.output_expander.set_expanded, True)
@@ -402,7 +412,7 @@ class PackageOperations:
             )
         except Exception as e:
             print("Exception launching uninstallation thread:", e)
-            GLib.idle_add(app.set_status_message, "Error uninstalling package")
+            GLib.idle_add(app.set_status_message, _("Error uninstalling package"))
             GLib.idle_add(app.output_expander.hide)
             GLib.idle_add(app.enable_gui)
 
@@ -411,7 +421,7 @@ class PackageOperations:
 # -------------------------
 class PackageDetailsPopup(Gtk.Window):
     def __init__(self, app, package_info):
-        super().__init__(title="Package Details")
+        super().__init__(title=_("Package Details"))
         self.set_default_size(900, 400)
         self.app = app
         self.package_info = package_info
@@ -439,7 +449,7 @@ class PackageDetailsPopup(Gtk.Window):
         left_grid.set_row_spacing(6)
 
         def add_left(row, field, widget, top_align=False):
-            label = Gtk.Label(label=field)
+            label = Gtk.Label(label=_(field))
             label.set_xalign(1.0)
             if top_align:
                 label.set_valign(Gtk.Align.START)
@@ -452,9 +462,9 @@ class PackageDetailsPopup(Gtk.Window):
             left_grid.attach(label, 0, row, 1, 1)
             left_grid.attach(widget, 1, row, 1, 1)
 
-        add_left(0, "Package:", Gtk.Label(label=f"{category}/{name}"))
+        add_left(0, "Package:", Gtk.Label(label="{}/{}".format(category, name)))
         add_left(1, "Version:", Gtk.Label(label=version))
-        add_left(2, "Installed:", Gtk.Label(label="Yes" if installed else "No"))
+        add_left(2, "Installed:", Gtk.Label(label=_("Yes") if installed else _("No")))
 
         # --- Right grid (Description + License) ---
         right_grid = Gtk.Grid()
@@ -462,7 +472,7 @@ class PackageDetailsPopup(Gtk.Window):
         right_grid.set_row_spacing(6)
 
         def add_right(row, field, widget):
-            label = Gtk.Label(label=field)
+            label = Gtk.Label(label=_(field))
             label.set_xalign(1.0)
             label.set_valign(Gtk.Align.START)
             right_grid.attach(label, 0, row, 1, 1)
@@ -483,7 +493,7 @@ class PackageDetailsPopup(Gtk.Window):
             if uri:
                 uri_label = Gtk.Label()
                 escaped_uri = GLib.markup_escape_text(uri)
-                uri_label.set_markup(f'<a href="{escaped_uri}">{escaped_uri}</a>')
+                uri_label.set_markup('<a href="{}">{}</a>'.format(escaped_uri, escaped_uri))
                 uri_label.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
                 uri_label.connect("button-press-event", lambda w, e: webbrowser.open(uri))
                 uri_label.connect("enter-notify-event", self.on_hover_cursor)
@@ -517,7 +527,7 @@ class PackageDetailsPopup(Gtk.Window):
         hbox.pack_start(right_grid, True, True, 0)
         main_box.pack_start(hbox, False, False, 0)
 
-        self.required_by_expander = Gtk.Expander(label="Required by")
+        self.required_by_expander = Gtk.Expander(label=_("Required by"))
         self.required_by_expander.set_expanded(False)
         self.required_by_textview = Gtk.TextView()
         self.required_by_textview.set_editable(False)
@@ -540,17 +550,17 @@ class PackageDetailsPopup(Gtk.Window):
             main_box.pack_start(self.required_by_expander, False, False, 0)
             self.load_required_by_info()
 
-        self.package_files_expander = Gtk.Expander(label="Package files")
+        self.package_files_expander = Gtk.Expander(label=_("Package files"))
         self.package_files_expander.set_expanded(False)
 
         self.files_search_entry = Gtk.Entry()
-        self.files_search_entry.set_placeholder_text("Filter files...")
+        self.files_search_entry.set_placeholder_text(_("Filter files..."))
         self.files_search_entry.connect("changed", self.on_files_search_changed)
 
         self.files_liststore = Gtk.ListStore(str)
         self.files_treeview = Gtk.TreeView(model=self.files_liststore)
         renderer = Gtk.CellRendererText()
-        col = Gtk.TreeViewColumn("File", renderer, text=0)
+        col = Gtk.TreeViewColumn(_("File"), renderer, text=0)
         col.set_resizable(True)
         col.set_expand(True)
         self.files_treeview.append_column(col)
@@ -575,7 +585,7 @@ class PackageDetailsPopup(Gtk.Window):
 
         main_box.pack_start(self.package_files_expander, False, False, 0)
 
-        close_button = Gtk.Button(label="Close")
+        close_button = Gtk.Button(label=_("Close"))
         close_button.connect("clicked", lambda b: self.destroy())
         main_box.pack_end(close_button, False, False, 0)
 
@@ -584,7 +594,7 @@ class PackageDetailsPopup(Gtk.Window):
 
     def load_definition_yaml(self, repository, category, name, version):
         try:
-            path = f"/var/luet/db/repos/{repository}/treefs/{category}/{name}/{version}/definition.yaml"
+            path = "/var/luet/db/repos/{}/treefs/{}/{}/{}/definition.yaml".format(repository, category, name, version)
             res = self.app.run_command(["cat", path], require_root=True)
             if res.returncode != 0:
                 print("Error reading definition.yaml:", res.stderr)
@@ -607,7 +617,7 @@ class PackageDetailsPopup(Gtk.Window):
     def on_files_treeview_button_press(self, widget, event):
         if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
             menu = Gtk.Menu()
-            copy_all_item = Gtk.MenuItem(label="Copy All Files")
+            copy_all_item = Gtk.MenuItem(label=_("Copy All Files"))
             copy_all_item.connect("activate", self.on_copy_all_files)
             menu.append(copy_all_item)
             menu.show_all()
@@ -634,7 +644,7 @@ class PackageDetailsPopup(Gtk.Window):
     def retrieve_required_by_info(self, category, name):
         required_by_info = self.get_required_by_info(category, name)
         if required_by_info is None:
-            GLib.idle_add(self.update_textview, self.required_by_textview, "Error retrieving required by information.")
+            GLib.idle_add(self.update_textview, self.required_by_textview, _("Error retrieving required by information."))
             return
         sorted_required_by = sorted(required_by_info)
         count = len(sorted_required_by)
@@ -642,7 +652,7 @@ class PackageDetailsPopup(Gtk.Window):
         if sorted_required_by:
             GLib.idle_add(self.update_textview, self.required_by_textview, "\n".join(sorted_required_by))
         else:
-            GLib.idle_add(self.update_textview, self.required_by_textview, "There are no packages installed that require this package.")
+            GLib.idle_add(self.update_textview, self.required_by_textview, _("There are no packages installed that require this package."))
 
     def load_package_files_info(self, *args):
         category = self.package_info.get("category", "")
@@ -654,7 +664,7 @@ class PackageDetailsPopup(Gtk.Window):
 
         self.all_files = []
         self.files_liststore.clear()
-        self.files_liststore.append(["Loading..."])
+        self.files_liststore.append([_("Loading...")])
 
         threading.Thread(target=self.retrieve_package_files_info, args=(category, name), daemon=True).start()
 
@@ -667,10 +677,10 @@ class PackageDetailsPopup(Gtk.Window):
         self.files_liststore.clear()
         if files_info is None:
             self.all_files = []
-            self.files_liststore.append(["Error retrieving package files information."])
+            self.files_liststore.append([_("Error retrieving package files information.")])
         elif not files_info:
             self.all_files = []
-            self.files_liststore.append(["No files found for this package."])
+            self.files_liststore.append([_("No files found for this package.")])
         else:
             self.all_files = sorted(files_info)
             self.apply_files_filter("")
@@ -686,7 +696,7 @@ class PackageDetailsPopup(Gtk.Window):
                 self.files_liststore.append([f])
 
     def update_expander_label(self, expander, count):
-        label_text = f"{expander.get_label().split(' (')[0]} ({count})"
+        label_text = _(expander.get_label().split(' (')[0]) + " ({})".format(count)
         expander.set_label(label_text)
 
         if expander == self.required_by_expander:
@@ -702,10 +712,10 @@ class PackageDetailsPopup(Gtk.Window):
 
     def get_required_by_info(self, category, name):
         try:
-            cmd = ["luet", "search", "--revdeps", f"{category}/{name}", "-q", "--installed", "-o", "json"]
+            cmd = ["luet", "search", "--revdeps", "{}/{}".format(category, name), "-q", "--installed", "-o", "json"]
             res = self.app.run_command(cmd, require_root=True)
             if res.returncode != 0:
-                print("revdeps failed:", res.stderr)
+                print(_("revdeps failed:"), res.stderr)
                 return None
             revdeps_json = json.loads(res.stdout or "{}")
             packages = []
@@ -714,15 +724,15 @@ class PackageDetailsPopup(Gtk.Window):
                     packages.append(p.get("category", "") + "/" + p.get("name", ""))
             return packages
         except Exception as e:
-            print("Error retrieving required by info:", e)
+            print(_("Error retrieving required by info:"), e)
             return None
 
     def get_package_files_info(self, category, name):
         try:
-            cmd = ["luet", "search", f"{category}/{name}", "-o", "json"]
+            cmd = ["luet", "search", "{}/{}".format(category, name), "-o", "json"]
             res = self.app.run_command(cmd, require_root=True)
             if res.returncode != 0:
-                print("search for package failed:", res.stderr)
+                print(_("search for package failed:"), res.stderr)
                 return None
             search_json = json.loads(res.stdout or "{}")
             if isinstance(search_json, dict) and search_json.get("packages"):
@@ -730,7 +740,7 @@ class PackageDetailsPopup(Gtk.Window):
                 return pinfo.get("files", [])
             return []
         except Exception as e:
-            print("Error retrieving package files info:", e)
+            print(_("Error retrieving package files info:"), e)
             return None
 
 # -------------------------
@@ -738,7 +748,7 @@ class PackageDetailsPopup(Gtk.Window):
 # -------------------------
 class SearchApp(Gtk.Window):
     def __init__(self, app):
-        super().__init__(title="Luet Package Search", application=app)
+        super().__init__(title=_("Luet Package Search"), application=app)
         self.set_default_size(1000, 600)
         self.set_icon_name("luet_pm_gui")
 
@@ -785,7 +795,7 @@ class SearchApp(Gtk.Window):
         self.init_search_ui()
 
         if self.elevation_cmd is None and os.getuid() != 0:
-            GLib.idle_add(self.set_status_message, "Warning: no pkexec/sudo found — admin actions will fail")
+            GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found — admin actions will fail"))
 
     # central command runner for synchronous commands
     def run_command(self, cmd_list, require_root=False):
@@ -794,7 +804,7 @@ class SearchApp(Gtk.Window):
             if self.elevation_cmd:
                 final = self.elevation_cmd + final
             else:
-                raise RuntimeError("No elevation helper available")
+                raise RuntimeError(_("No elevation helper available"))
         try:
             return subprocess.run(final, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except FileNotFoundError as e:
@@ -841,7 +851,7 @@ class SearchApp(Gtk.Window):
                 return_code = process.wait()
                 GLib.idle_add(on_finished, return_code)
             except Exception as e:
-                error_line = f"\nError executing command: {e}\n"
+                error_line = _("\nError executing command: {}\n").format(e)
                 GLib.idle_add(on_line_received, error_line)
                 GLib.idle_add(on_finished, -1)
 
@@ -851,38 +861,38 @@ class SearchApp(Gtk.Window):
     def create_menu(self, menu_bar):
         file_menu = Gtk.Menu()
 
-        update_repositories_item = Gtk.MenuItem(label="Update repositories")
+        update_repositories_item = Gtk.MenuItem(label=_("Update repositories"))
         update_repositories_item.connect("activate", self.update_repositories)
         file_menu.append(update_repositories_item)
 
         file_menu.append(Gtk.SeparatorMenuItem())
-        full_upgrade_item = Gtk.MenuItem(label="Full system upgrade")
+        full_upgrade_item = Gtk.MenuItem(label=_("Full system upgrade"))
         full_upgrade_item.connect("activate", self.on_full_system_upgrade)
         file_menu.append(full_upgrade_item)
 
-        check_system_item = Gtk.MenuItem(label="Check system")
+        check_system_item = Gtk.MenuItem(label=_("Check system"))
         check_system_item.connect("activate", self.check_system)
         file_menu.append(check_system_item)
 
-        self.clear_cache_item = Gtk.MenuItem(label="Clear Luet cache")
+        self.clear_cache_item = Gtk.MenuItem(label=_("Clear Luet cache"))
         self.clear_cache_item.connect("activate", lambda w: self.cache_cleaner.run_cleanup())
         file_menu.append(self.clear_cache_item)
 
-        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item = Gtk.MenuItem(label=_("Quit"))
         quit_item.connect("activate", lambda w: self.get_application().quit())
         file_menu.append(quit_item)
 
         help_menu = Gtk.Menu()
-        documentation_item = Gtk.MenuItem(label="Documentation")
+        documentation_item = Gtk.MenuItem(label=_("Documentation"))
         documentation_item.connect("activate", self.show_documentation)
         help_menu.append(documentation_item)
-        about_item = Gtk.MenuItem(label="About")
+        about_item = Gtk.MenuItem(label=_("About"))
         about_item.connect("activate", self.show_about_dialog)
         help_menu.append(about_item)
 
-        file_menu_item = Gtk.MenuItem(label="File")
+        file_menu_item = Gtk.MenuItem(label=_("File"))
         file_menu_item.set_submenu(file_menu)
-        help_menu_item = Gtk.MenuItem(label="Help")
+        help_menu_item = Gtk.MenuItem(label=_("Help"))
         help_menu_item.set_submenu(help_menu)
 
         menu_bar.append(file_menu_item)
@@ -903,7 +913,7 @@ class SearchApp(Gtk.Window):
         top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         top_bar.pack_start(self.menu_bar, False, False, 0)
         
-        self.status_label = Gtk.Label(label="Ready")
+        self.status_label = Gtk.Label(label=_("Ready"))
         self.status_label.set_halign(Gtk.Align.CENTER)
         top_bar.pack_start(self.status_label, True, True, 0)
 
@@ -918,13 +928,13 @@ class SearchApp(Gtk.Window):
 
         search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.search_entry = Gtk.Entry()
-        self.search_entry.set_placeholder_text("Enter package name")
+        self.search_entry.set_placeholder_text(_("Enter package name"))
         self.search_entry.connect("activate", self.on_search_clicked)
 
-        self.advanced_search_checkbox = Gtk.CheckButton(label="Advanced")
-        self.advanced_search_checkbox.set_tooltip_text("Check this box to also search inside filenames and labels")
+        self.advanced_search_checkbox = Gtk.CheckButton(label=_("Advanced"))
+        self.advanced_search_checkbox.set_tooltip_text(_("Check this box to also search inside filenames and labels"))
 
-        self.search_button = Gtk.Button(label="Search")
+        self.search_button = Gtk.Button(label=_("Search"))
         self.search_button.connect("clicked", self.on_search_clicked)
 
         search_box.pack_start(self.search_entry, True, True, 0)
@@ -939,11 +949,11 @@ class SearchApp(Gtk.Window):
         self.treeview.set_model(self.liststore)
 
         renderer = Gtk.CellRendererText()
-        col_cat = Gtk.TreeViewColumn("Category", renderer, text=0)
-        col_name = Gtk.TreeViewColumn("Name", renderer, text=1)
-        col_ver = Gtk.TreeViewColumn("Version", renderer, text=2)
-        col_repo = Gtk.TreeViewColumn("Repository", renderer, text=3)
-        col_action = Gtk.TreeViewColumn("Action", Gtk.CellRendererText(), text=4)
+        col_cat = Gtk.TreeViewColumn(_("Category"), renderer, text=0)
+        col_name = Gtk.TreeViewColumn(_("Name"), renderer, text=1)
+        col_ver = Gtk.TreeViewColumn(_("Version"), renderer, text=2)
+        col_repo = Gtk.TreeViewColumn(_("Repository"), renderer, text=3)
+        col_action = Gtk.TreeViewColumn(_("Action"), Gtk.CellRendererText(), text=4)
 
         for idx, c in enumerate([col_cat, col_name, col_ver, col_repo, col_action]):
             c.set_sort_column_id(idx)
@@ -954,7 +964,7 @@ class SearchApp(Gtk.Window):
 
         col_action.set_resizable(False)
         col_action.set_expand(False)
-        col_details = Gtk.TreeViewColumn("Details", Gtk.CellRendererText(), text=5)
+        col_details = Gtk.TreeViewColumn(_("Details"), Gtk.CellRendererText(), text=5)
         col_details.set_resizable(False)
         col_details.set_expand(False)
         self.treeview.append_column(col_details)
@@ -973,7 +983,7 @@ class SearchApp(Gtk.Window):
 
         self.output_expander = Gtk.Expander()
         self.output_expander.set_use_markup(False)
-        self.output_expander.set_label("Toggle output log")
+        self.output_expander.set_label(_("Toggle output log"))
         
         self.output_expander.set_margin_bottom(12)
 
@@ -1084,7 +1094,7 @@ class SearchApp(Gtk.Window):
 
         self.last_search = package_name
 
-        self.start_spinner(f"Searching for {package_name}...")
+        self.start_spinner(_("Searching for {}...").format(package_name))
         self.disable_gui()
 
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
@@ -1094,22 +1104,22 @@ class SearchApp(Gtk.Window):
         try:
             res = self.run_command(search_command, require_root=True)
             if res.returncode != 0:
-                GLib.idle_add(self.result_label.set_text, "Error executing the search command.")
-                GLib.idle_add(self.set_status_message, "Error executing the search command")
+                GLib.idle_add(self.result_label.set_text, _("Error executing the search command."))
+                GLib.idle_add(self.set_status_message, _("Error executing the search command"))
                 return
 
             output = (res.stdout or "").strip()
             try:
                 data = json.loads(output)
             except Exception:
-                GLib.idle_add(self.result_label.set_text, "Invalid JSON output.")
-                GLib.idle_add(self.set_status_message, "Invalid JSON output")
+                GLib.idle_add(self.result_label.set_text, _("Invalid JSON output."))
+                GLib.idle_add(self.set_status_message, _("Invalid JSON output"))
                 return
 
             packages = data.get("packages") if isinstance(data, dict) else None
             if packages is None:
                 GLib.idle_add(self.liststore.clear)
-                GLib.idle_add(self.set_status_message, "No results")
+                GLib.idle_add(self.set_status_message, _("No results"))
                 return
 
             def append_items():
@@ -1120,7 +1130,7 @@ class SearchApp(Gtk.Window):
                     version = pkg.get("version", "")
                     repository = pkg.get("repository", "")
                     installed = pkg.get("installed", False)
-                    key = f"{category}/{name}"
+                    key = "{}/{}".format(category, name)
 
                     # Hide all packages from the "entity" category
                     if category == "entity":
@@ -1130,22 +1140,22 @@ class SearchApp(Gtk.Window):
                         continue
 
                     if key in self.protected_applications:
-                        action_text = "Protected"
+                        action_text = _("Protected")
                     else:
-                        action_text = "Remove" if installed else "Install"
-                    self.liststore.append([category, name, version, repository, action_text, "Details"])
+                        action_text = _("Remove") if installed else _("Install")
+                    self.liststore.append([category, name, version, repository, action_text, _("Details")])
                 n = len(self.liststore)
                 if n > 0:
-                    self.set_status_message(f"Found {n} results matching '{self.last_search}'")
+                    self.set_status_message(_("Found {} results matching '{}'").format(n, self.last_search))
                 else:
-                    self.set_status_message("No results")
+                    self.set_status_message(_("No results"))
 
             GLib.idle_add(append_items)
 
         except Exception as e:
-            print("Error running search:", e)
-            GLib.idle_add(self.result_label.set_text, "Error executing the search command.")
-            GLib.idle_add(self.set_status_message, "Error executing the search command")
+            print(_("Error running search:"), e)
+            GLib.idle_add(self.result_label.set_text, _("Error executing the search command."))
+            GLib.idle_add(self.set_status_message, _("Error executing the search command"))
         finally:
             GLib.idle_add(self.enable_gui)
             GLib.idle_add(self.stop_spinner)
@@ -1172,11 +1182,11 @@ class SearchApp(Gtk.Window):
         iter_ = self.liststore.get_iter(path)
         if action_area and event.x >= action_area.x and event.x <= action_area.x + action_area.width and event.y >= action_area.y and event.y <= action_area.y + action_area.height:
             action = self.liststore.get_value(iter_, 4)
-            if action == "Protected":
+            if action == _("Protected"):
                 self.show_protected_popup(path)
-            elif action == "Install":
+            elif action == _("Install"):
                 self.confirm_install(iter_)
-            elif action == "Remove":
+            elif action == _("Remove"):
                 self.confirm_uninstall(iter_)
             return True
 
@@ -1186,7 +1196,7 @@ class SearchApp(Gtk.Window):
                 "name": self.liststore.get_value(iter_, 1),
                 "version": self.liststore.get_value(iter_, 2),
                 "repository": self.liststore.get_value(iter_, 3),
-                "installed": self.liststore.get_value(iter_, 4) in ["Remove", "Protected"]
+                "installed": self.liststore.get_value(iter_, 4) in [_("Remove"), _("Protected")]
             }
             self.show_package_details_popup(package_info)
             return True
@@ -1219,8 +1229,8 @@ class SearchApp(Gtk.Window):
             row = path_or_row
         category = self.liststore[row][0]
         name = self.liststore[row][1]
-        key = f"{category}/{name}"
-        msg = self.protected_applications.get(key, f"This package ({key}) is protected and can't be removed.")
+        key = "{}/{}".format(category, name)
+        msg = self.protected_applications.get(key, _("This package ({}) is protected and can't be removed.").format(key))
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.INFO, buttons=Gtk.ButtonsType.OK, text=msg)
         dlg.run()
         dlg.destroy()
@@ -1228,23 +1238,23 @@ class SearchApp(Gtk.Window):
     def confirm_install(self, iter_):
         category = self.liststore.get_value(iter_, 0)
         name = self.liststore.get_value(iter_, 1)
-        dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=f"Do you want to install {name}?")
+        dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to install {}?").format(name))
         res = dlg.run()
         dlg.destroy()
         if res != Gtk.ResponseType.YES:
             return
 
         advanced = self.advanced_search_checkbox.get_active()
-        install_cmd = ["luet", "install", "-y", f"{category}/{name}"]
+        install_cmd = ["luet", "install", "-y", "{}/{}".format(category, name)]
         self.disable_gui()
-        self.start_spinner(f"Installing {name}...")
+        self.start_spinner(_("Installing {}...").format(name))
 
         PackageOperations.run_installation(self, install_cmd, name, advanced)
 
     def confirm_uninstall(self, iter_):
         category = self.liststore.get_value(iter_, 0)
         name = self.liststore.get_value(iter_, 1)
-        dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=f"Do you want to uninstall {name}?")
+        dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to uninstall {}?").format(name))
         res = dlg.run()
         dlg.destroy()
         if res != Gtk.ResponseType.YES:
@@ -1252,12 +1262,12 @@ class SearchApp(Gtk.Window):
 
         advanced = self.advanced_search_checkbox.get_active()
         if category == "apps":
-            uninstall_cmd = ["luet", "uninstall", "-y", f"{category}/{name}", "--full", "--solver-concurrent"]
+            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name), "--full", "--solver-concurrent"]
         else:
-            uninstall_cmd = ["luet", "uninstall", "-y", f"{category}/{name}"]
+            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name)]
 
         self.disable_gui()
-        self.start_spinner(f"Uninstalling {name}...")
+        self.start_spinner(_("Uninstalling {}...").format(name))
 
         PackageOperations.run_uninstallation(self, uninstall_cmd, category, name, advanced)
 
@@ -1296,12 +1306,12 @@ class SearchApp(Gtk.Window):
         if self.spinner_timeout_id:
             GLib.source_remove(self.spinner_timeout_id)
             self.spinner_timeout_id = None
-            self.set_status_message("Ready")
+            self.set_status_message(_("Ready"))
 
     def _spinner_tick(self, message):
         self.spinner_counter = (self.spinner_counter + 1) % len(self.spinner_frames)
         frame = self.spinner_frames[self.spinner_counter]
-        self.set_status_message(f"{frame} {message}")
+        self.set_status_message(_("{} {}").format(frame, message))
         return True
 
     def set_status_message(self, message):
@@ -1311,7 +1321,7 @@ class SearchApp(Gtk.Window):
         with self.status_message_lock:
             self.status_label.set_text(message)
             style_context = self.status_label.get_style_context()
-            if message == "Ready":
+            if message == _("Ready"):
                 style_context.remove_class("dimmed")
             else:
                 style_context.add_class("dimmed")
@@ -1332,13 +1342,13 @@ class SearchApp(Gtk.Window):
 
     def update_repositories(self, widget):
         self.disable_gui()
-        self.start_spinner("Updating repositories...")
+        self.start_spinner(_("Updating repositories..."))
         t = threading.Thread(target=RepositoryUpdater.run_repo_update, args=(self,), daemon=True)
         t.start()
 
     def check_system(self, widget):
         self.disable_gui()
-        self.start_spinner("Checking system for missing files...")
+        self.start_spinner(_("Checking system for missing files..."))
         checker = SystemChecker(self)
         t = threading.Thread(target=checker.run_check_system, daemon=True)
         t.start()
@@ -1350,10 +1360,10 @@ class SearchApp(Gtk.Window):
             modal=True,
             message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.YES_NO,
-            text="Perform a full system upgrade?",
+            text=_("Perform a full system upgrade?"),
         )
         dlg.format_secondary_text(
-            "This will update all repositories and then upgrade all installed packages. This action may take some time and requires an internet connection."
+            _("This will update all repositories and then upgrade all installed packages. This action may take some time and requires an internet connection.")
         )
         response = dlg.run()
         dlg.destroy()
@@ -1365,11 +1375,11 @@ class SearchApp(Gtk.Window):
                 self.inhibit_cookie = self.get_application().inhibit(
                     self,
                     Gtk.ApplicationInhibitFlags.IDLE,
-                    "Performing full system upgrade"
+                    _("Performing full system upgrade")
                 )
 
             self.disable_gui()
-            self.start_spinner("Performing full system upgrade...")
+            self.start_spinner(_("Performing full system upgrade..."))
             # Clear output, show and expand the expander
             self.output_textview.get_buffer().set_text("")
             self.output_expander.show()
@@ -1391,7 +1401,7 @@ class SearchApp(Gtk.Window):
                     return {"datetime": sync_dt.strftime("%Y-%m-%dT%H:%M:%S"), "ago": time_ago}
         except (IOError, ValueError):
             pass
-        return {"datetime": "N/A", "ago": "repositories not synced"}
+        return {"datetime": "N/A", "ago": _("repositories not synced")}
 
     def parse_timestamp(self, ts):
         try:
@@ -1412,20 +1422,20 @@ class SearchApp(Gtk.Window):
         delta = now - dt
 
         if delta.days > 0:
-            return f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
+            return _("{} day{} ago").format(delta.days, 's' if delta.days > 1 else '')
         elif delta.seconds >= 3600:
             hours = delta.seconds // 3600
-            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+            return _("{} hour{} ago").format(hours, 's' if hours > 1 else '')
         elif delta.seconds >= 60:
             minutes = delta.seconds // 60
-            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+            return _("{} minute{} ago").format(minutes, 's' if minutes > 1 else '')
         else:
-            return "just now"
+            return _("just now")
 
     def update_sync_info_label(self):
         sync_info = self.get_last_sync_time()
-        display_time = f"{sync_info['datetime'].replace('T', ' @ ')}"
-        GLib.idle_add(self.sync_info_label.set_text, f"Last sync: {sync_info['ago']}")
+        display_time = sync_info['datetime'].replace('T', ' @ ')
+        GLib.idle_add(self.sync_info_label.set_text, _("Last sync: {}").format(sync_info['ago']))
         GLib.idle_add(self.sync_info_label.set_tooltip_text, display_time)
 
 # -------------------------
