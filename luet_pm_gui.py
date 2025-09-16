@@ -786,6 +786,10 @@ class SearchApp(Gtk.Window):
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
             "layers/X": "This layer is protected and can't be removed",
+            # Stable repositories 
+            "repository/mocaccino-desktop-stable": "Devel repository",
+            "repository/mocaccino-os-commons-stable": "Devel repository",
+            "repository/mocaccino-extra-stable": "Devel repository",         
         }
 
         self.hidden_packages = {
