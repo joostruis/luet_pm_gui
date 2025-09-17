@@ -8,89 +8,90 @@ msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-16 21:20+0200\n"
-"PO-Revision-Date: 2025-09-16 21:20+0200\n"
-"Last-Translator: Automatically generated\n"
+"PO-Revision-Date: 2025-09-17 23:02+0300\n"
+"Last-Translator: \n"
 "Language-Team: none\n"
 "Language: ro\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < "
-"20)) ? 1 : 2;\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==0 || (n!=1 && n%100>=1 && "
+"n%100<=19) ? 1 : 2);\n"
+"X-Generator: Poedit 3.7\n"
 
 #: luet_pm_gui.py:40 luet_pm_gui.py:753
 msgid "Luet Package Search"
-msgstr ""
+msgstr "Căutare pachete Luet"
 
 #: luet_pm_gui.py:43
 msgid "Visit our website"
-msgstr ""
+msgstr "Vizitați site-ul nostru web"
 
 #: luet_pm_gui.py:54
 msgid "GitHub Repository"
-msgstr ""
+msgstr "Depozit GitHub"
 
 #: luet_pm_gui.py:61
 msgid "© 2023 - 2025 MocaccinoOS. All Rights Reserved"
-msgstr ""
+msgstr "© 2023 - 2025 MocaccinoOS. Toate drepturile sunt rezervate"
 
 #: luet_pm_gui.py:79
 msgid "Repositories updated"
-msgstr ""
+msgstr "Depozite actualizate"
 
 #: luet_pm_gui.py:82 luet_pm_gui.py:101
 msgid "Error updating repositories"
-msgstr ""
+msgstr "Eroare la actualizarea depozitelor"
 
 #: luet_pm_gui.py:87 luet_pm_gui.py:1347
 msgid "Updating repositories..."
-msgstr ""
+msgstr "Actualizare depozite..."
 
 #: luet_pm_gui.py:119
 msgid "Reinstalling {}..."
-msgstr ""
+msgstr "Reinstalare {}..."
 
 #: luet_pm_gui.py:126
 msgid "Failed reinstalling {}"
-msgstr ""
+msgstr "Reinstalare eșuată {}"
 
 #: luet_pm_gui.py:139
 msgid "Could not repair some packages"
-msgstr ""
+msgstr "Unele pachete nu se pot repara"
 
 #: luet_pm_gui.py:142 luet_pm_gui.py:151 luet_pm_gui.py:261 luet_pm_gui.py:319
 #: luet_pm_gui.py:361 luet_pm_gui.py:399 luet_pm_gui.py:918 luet_pm_gui.py:1311
 #: luet_pm_gui.py:1326
 msgid "Ready"
-msgstr ""
+msgstr "Gata"
 
 #: luet_pm_gui.py:156
 msgid "Missing files: preparing to reinstall..."
-msgstr ""
+msgstr "Lipsesc fișiere: reinstalare în pregătire..."
 
 #: luet_pm_gui.py:160
 msgid "Reinstalling packages in {}..."
-msgstr ""
+msgstr "Reinstalare pachete în {}..."
 
 #: luet_pm_gui.py:175 luet_pm_gui.py:1353
 msgid "Checking system for missing files..."
-msgstr ""
+msgstr "Se verifică sistemul pentru fișiere lipsă..."
 
 #: luet_pm_gui.py:188
 msgid "Error during system check"
-msgstr ""
+msgstr "Eroare la verificarea sistemului"
 
 #: luet_pm_gui.py:208
 msgid "Error starting upgrade process"
-msgstr ""
+msgstr "Eroare la începerea procesului de actualizare"
 
 #: luet_pm_gui.py:216
 msgid "Error during initial upgrade step"
-msgstr ""
+msgstr "Eroare la pasul inițial de actualizare"
 
 #: luet_pm_gui.py:224 luet_pm_gui.py:238
 msgid "System upgrade completed successfully"
-msgstr ""
+msgstr "Actualizarea sistemului s-a efectuat cu succes"
 
 #: luet_pm_gui.py:227
 msgid ""
@@ -98,355 +99,362 @@ msgid ""
 "--- Repositories updated, continuing with package upgrade... ---\n"
 "\n"
 msgstr ""
+"\n"
+"--- Depozitele sunt actualizate, se continuă cu actualizarea pachetelor... ---\n"
+"\n"
 
 #: luet_pm_gui.py:228
 msgid "Continuing with package upgrade..."
-msgstr ""
+msgstr "Se continuă cu actualizarea pachetelor..."
 
 #: luet_pm_gui.py:242
 msgid "Error starting second upgrade step"
-msgstr ""
+msgstr "Eroare la demararea celui de-al doilea pas de actualizare"
 
 #: luet_pm_gui.py:258
 msgid "Error during system upgrade"
-msgstr ""
+msgstr "Eroare la actualizarea sistemului"
 
 #: luet_pm_gui.py:285
 msgid "Clear Luet cache ({})"
-msgstr ""
+msgstr "Golire cache Luet ({})"
 
 #: luet_pm_gui.py:288 luet_pm_gui.py:879
 msgid "Clear Luet cache"
-msgstr ""
+msgstr "Golire cache Luet"
 
 #: luet_pm_gui.py:296
 msgid "Clear Luet cache?"
-msgstr ""
+msgstr "Golire cache Luet?"
 
 #: luet_pm_gui.py:299
 msgid "This will run 'luet cleanup' and remove cached package data."
-msgstr ""
+msgstr "Se va rula 'luet cleanup' și se vor șterge datele despre pachete din cache."
 
 #: luet_pm_gui.py:312
 msgid "Clearing Luet cache..."
-msgstr ""
+msgstr "Golire cache Luet..."
 
 #: luet_pm_gui.py:317
 msgid "Error clearing Luet cache"
-msgstr ""
+msgstr "Eroare la golirea cache-ului Luet"
 
 #: luet_pm_gui.py:358 luet_pm_gui.py:396
 msgid "Searching again for '{}'..."
-msgstr ""
+msgstr "Se caută din nou '{}'..."
 
 #: luet_pm_gui.py:363 luet_pm_gui.py:379
 msgid "Error installing package"
-msgstr ""
+msgstr "Eroare la instalarea pachetului"
 
 #: luet_pm_gui.py:367 luet_pm_gui.py:1252
 msgid "Installing {}..."
-msgstr ""
+msgstr "Se instalează {}..."
 
 #: luet_pm_gui.py:401
 msgid "Error uninstalling package: '{}'"
-msgstr ""
+msgstr "Eroare la dezinstalarea pachetului: '{}'"
 
 #: luet_pm_gui.py:405 luet_pm_gui.py:1272
 msgid "Uninstalling {}..."
-msgstr ""
+msgstr "Se dezinstalează {}..."
 
 #: luet_pm_gui.py:417
 msgid "Error uninstalling package"
-msgstr ""
+msgstr "Eroare la dezinstalarea pachetului"
 
 #: luet_pm_gui.py:426
 msgid "Package Details"
-msgstr ""
+msgstr "Detalii despre pachet"
 
 #: luet_pm_gui.py:467
 msgid "Package:"
-msgstr ""
+msgstr "Pachet:"
 
 #: luet_pm_gui.py:468
 msgid "Version:"
-msgstr ""
+msgstr "Versiune:"
 
 #: luet_pm_gui.py:469
 msgid "Installed:"
-msgstr ""
+msgstr "Instalat:"
 
 #: luet_pm_gui.py:469
 msgid "Yes"
-msgstr ""
+msgstr "Da"
 
 #: luet_pm_gui.py:469
 msgid "No"
-msgstr ""
+msgstr "Nu"
 
 #: luet_pm_gui.py:510
 msgid "Repository:"
-msgstr ""
+msgstr "Depozit:"
 
 #: luet_pm_gui.py:519
 msgid "Description:"
-msgstr ""
+msgstr "Descriere:"
 
 #: luet_pm_gui.py:525
 msgid "License:"
-msgstr ""
+msgstr "Licență:"
 
 #: luet_pm_gui.py:532
 msgid "Required by"
-msgstr ""
+msgstr "Necesar pentru"
 
 #: luet_pm_gui.py:555
 msgid "Package files"
-msgstr ""
+msgstr "Fișiere ale pachetului"
 
 #: luet_pm_gui.py:559
 msgid "Filter files..."
-msgstr ""
+msgstr "Filtrare fișiere..."
 
 #: luet_pm_gui.py:565 luet_pm_gui.py:895
 msgid "File"
-msgstr ""
+msgstr "Fișier"
 
 #: luet_pm_gui.py:590
 msgid "Close"
-msgstr ""
+msgstr "Închidere"
 
 #: luet_pm_gui.py:622
 msgid "Copy All Files"
-msgstr ""
+msgstr "Copiere a tuturor fișierelor"
 
 #: luet_pm_gui.py:649
 msgid "Error retrieving required by information."
-msgstr ""
+msgstr "Eroare la căutarea dependențelor inverse."
 
 #: luet_pm_gui.py:657
 msgid "There are no packages installed that require this package."
-msgstr ""
+msgstr "Nu sunt pachete instalate care să necesite acest pachet."
 
 #: luet_pm_gui.py:669
 msgid "Loading..."
-msgstr ""
+msgstr "Încărcare..."
 
 #: luet_pm_gui.py:682
 msgid "Error retrieving package files information."
-msgstr ""
+msgstr "Eroare la obținerea informațiilor despre fișierele pachetului."
 
 #: luet_pm_gui.py:685
 msgid "No files found for this package."
-msgstr ""
+msgstr "Nu s-au găsit fișiere pentru acest pachet."
 
 #: luet_pm_gui.py:720
 msgid "revdeps failed:"
-msgstr ""
+msgstr "căutarea dependențelor inverse a eșuat:"
 
 #: luet_pm_gui.py:729
 msgid "Error retrieving required by info:"
-msgstr ""
+msgstr "Eroare la căutarea dependențelor inverse:"
 
 #: luet_pm_gui.py:737
 msgid "search for package failed:"
-msgstr ""
+msgstr "căutarea pentru pachet a eșuat:"
 
 #: luet_pm_gui.py:745
 msgid "Error retrieving package files info:"
-msgstr ""
+msgstr "Eroare la obținerea informațiilor despre fișierele pachetului:"
 
 #: luet_pm_gui.py:800
 msgid "Warning: no pkexec/sudo found — admin actions will fail"
-msgstr ""
+msgstr "Avertisment: nu s-au găsit pkexec/sudo — acțiunile ca administrator vor eșua"
 
 #: luet_pm_gui.py:809
 msgid "No elevation helper available"
-msgstr ""
+msgstr "Niciun utilitar de escaladare a privilegiilor utilizatorului nu este disponibil"
 
 #: luet_pm_gui.py:856
 msgid ""
 "\n"
 "Error executing command: {}\n"
 msgstr ""
+"\n"
+"Eroare la execuția comenzii: {}\n"
 
 #: luet_pm_gui.py:866
 msgid "Update repositories"
-msgstr ""
+msgstr "Actualizare depozite"
 
 #: luet_pm_gui.py:871
 msgid "Full system upgrade"
-msgstr ""
+msgstr "Actualizare sistem"
 
 #: luet_pm_gui.py:875
 msgid "Check system"
-msgstr ""
+msgstr "Verificare sistem"
 
 #: luet_pm_gui.py:883
 msgid "Quit"
-msgstr ""
+msgstr "Închidere"
 
 #: luet_pm_gui.py:888
 msgid "Documentation"
-msgstr ""
+msgstr "Documentație"
 
 #: luet_pm_gui.py:891
 msgid "About"
-msgstr ""
+msgstr "Despre aplicație"
 
 #: luet_pm_gui.py:897
 msgid "Help"
-msgstr ""
+msgstr "Asistență"
 
 #: luet_pm_gui.py:933
 msgid "Enter package name"
-msgstr ""
+msgstr "Introduceți numele pachetului"
 
 #: luet_pm_gui.py:936
 msgid "Advanced"
-msgstr ""
+msgstr "Mod avansat"
 
 #: luet_pm_gui.py:937
 msgid "Check this box to also search inside filenames and labels"
-msgstr ""
+msgstr "Bifați pentru a căuta după porțiuni din numele de fișiere și ale etichetelor"
 
 #: luet_pm_gui.py:939
 msgid "Search"
-msgstr ""
+msgstr "Căutare"
 
 #: luet_pm_gui.py:954
 msgid "Category"
-msgstr ""
+msgstr "Categorie"
 
 #: luet_pm_gui.py:955
 msgid "Name"
-msgstr ""
+msgstr "Nume"
 
 #: luet_pm_gui.py:956
 msgid "Version"
-msgstr ""
+msgstr "Versiune"
 
 #: luet_pm_gui.py:957
 msgid "Repository"
-msgstr ""
+msgstr "Depozit"
 
 #: luet_pm_gui.py:958
 msgid "Action"
-msgstr ""
+msgstr "Acțiune"
 
 #: luet_pm_gui.py:969 luet_pm_gui.py:1148
 msgid "Details"
-msgstr ""
+msgstr "Detalii"
 
 #: luet_pm_gui.py:988
 msgid "Toggle output log"
-msgstr ""
+msgstr "Comutare log rezultate"
 
 #: luet_pm_gui.py:1099
 msgid "Searching for {}..."
-msgstr ""
+msgstr "Căutare a {}..."
 
 #: luet_pm_gui.py:1109 luet_pm_gui.py:1159
 msgid "Error executing the search command."
-msgstr ""
+msgstr "Eroare la execuția comenzii de căutare."
 
 #: luet_pm_gui.py:1110 luet_pm_gui.py:1160
 msgid "Error executing the search command"
-msgstr ""
+msgstr "Eroare la execuția comenzii de căutare"
 
 #: luet_pm_gui.py:1117
 msgid "Invalid JSON output."
-msgstr ""
+msgstr "Rezultat JSON incorect."
 
 #: luet_pm_gui.py:1118
 msgid "Invalid JSON output"
-msgstr ""
+msgstr "Rezultat JSON incorect"
 
 #: luet_pm_gui.py:1124 luet_pm_gui.py:1153
 msgid "No results"
-msgstr ""
+msgstr "Nu sunt rezultate"
 
 #: luet_pm_gui.py:1145 luet_pm_gui.py:1187 luet_pm_gui.py:1201
 msgid "Protected"
-msgstr ""
+msgstr "Protejat"
 
 #: luet_pm_gui.py:1147 luet_pm_gui.py:1191 luet_pm_gui.py:1201
 msgid "Remove"
-msgstr ""
+msgstr "Dezinstalare"
 
 #: luet_pm_gui.py:1147 luet_pm_gui.py:1189
 msgid "Install"
-msgstr ""
+msgstr "Instalare"
 
 #: luet_pm_gui.py:1151
 msgid "Found {} results matching '{}'"
-msgstr ""
+msgstr "S-au găsit {} rezultate pentru '{}'"
 
 #: luet_pm_gui.py:1158
 msgid "Error running search:"
-msgstr ""
+msgstr "Eroare la căutare:"
 
 #: luet_pm_gui.py:1235
 msgid "This package ({}) is protected and can't be removed."
-msgstr ""
+msgstr "Pachetul ({}) este protejat și nu poate fi dezinstalat."
 
 #: luet_pm_gui.py:1243
 msgid "Do you want to install {}?"
-msgstr ""
+msgstr "Doriți instalarea {}?"
 
 #: luet_pm_gui.py:1259
 msgid "Do you want to uninstall {}?"
-msgstr ""
+msgstr "Doriți dezinstalarea {}?"
 
 #: luet_pm_gui.py:1365
 msgid "Perform a full system upgrade?"
-msgstr ""
+msgstr "Actualizare completă a sistemului?"
 
 #: luet_pm_gui.py:1368
 msgid ""
-"This will update all repositories and then upgrade all installed packages. "
-"This action may take some time and requires an internet connection."
+"This will update all repositories and then upgrade all installed packages. This "
+"action may take some time and requires an internet connection."
 msgstr ""
+"Se vor actualiza toate depozitele și apoi toate pachetele instalate. Această acțiune "
+"poate dura și necesită conexiune la Internet."
 
 #: luet_pm_gui.py:1380
 msgid "Performing full system upgrade"
-msgstr ""
+msgstr "Se efectuează actualizare completă a sistemului"
 
 #: luet_pm_gui.py:1384
 msgid "Performing full system upgrade..."
-msgstr ""
+msgstr "Se efectuează actualizare completă a sistemului..."
 
 #: luet_pm_gui.py:1406
 msgid "repositories not synced"
-msgstr ""
+msgstr "depozitele nu sunt sincronizate"
 
 #: luet_pm_gui.py:1428
 #, python-format
 msgid "%d day ago"
 msgid_plural "%d days ago"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Acum %d zi"
+msgstr[1] "Acum %d zile"
+msgstr[2] "Acum %d zile"
 
 #: luet_pm_gui.py:1433
 #, python-format
 msgid "%d hour ago"
 msgid_plural "%d hours ago"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Acum %d oră"
+msgstr[1] "Acum %d ore"
+msgstr[2] "Acum %d ore"
 
 #: luet_pm_gui.py:1438
 #, python-format
 msgid "%d minute ago"
 msgid_plural "%d minutes ago"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Acum %d minut"
+msgstr[1] "Acum %d minute"
+msgstr[2] "Acum %d minute"
 
 #: luet_pm_gui.py:1441
 msgid "just now"
-msgstr ""
+msgstr "chiar acum"
 
 #: luet_pm_gui.py:1446
 msgid "Last sync: {}"
-msgstr ""
+msgstr "Ultima sincronizare: {}"
