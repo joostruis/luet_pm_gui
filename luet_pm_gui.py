@@ -38,7 +38,7 @@ class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
         self.set_program_name(_("Luet Package Search"))
-        self.set_version("0.6.8")
+        self.set_version("0.6.9")
         self.set_website("https://www.mocaccino.org")
         self.set_website_label(_("Visit our website"))
         self.set_authors(["Joost Ruis"])
