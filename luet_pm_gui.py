@@ -785,15 +785,11 @@ class SearchApp(Gtk.Window):
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
-            "layers/X": "This layer is protected and can't be removed",
-            # Stable repositories 
-            "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
-            "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
-            "repository/mocaccino-extra-stable": "Stable repository can't be removed",         
+            "layers/X": "This layer is protected and can't be removed",        
         }
 
         self.hidden_packages = {
-            # Devel repositories we hide for now
+            # Devel repositories we hide
             "repository/mocaccino-desktop": "Devel repository",
             "repository/mocaccino-os-commons": "Devel repository",
             "repository/mocaccino-extra": "Devel repository",
@@ -801,6 +797,10 @@ class SearchApp(Gtk.Window):
             # Crucial repositories users should not remove
             "repository/luet": "This repository is crucial and can't be removed",
             "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
+            # Stable repositories 
+            "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
+            "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
+            "repository/mocaccino-extra-stable": "Stable repository can't be removed",
             # Repositories we just want to hide
             "repository/livecd": "This repository should be hidden",
             "repository/mocaccino-stage3": "Old repository, not in use anymore",
@@ -813,6 +813,9 @@ class SearchApp(Gtk.Window):
             "repository/mocaccino-musl-universe-stable": "Hide musl repo",
             "repository/mocaccino-micro": "Hide micro repo",
             "repository/mocaccino-micro-stable": "Hide micro repo",
+            "repo-updater/mocaccino-micro-stable": "Hide micro repo-updater",
+            "repo-updater/mocaccino-desktop-stable": "Hide desktop repo-updater",
+            "repo-updater/mocaccino-community-stable": "Hide desktop repo-updater",
             "kernel-5.9/debian-full": "Old repository, not in use anymore",
         }
 
