@@ -1034,7 +1034,7 @@ class SearchApp(Gtk.Window):
         self.output_textview.set_tabs(tab_array)
         
         css_provider = Gtk.CssProvider()
-        css_provider.load_from_data(b"#output_log text { font-family: monospace; } .dimmed { color: rgba(128, 128, 128, 0.8); }")
+        css_provider.load_from_data(b"#output_log text { font-family: monospace; } .dimmed { color: rgba(128, 128, 128, 0.8); } .error { color: darkorange; }")
         
         screen = Gdk.Screen.get_default()
         Gtk.StyleContext.add_provider_for_screen(screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
@@ -1128,22 +1128,23 @@ class SearchApp(Gtk.Window):
         try:
             res = self.run_command(search_command, require_root=True)
             if res.returncode != 0:
-                GLib.idle_add(self.result_label.set_text, _("Error executing the search command."))
                 GLib.idle_add(self.set_status_message, _("Error executing the search command"))
+                GLib.idle_add(self.stop_spinner, True)   # keep error visible
                 return
 
             output = (res.stdout or "").strip()
             try:
                 data = json.loads(output)
             except Exception:
-                GLib.idle_add(self.result_label.set_text, _("Invalid JSON output."))
                 GLib.idle_add(self.set_status_message, _("Invalid JSON output"))
+                GLib.idle_add(self.stop_spinner, True)   # keep error visible
                 return
 
             packages = data.get("packages") if isinstance(data, dict) else None
             if packages is None:
                 GLib.idle_add(self.liststore.clear)
                 GLib.idle_add(self.set_status_message, _("No results"))
+                GLib.idle_add(self.stop_spinner, True)
                 return
 
             def append_items():
@@ -1167,22 +1168,25 @@ class SearchApp(Gtk.Window):
                         action_text = _("Protected")
                     else:
                         action_text = _("Remove") if installed else _("Install")
+
                     self.liststore.append([category, name, version, repository, action_text, _("Details")])
+
                 n = len(self.liststore)
                 if n > 0:
                     self.set_status_message(_("Found {} results matching '{}'").format(n, self.last_search))
                 else:
                     self.set_status_message(_("No results"))
 
+                self.stop_spinner()
+
             GLib.idle_add(append_items)
 
         except Exception as e:
             print(_("Error running search:"), e)
-            GLib.idle_add(self.result_label.set_text, _("Error executing the search command."))
             GLib.idle_add(self.set_status_message, _("Error executing the search command"))
+            GLib.idle_add(self.stop_spinner, True)   # keep error visible
         finally:
             GLib.idle_add(self.enable_gui)
-            GLib.idle_add(self.stop_spinner)
 
     def on_treeview_button_clicked(self, treeview, event):
         if event.type != Gdk.EventType.BUTTON_PRESS or event.button != Gdk.BUTTON_PRIMARY:
@@ -1326,11 +1330,12 @@ class SearchApp(Gtk.Window):
             GLib.source_remove(self.spinner_timeout_id)
         self.spinner_timeout_id = GLib.timeout_add(80, self._spinner_tick, message)
 
-    def stop_spinner(self):
+    def stop_spinner(self, keep_message=False):
         if self.spinner_timeout_id:
             GLib.source_remove(self.spinner_timeout_id)
             self.spinner_timeout_id = None
-            self.set_status_message(_("Ready"))
+            if not keep_message:
+                self.set_status_message(_("Ready"))
 
     def _spinner_tick(self, message):
         self.spinner_counter = (self.spinner_counter + 1) % len(self.spinner_frames)
@@ -1345,8 +1350,15 @@ class SearchApp(Gtk.Window):
         with self.status_message_lock:
             self.status_label.set_text(message)
             style_context = self.status_label.get_style_context()
-            if message == _("Ready"):
-                style_context.remove_class("dimmed")
+
+            # Reset styles first
+            style_context.remove_class("dimmed")
+            style_context.remove_class("error")
+
+            if message == _("Ready") or message == _("No results"):
+                pass
+            elif message.lower().startswith("error"):
+                style_context.add_class("error")
             else:
                 style_context.add_class("dimmed")
 
