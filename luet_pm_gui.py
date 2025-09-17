@@ -975,6 +975,7 @@ class SearchApp(Gtk.Window):
         renderer = Gtk.CellRendererText()
         col_cat = Gtk.TreeViewColumn(_("Category"), renderer, text=0)
         col_name = Gtk.TreeViewColumn(_("Name"), renderer, text=1)
+        col_name.set_expand(True)
         col_ver = Gtk.TreeViewColumn(_("Version"), renderer, text=2)
         col_repo = Gtk.TreeViewColumn(_("Repository"), renderer, text=3)
         col_action = Gtk.TreeViewColumn(_("Action"), Gtk.CellRendererText(), text=4)
@@ -982,7 +983,6 @@ class SearchApp(Gtk.Window):
         for idx, c in enumerate([col_cat, col_name, col_ver, col_repo, col_action]):
             c.set_sort_column_id(idx)
             c.set_resizable(True)
-            c.set_expand(True)
             c.set_clickable(True)
             self.treeview.append_column(c)
 
@@ -1002,15 +1002,10 @@ class SearchApp(Gtk.Window):
         scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         scrolled.add(self.treeview)
 
-        self.result_label = Gtk.Label()
-        self.result_label.set_line_wrap(True)
-
         self.output_expander = Gtk.Expander()
         self.output_expander.set_use_markup(False)
         self.output_expander.set_label(_("Toggle output log"))
         
-        self.output_expander.set_margin_bottom(12)
-
         self.output_expander.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.output_expander.connect("enter-notify-event", self.on_expander_hover)
         self.output_expander.connect("leave-notify-event", self.on_expander_leave)
@@ -1053,7 +1048,6 @@ class SearchApp(Gtk.Window):
         main_vbox.pack_start(search_box, False, False, 0)
         main_vbox.pack_start(scrolled, True, True, 0)
         main_vbox.pack_start(self.output_expander, False, False, 0)
-        main_vbox.pack_start(self.result_label, False, False, 0)
 
         self.output_expander.hide()
 
