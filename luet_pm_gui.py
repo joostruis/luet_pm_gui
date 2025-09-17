@@ -787,9 +787,9 @@ class SearchApp(Gtk.Window):
             "layers/sys-fs": "This layer is protected and can't be removed",
             "layers/X": "This layer is protected and can't be removed",
             # Stable repositories 
-            "repository/mocaccino-desktop-stable": "Devel repository",
-            "repository/mocaccino-os-commons-stable": "Devel repository",
-            "repository/mocaccino-extra-stable": "Devel repository",         
+            "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
+            "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
+            "repository/mocaccino-extra-stable": "Stable repository can't be removed",         
         }
 
         self.hidden_packages = {
@@ -801,7 +801,7 @@ class SearchApp(Gtk.Window):
             # Crucial repositories users should not remove
             "repository/luet": "This repository is crucial and can't be removed",
             "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
-            # Repositories we just want ot hide
+            # Repositories we just want to hide
             "repository/livecd": "This repository should be hidden",
             "repository/mocaccino-stage3": "Old repository, not in use anymore",
             "repository/mocaccino-portage": "Old repository, not in use anymore",
