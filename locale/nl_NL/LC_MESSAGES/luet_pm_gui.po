@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-16 21:20+0200\n"
-"PO-Revision-Date: 2025-09-16 20:56+0200\n"
+"PO-Revision-Date: 2025-09-17 18:04+0200\n"
 "Last-Translator: Joost Ruis <joost.ruis@mocaccino.org>\n"
 "Language-Team: Dutch <vertaling@vrijschrift.org>\n"
 "Language: nl\n"
@@ -16,6 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.5\n"
 
 #: luet_pm_gui.py:40 luet_pm_gui.py:753
 msgid "Luet Package Search"
@@ -166,19 +167,16 @@ msgid "Package Details"
 msgstr "Pakketdetails"
 
 #: luet_pm_gui.py:467
-#, fuzzy
 msgid "Package:"
-msgstr "Pakketbestanden"
+msgstr "Pakketnaam:"
 
 #: luet_pm_gui.py:468
-#, fuzzy
 msgid "Version:"
-msgstr "Versie"
+msgstr "Versie:"
 
 #: luet_pm_gui.py:469
-#, fuzzy
 msgid "Installed:"
-msgstr "Installeren"
+msgstr "Geinstalleerd:"
 
 #: luet_pm_gui.py:469
 msgid "Yes"
@@ -189,17 +187,16 @@ msgid "No"
 msgstr "Nee"
 
 #: luet_pm_gui.py:510
-#, fuzzy
 msgid "Repository:"
-msgstr "Pakketbron"
+msgstr "Pakketbron:"
 
 #: luet_pm_gui.py:519
 msgid "Description:"
-msgstr "Omschrijving"
+msgstr "Omschrijving:"
 
 #: luet_pm_gui.py:525
 msgid "License:"
-msgstr "Licentie"
+msgstr "Licentie:"
 
 #: luet_pm_gui.py:532
 msgid "Required by"
@@ -247,7 +244,7 @@ msgstr "Geen bestanden gevonden voor dit pakket."
 
 #: luet_pm_gui.py:720
 msgid "revdeps failed:"
-msgstr "Omgekeerde afhankelijkheden mislukt:"
+msgstr "omgekeerde afhankelijkheden mislukt:"
 
 #: luet_pm_gui.py:729
 msgid "Error retrieving required by info:"
@@ -255,7 +252,7 @@ msgstr "Fout bij het ophalen van 'vereist door' info:"
 
 #: luet_pm_gui.py:737
 msgid "search for package failed:"
-msgstr "Zoeken naar pakket mislukt:"
+msgstr "zoeken naar pakket mislukt:"
 
 #: luet_pm_gui.py:745
 msgid "Error retrieving package files info:"
@@ -429,7 +426,7 @@ msgstr "Volledige systeemupgrade wordt uitgevoerd..."
 
 #: luet_pm_gui.py:1406
 msgid "repositories not synced"
-msgstr "Pakketbronnen niet gesynchroniseerd"
+msgstr "pakketbronnen niet gesynchroniseerd"
 
 #: luet_pm_gui.py:1428
 #, python-format
