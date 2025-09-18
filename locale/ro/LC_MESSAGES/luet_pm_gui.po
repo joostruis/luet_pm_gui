@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-09-16 21:20+0200\n"
-"PO-Revision-Date: 2025-09-17 23:02+0300\n"
+"PO-Revision-Date: 2025-09-18 07:40+0300\n"
 "Last-Translator: \n"
 "Language-Team: none\n"
 "Language: ro\n"
@@ -433,7 +433,7 @@ msgid "%d day ago"
 msgid_plural "%d days ago"
 msgstr[0] "Acum %d zi"
 msgstr[1] "Acum %d zile"
-msgstr[2] "Acum %d zile"
+msgstr[2] "Acum %d de zile"
 
 #: luet_pm_gui.py:1433
 #, python-format
@@ -441,7 +441,7 @@ msgid "%d hour ago"
 msgid_plural "%d hours ago"
 msgstr[0] "Acum %d oră"
 msgstr[1] "Acum %d ore"
-msgstr[2] "Acum %d ore"
+msgstr[2] "Acum %d de ore"
 
 #: luet_pm_gui.py:1438
 #, python-format
@@ -449,7 +449,7 @@ msgid "%d minute ago"
 msgid_plural "%d minutes ago"
 msgstr[0] "Acum %d minut"
 msgstr[1] "Acum %d minute"
-msgstr[2] "Acum %d minute"
+msgstr[2] "Acum %d de minute"
 
 #: luet_pm_gui.py:1441
 msgid "just now"
