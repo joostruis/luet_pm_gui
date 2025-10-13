@@ -1287,7 +1287,7 @@ class SearchApp(Gtk.Window):
 
         advanced = self.advanced_search_checkbox.get_active()
         if category == "apps":
-            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name), "--full", "--solver-concurrent"]
+            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name), "--solver-concurrent", "--full"]
         else:
             uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name)]
 
