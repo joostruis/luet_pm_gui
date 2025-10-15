@@ -770,6 +770,8 @@ class SearchApp(Gtk.Window):
         self.repo_update_thread = None
         self.lock = threading.Lock()
         self.status_message_lock = threading.Lock()
+        self.highlighted_row_path = None
+        self.HIGHLIGHT_COLOR = self.get_theme_highlight_color()
 
         if os.getuid() == 0:
             self.elevation_cmd = None
@@ -785,7 +787,7 @@ class SearchApp(Gtk.Window):
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
-            "layers/X": "This layer is protected and can't be removed",        
+            "layers/X": "This layer is protected and can't be removed",
         }
 
         self.hidden_packages = {
@@ -797,7 +799,7 @@ class SearchApp(Gtk.Window):
             # Crucial repositories users should not remove
             "repository/luet": "This repository is crucial and can't be removed",
             "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
-            # Stable repositories 
+            # Stable repositories
             "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
             "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
             "repository/mocaccino-extra-stable": "Stable repository can't be removed",
@@ -823,6 +825,33 @@ class SearchApp(Gtk.Window):
 
         if self.elevation_cmd is None and os.getuid() != 0:
             GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found — admin actions will fail"))
+
+    def get_theme_highlight_color(self):
+        """
+        Dynamically gets the highlight (hover) color from the current GTK theme
+        by looking up the theme's defined selection color.
+        """
+        # Create a temporary widget to get a style context from. Any widget will do.
+        temp_widget = Gtk.Label()
+        style_context = temp_widget.get_style_context()
+
+        # Use lookup_color, the modern way to get standard theme colors.
+        # 'theme_selected_bg_color' is the standard name for the main selection color.
+        found, rgba = style_context.lookup_color('theme_selected_bg_color')
+
+        if found and rgba:
+            # We found the theme's color. Now, create a slightly lighter version
+            # for a more subtle hover effect, so it doesn't look identical to a selection.
+            red = min(1.0, rgba.red + 0.2)
+            green = min(1.0, rgba.green + 0.2)
+            blue = min(1.0, rgba.blue + 0.2)
+
+            # Convert RGBA float (0.0-1.0) to 8-bit integer (0-255) for the hex string
+            r, g, b = int(red * 255), int(green * 255), int(blue * 255)
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+        # If the theme color can't be retrieved for any reason, provide a safe fallback.
+        return "#e0e0e0"
 
     # central command runner for synchronous commands
     def run_command(self, cmd_list, require_root=False):
@@ -972,7 +1001,7 @@ class SearchApp(Gtk.Window):
         spacer.set_size_request(-1, 10)
 
         self.treeview = Gtk.TreeView()
-        self.liststore = Gtk.ListStore(str, str, str, str, str, str)
+        self.liststore = Gtk.ListStore(str, str, str, str, str, str, str)
         self.treeview.set_model(self.liststore)
 
         renderer = Gtk.CellRendererText()
@@ -981,7 +1010,19 @@ class SearchApp(Gtk.Window):
         col_name.set_expand(True)
         col_ver = Gtk.TreeViewColumn(_("Version"), renderer, text=2)
         col_repo = Gtk.TreeViewColumn(_("Repository"), renderer, text=3)
-        col_action = Gtk.TreeViewColumn(_("Action"), Gtk.CellRendererText(), text=4)
+        
+        renderer_action = Gtk.CellRendererText()
+        col_action = Gtk.TreeViewColumn(_("Action"), renderer_action, text=4)
+
+        renderer_details = Gtk.CellRendererText()
+        col_details = Gtk.TreeViewColumn(_("Details"), renderer_details, text=5)
+
+        col_cat.add_attribute(renderer, "cell-background", 6)
+        col_name.add_attribute(renderer, "cell-background", 6)
+        col_ver.add_attribute(renderer, "cell-background", 6)
+        col_repo.add_attribute(renderer, "cell-background", 6)
+        col_action.add_attribute(renderer_action, "cell-background", 6)
+        col_details.add_attribute(renderer_details, "cell-background", 6)
 
         for idx, c in enumerate([col_cat, col_name, col_ver, col_repo, col_action]):
             c.set_sort_column_id(idx)
@@ -991,7 +1032,6 @@ class SearchApp(Gtk.Window):
 
         col_action.set_resizable(False)
         col_action.set_expand(False)
-        col_details = Gtk.TreeViewColumn(_("Details"), Gtk.CellRendererText(), text=5)
         col_details.set_resizable(False)
         col_details.set_expand(False)
         self.treeview.append_column(col_details)
@@ -1166,7 +1206,7 @@ class SearchApp(Gtk.Window):
                     else:
                         action_text = _("Remove") if installed else _("Install")
 
-                    self.liststore.append([category, name, version, repository, action_text, _("Details")])
+                    self.liststore.append([category, name, version, repository, action_text, _("Details"), None])
 
                 n = len(self.liststore)
                 if n > 0:
@@ -1230,8 +1270,21 @@ class SearchApp(Gtk.Window):
 
     def on_treeview_motion(self, treeview, event):
         hit = treeview.get_path_at_pos(int(event.x), int(event.y))
+
+        if self.highlighted_row_path is not None:
+            try:
+                iter_ = self.liststore.get_iter(self.highlighted_row_path)
+                self.liststore[iter_][6] = None
+            except ValueError:
+                pass
+            self.highlighted_row_path = None
+
         if hit:
             path, col, _, _ = hit
+            iter_ = self.liststore.get_iter(path)
+            self.liststore[iter_][6] = self.HIGHLIGHT_COLOR
+            self.highlighted_row_path = path
+
             if col == treeview.get_column(4) or col == treeview.get_column(5):
                 self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer'))
             else:
@@ -1240,7 +1293,14 @@ class SearchApp(Gtk.Window):
             self.set_cursor(None)
 
     def on_treeview_leave(self, treeview, event):
-            self.set_cursor(None)
+        if self.highlighted_row_path is not None:
+            try:
+                iter_ = self.liststore.get_iter(self.highlighted_row_path)
+                self.liststore[iter_][6] = None
+            except ValueError:
+                pass
+            self.highlighted_row_path = None
+        self.set_cursor(None)
 
     def set_cursor(self, cursor):
         window = self.get_window()
