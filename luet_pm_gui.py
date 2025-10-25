@@ -32,7 +32,7 @@ _ = gettext.gettext
 ngettext = gettext.ngettext
 
 # -------------------------
-# About dialog
+# About dialog (Pure GUI)
 # -------------------------
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
@@ -68,9 +68,14 @@ class AboutDialog(Gtk.AboutDialog):
         self.connect("response", lambda d, r: d.destroy())
 
 # -------------------------
-# Helpers: repo updater, system checker, package operations
+# Helpers: Core Logic Classes
+# (Decoupled from GUI)
 # -------------------------
 class RepositoryUpdater:
+    """
+    Runs the luet repo update command.
+    This class is already decoupled and uses callbacks.
+    """
     @staticmethod
     def run_repo_update(
         command_runner,  # Replaces app.run_command_realtime
@@ -113,11 +118,16 @@ class RepositoryUpdater:
             GLib.idle_add(on_finish_callback, inhibit_cookie)
 
 class SystemChecker:
+    """
+    Checks the system for missing files and can trigger a repair.
+    This class is already decoupled and uses callbacks.
+    """
     @staticmethod
     def _parse_reinstall_candidates(output):
         """
         Parses oscheck output to find packages with missing files.
         It looks for the 'category/package' format to be used for luet reinstall.
+        (Core Logic)
         """
         candidates = {}
         import re
@@ -171,6 +181,7 @@ class SystemChecker:
     ):
         """
         Kicks off the system check process in a separate thread.
+        (GUI-facing starter)
         """
         import threading
         t = threading.Thread(
@@ -203,6 +214,7 @@ class SystemChecker:
     ):
         """
         Performs the system check and optional reinstallation logic.
+        (Core Logic)
         """
         
         status_message = None 
@@ -309,15 +321,38 @@ class SystemChecker:
                 on_thread_exit_callback(_("Ready"))
 
 class SystemUpgrader:
-    def __init__(self, app):
-        self.app = app
+    """
+    Runs the full system upgrade logic.
+    Decoupled via callbacks injected in __init__.
+    """
+    def __init__(
+        self, 
+        command_runner_realtime, 
+        log_callback, 
+        status_callback, 
+        schedule_callback, 
+        post_action_callback, 
+        on_finish_callback,
+        inhibit_cookie,
+        translation_func
+    ):
+        self.command_runner = command_runner_realtime
+        self.log_callback = log_callback
+        self.status_callback = status_callback
+        self.schedule_callback = schedule_callback
+        self.post_action_callback = post_action_callback
+        self.on_finish_callback = on_finish_callback
+        self.inhibit_cookie = inhibit_cookie
+        self._ = translation_func
+        
         self.collected_lines = []
 
     def start_upgrade(self):
+        """This is the main worker function, run in a thread."""
         try:
             # We use 'sh -c' to correctly handle the '&&' operator
             upgrade_cmd = ["sh", "-c", "luet repo update && luet upgrade -y"]
-            self.app.run_command_realtime(
+            self.command_runner(
                 upgrade_cmd,
                 require_root=True,
                 on_line_received=self._on_line_first_run,
@@ -325,67 +360,62 @@ class SystemUpgrader:
             )
         except Exception as e:
             print("Exception during system upgrade:", e)
-            self._finalize(-1, _("Error starting upgrade process"))
+            self._finalize(-1, self._("Error starting upgrade process"))
 
     def _on_line_first_run(self, line):
         self.collected_lines.append(line)
-        self.app.append_to_log(line)
+        self.log_callback(line)
 
     def _on_first_run_done(self, returncode):
         if returncode != 0:
-            self._finalize(returncode, _("Error during initial upgrade step"))
+            self._finalize(returncode, self._("Error during initial upgrade step"))
             return
 
         needs_second_run = any("Executing finalizer for repo-updater/" in line for line in self.collected_lines)
 
         if needs_second_run:
-            GLib.idle_add(self._run_second_upgrade)
+            # Use the injected scheduler (e.g., GLib.idle_add)
+            self.schedule_callback(self._run_second_upgrade)
         else:
-            self._finalize(returncode, _("System upgrade completed successfully"))
+            self._finalize(returncode, self._("System upgrade completed successfully"))
 
     def _run_second_upgrade(self):
-        status_msg = _("\n--- Repositories updated, continuing with package upgrade... ---\n\n")
-        GLib.idle_add(self.app.set_status_message, _("Continuing with package upgrade..."))
-        buf = self.app.output_textview.get_buffer()
-        buf.insert(buf.get_end_iter(), status_msg, -1)
+        status_msg = self._("\n--- Repositories updated, continuing with package upgrade... ---\n\n")
+        self.status_callback(self._("Continuing with package upgrade..."))
+        self.log_callback(status_msg)
 
         try:
             second_upgrade_cmd = ["luet", "upgrade", "-y"]
-            self.app.run_command_realtime(
+            self.command_runner(
                 second_upgrade_cmd,
                 require_root=True,
-                on_line_received=self.app.append_to_log,
-                on_finished=lambda rc: self._finalize(rc, _("System upgrade completed successfully"))
+                on_line_received=self.log_callback,
+                on_finished=lambda rc: self._finalize(rc, self._("System upgrade completed successfully"))
             )
         except Exception as e:
             print("Exception during second upgrade step:", e)
-            self._finalize(-1, _("Error starting second upgrade step"))
+            self._finalize(-1, self._("Error starting second upgrade step"))
 
     def _finalize(self, returncode, success_message):
+        """
+        Calls the final callbacks provided by the GUI.
+        Note: This is already running in the main thread thanks to on_finished.
+        """
+        # Call the GUI's on_finish handler
+        self.on_finish_callback(returncode, success_message)
 
-        # Uninhibit idle/screensaver now that the task is done
-        if self.app.inhibit_cookie:
-            self.app.get_application().uninhibit(self.app.inhibit_cookie)
-            self.app.inhibit_cookie = None
-
-        GLib.idle_add(self.app.stop_spinner)
+        # Run post-action if successful
         if returncode == 0:
-            GLib.idle_add(self.app.set_status_message, success_message)
-            GLib.idle_add(self.app.update_sync_info_label)
-            PackageOperations._run_kbuildsycoca6()
-        else:
-            # Use the provided error message if returncode is not 0
-            error_msg = _("Error during system upgrade") if success_message.startswith("System") else success_message
-            GLib.idle_add(self.app.set_status_message, error_msg)
-        GLib.idle_add(self.app.enable_gui)
-        GLib.idle_add(self.app.set_status_message, _("Ready"))
+            self.post_action_callback()
 
 class CacheCleaner:
-    def __init__(self, app):
-        self.app = app
-
+    """
+    Static helper class for cache operations.
+    Contains only core logic.
+    """
     @staticmethod
     def get_cache_size_bytes():
+        """(Core Logic)"""
         try:
             res = subprocess.run(
                 ["du", "-sb", "/var/luet/db/packages/"],
@@ -397,74 +427,44 @@ class CacheCleaner:
             print("Error checking Luet cache size:", e)
         return None
 
-    def update_menu_item(self):
-        size_bytes = self.get_cache_size_bytes()
-        if size_bytes and size_bytes > 4096:
-            try:
-                res = subprocess.run(
-                    ["du", "-hs", "/var/luet/db/packages/"],
-                    stdout=subprocess.PIPE, text=True
-                )
-                if res.returncode == 0:
-                    human = res.stdout.split("\t", 1)[0].strip()
-                else:
-                    human = f"{size_bytes}B"
-            except Exception:
-                human = f"{size_bytes}B"
+    @staticmethod
+    def get_cache_size_human(size_bytes):
+        """(Core Logic)"""
+        if not size_bytes or size_bytes <= 4096:
+            return None
+        try:
+            res = subprocess.run(
+                ["du", "-hs", "/var/luet/db/packages/"],
+                stdout=subprocess.PIPE, text=True
+            )
+            if res.returncode == 0:
+                return res.stdout.split("\t", 1)[0].strip()
+        except Exception:
+            pass
+        return f"{size_bytes}B" # Fallback
 
-            self.app.clear_cache_item.set_sensitive(True)
-            self.app.clear_cache_item.set_label(_("Clear Luet cache ({})").format(human))
-        else:
-            self.app.clear_cache_item.set_sensitive(False)
-            self.app.clear_cache_item.set_label(_("Clear Luet cache"))
-
-    def run_cleanup(self):
-        dlg = Gtk.MessageDialog(
-            parent=self.app,
-            modal=True,
-            message_type=Gtk.MessageType.QUESTION,
-            buttons=Gtk.ButtonsType.YES_NO,
-            text=_("Clear Luet cache?"),
-        )
-        dlg.format_secondary_text(
-            _("This will run 'luet cleanup' and remove cached package data.")
-        )
-        response = dlg.run()
-        dlg.destroy()
-        if response != Gtk.ResponseType.YES:
-            return
-
-        self.app.output_textview.get_buffer().set_text("")
-        self.app.output_expander.show()
-        self.app.output_expander.set_expanded(True)
-
-        self.app.disable_gui()
-        self.app.start_spinner(_("Clearing Luet cache..."))
-
-        def on_done(returncode):
-            GLib.idle_add(self.app.stop_spinner)
-            if returncode != 0:
-                GLib.idle_add(self.app.set_status_message, _("Error clearing Luet cache"))
-            else:
-                GLib.idle_add(self.app.set_status_message, _("Ready"))
-
-            GLib.idle_add(self.app.enable_gui)
-            GLib.idle_add(self.update_menu_item)
-
+    @staticmethod
+    def run_cleanup_core(command_runner, log_callback, on_finish):
+        """(Core Logic) Starts the cleanup command."""
         t = threading.Thread(
-            target=lambda: self.app.run_command_realtime(
+            target=lambda: command_runner(
                 ["luet", "cleanup"],
                 require_root=True,
-                on_line_received=self.app.append_to_log,
-                on_finished=on_done
+                on_line_received=log_callback,
+                on_finished=on_finish
             ),
             daemon=True
         )
         t.start()
 
 class PackageOperations:
+    """
+    Static helper class for package operations.
+    Contains only core logic.
+    """
     @staticmethod
     def _run_kbuildsycoca6():
+        """(Core Logic)"""
         kbuild_path = shutil.which("kbuildsycoca6")
         if kbuild_path:
             try:
@@ -473,89 +473,133 @@ class PackageOperations:
                 pass
 
     @staticmethod
-    def run_installation(app, install_cmd_list, package_name, advanced_search):
-        # The on_line function is no longer needed here.
-
-        def on_done(returncode):
-            GLib.idle_add(app.stop_spinner)
-            if returncode == 0:
-                PackageOperations._run_kbuildsycoca6()
-                if app.last_search:
-                    search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
-                    if advanced_search:
-                        search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
-                    GLib.idle_add(app.clear_liststore)
-                    GLib.idle_add(app.start_spinner, _("Searching again for '{}'...").format(app.last_search))
-                    app.start_search_thread(search_cmd)
-                else:
-                    GLib.idle_add(app.set_status_message, _("Ready"))
-            else:
-                GLib.idle_add(app.set_status_message, _("Error installing package"))
-            GLib.idle_add(app.enable_gui)
-
-        try:
-            GLib.idle_add(app.set_status_message, _("Installing {}...").format(package_name))
-            GLib.idle_add(app.output_textview.get_buffer().set_text, "")
-            GLib.idle_add(app.output_expander.show)
-            GLib.idle_add(app.output_expander.set_expanded, True)
-            app.run_command_realtime(
-                install_cmd_list,
-                require_root=True,
-                on_line_received=app.append_to_log,
-                on_finished=on_done
-            )
-        except Exception as e:
-            print("Exception launching installation thread:", e)
-            GLib.idle_add(app.set_status_message, _("Error installing package"))
-            GLib.idle_add(app.output_expander.hide)
-            GLib.idle_add(app.enable_gui)
+    def run_installation(command_runner, log_callback, on_finish_callback, install_cmd_list):
+        """(Core Logic) Runs the install command."""
+        # The try/except for thread launch is handled by the GUI caller
+        command_runner(
+            install_cmd_list,
+            require_root=True,
+            on_line_received=log_callback,
+            on_finished=on_finish_callback
+        )
 
     @staticmethod
-    def run_uninstallation(app, uninstall_cmd_list, category, package_name, advanced_search):
-        pkg_fullname = "{}/{}".format(category, package_name)
+    def run_uninstallation(command_runner, log_callback, on_finish_callback, uninstall_cmd_list):
+        """(Core Logic) Runs the uninstall command."""
+        # The try/except for thread launch is handled by the GUI caller
+        command_runner(
+            uninstall_cmd_list,
+            require_root=True,
+            on_line_received=log_callback,
+            on_finished=on_finish_callback
+        )
 
-        def on_done(returncode):
-            GLib.idle_add(app.stop_spinner)
-            if returncode == 0:
-                PackageOperations._run_kbuildsycoca6()
-                if app.last_search:
-                    search_cmd = ["luet", "search", "-o", "json", "-q", app.last_search]
-                    if advanced_search:
-                        search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", app.last_search]
-                    GLib.idle_add(app.clear_liststore)
-                    GLib.idle_add(app.start_spinner, _("Searching again for '{}'...").format(app.last_search))
-                    app.start_search_thread(search_cmd)
-                else:
-                    GLib.idle_add(app.set_status_message, _("Ready"))
-            else:
-                GLib.idle_add(app.set_status_message, _("Error uninstalling package: '{}'").format(pkg_fullname))
-            GLib.idle_add(app.enable_gui)
-
+class PackageSearcher:
+    """
+    Static helper class for package search operations.
+    Contains only core logic.
+    """
+    @staticmethod
+    def run_search_core(command_runner_sync, search_command):
+        """
+        Runs the search command, parses JSON, and returns a data dict.
+        (Core Logic)
+        """
         try:
-            GLib.idle_add(app.set_status_message, _("Uninstalling {}...").format(pkg_fullname))
-            GLib.idle_add(app.output_textview.get_buffer().set_text, "")
-            GLib.idle_add(app.output_expander.show)
-            GLib.idle_add(app.output_expander.set_expanded, True)
-            app.run_command_realtime(
-                uninstall_cmd_list,
-                require_root=True,
-                on_line_received=app.append_to_log,
-                on_finished=on_done
-            )
+            res = command_runner_sync(search_command, require_root=True)
+            if res.returncode != 0:
+                print("Search error:", res.stderr)
+                return {"error": _("Error executing the search command")}
+            
+            output = (res.stdout or "").strip()
+            if not output:
+                 return {"packages": []} # No results
+            
+            data = json.loads(output)
+            
+            packages = data.get("packages") if isinstance(data, dict) else None
+            if packages is None:
+                return {"packages": []} # No results
+                
+            return {"packages": packages}
+        except json.JSONDecodeError:
+            print("Search error: Invalid JSON")
+            return {"error": _("Invalid JSON output")}
         except Exception as e:
-            print("Exception launching uninstallation thread:", e)
-            GLib.idle_add(app.set_status_message, _("Error uninstalling package"))
-            GLib.idle_add(app.output_expander.hide)
-            GLib.idle_add(app.enable_gui)
+            print(_("Error running search:"), e)
+            return {"error": _("Error executing the search command")}
+
+class SyncInfo:
+    """
+    Static helper class for getting repo sync time.
+    Contains only core logic.
+    """
+    @staticmethod
+    def parse_timestamp(ts):
+        """(Core Logic)"""
+        try:
+            if ts.endswith('Z'):
+                ts = ts[:-1]
+            try:
+                return datetime.datetime.fromisoformat(ts)
+            except Exception:
+                return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            return None
+
+    @staticmethod
+    def humanize_time_ago(dt):
+        """(Core Logic)"""
+        if dt.tzinfo is None:
+            now = datetime.datetime.now()
+        else:
+            now = datetime.datetime.now(dt.tzinfo)
+        delta = now - dt
+
+        if delta.days > 0:
+            return ngettext(
+                "%d day ago", "%d days ago", delta.days
+            ) % delta.days
+        elif delta.seconds >= 3600:
+            hours = delta.seconds // 3600
+            return ngettext(
+                "%d hour ago", "%d hours ago", hours
+            ) % hours
+        elif delta.seconds >= 60:
+            minutes = delta.seconds // 60
+            return ngettext(
+                "%d minute ago", "%d minutes ago", minutes
+            ) % minutes
+        else:
+            return _("just now")
+
+    @staticmethod
+    def get_last_sync_time():
+        """(Core Logic)"""
+        sync_file_path = "/var/luet/db/repos/luet/SYNCTIME"
+        try:
+            with open(sync_file_path, 'r') as f:
+                timestamp = f.read().strip()
+                sync_dt = SyncInfo.parse_timestamp(timestamp)
+                if sync_dt:
+                    time_ago = SyncInfo.humanize_time_ago(sync_dt)
+                    return {"datetime": sync_dt.strftime("%Y-%m-%dT%H:%M:%S"), "ago": time_ago}
+        except (IOError, ValueError):
+            pass
+        return {"datetime": "N/A", "ago": _("repositories not synced")}
 
 # -------------------------
-# Package Details popup (uses app.run_command so elevation works)
+# Package Details popup (GUI class)
 # -------------------------
 class PackageDetailsPopup(Gtk.Window):
-    def __init__(self, app, package_info):
+    def __init__(self, run_command_func, package_info):
+        """
+        __init__ is decoupled:
+        - Receives run_command_func instead of the whole 'app' object.
+        """
         super().__init__(title=_("Package Details"))
         self.set_default_size(900, 400)
-        self.app = app
+        self.run_command_sync = run_command_func # Injected dependency
         self.package_info = package_info
         self.loaded_package_files = {}
         self.all_files = []
@@ -727,7 +771,8 @@ class PackageDetailsPopup(Gtk.Window):
     def load_definition_yaml(self, repository, category, name, version):
         try:
             path = "/var/luet/db/repos/{}/treefs/{}/{}/{}/definition.yaml".format(repository, category, name, version)
-            res = self.app.run_command(["cat", path], require_root=True)
+            # Use the injected synchronous command runner
+            res = self.run_command_sync(["cat", path], require_root=True)
             if res.returncode != 0:
                 print("Error reading definition.yaml:", res.stderr)
                 return None
@@ -845,7 +890,8 @@ class PackageDetailsPopup(Gtk.Window):
     def get_required_by_info(self, category, name):
         try:
             cmd = ["luet", "search", "--revdeps", "{}/{}".format(category, name), "-q", "--installed", "-o", "json"]
-            res = self.app.run_command(cmd, require_root=True)
+            # Use the injected synchronous command runner
+            res = self.run_command_sync(cmd, require_root=True)
             if res.returncode != 0:
                 print(_("revdeps failed:"), res.stderr)
                 return None
@@ -862,7 +908,8 @@ class PackageDetailsPopup(Gtk.Window):
     def get_package_files_info(self, category, name):
         try:
             cmd = ["luet", "search", "{}/{}".format(category, name), "-o", "json"]
-            res = self.app.run_command(cmd, require_root=True)
+            # Use the injected synchronous command runner
+            res = self.run_command_sync(cmd, require_root=True)
             if res.returncode != 0:
                 print(_("search for package failed:"), res.stderr)
                 return None
@@ -876,7 +923,7 @@ class PackageDetailsPopup(Gtk.Window):
             return None
 
 # -------------------------
-# Main application window
+# Main application window (GUI class)
 # -------------------------
 class SearchApp(Gtk.Window):
     def __init__(self, app):
@@ -973,8 +1020,15 @@ class SearchApp(Gtk.Window):
         # If the theme color can't be retrieved for any reason, provide a safe fallback.
         return "#e0e0e0"
 
-    # central command runner for synchronous commands
+    # ---------------------------------
+    # Command Runners (Injected into core classes)
+    # ---------------------------------
+
     def run_command(self, cmd_list, require_root=False):
+        """
+        Synchronous command runner.
+        This is the "implementation" passed to PackageDetailsPopup.
+        """
         final = list(cmd_list)
         if require_root and os.getuid() != 0:
             if self.elevation_cmd:
@@ -991,17 +1045,17 @@ class SearchApp(Gtk.Window):
             r.stderr = str(e)
             return r
 
-    def periodic_sync_check(self):
-            self.update_sync_info_label()
-            return True  # Return True to keep the timer running
-
-    # Command runner for real-time output
     def run_command_realtime(self, cmd_list, require_root, on_line_received, on_finished):
+        """
+        Asynchronous command runner.
+        This is the "implementation" passed to core classes.
+        """
         final = list(cmd_list)
         if require_root and os.getuid() != 0:
             if self.elevation_cmd:
                 final = self.elevation_cmd + final
             else:
+                # Call on_finished from the main thread with an error
                 GLib.idle_add(on_finished, -1)
                 return
 
@@ -1022,9 +1076,11 @@ class SearchApp(Gtk.Window):
                         line = line[5:]
                     elif line.startswith(" ERROR "):
                         line = line[6:]
+                    # Schedule the callback on the main GLib thread
                     GLib.idle_add(on_line_received, line)
                 process.stdout.close()
                 return_code = process.wait()
+                # Schedule the final callback on the main GLib thread
                 GLib.idle_add(on_finished, return_code)
             except Exception as e:
                 error_line = _("\nError executing command: {}\n").format(e)
@@ -1033,6 +1089,10 @@ class SearchApp(Gtk.Window):
 
         thread = threading.Thread(target=thread_func, daemon=True)
         thread.start()
+
+    # ---------------------------------
+    # GUI Initialization
+    # ---------------------------------
 
     def create_menu(self, menu_bar):
         file_menu = Gtk.Menu()
@@ -1051,7 +1111,8 @@ class SearchApp(Gtk.Window):
         file_menu.append(check_system_item)
 
         self.clear_cache_item = Gtk.MenuItem(label=_("Clear Luet cache"))
-        self.clear_cache_item.connect("activate", lambda w: self.cache_cleaner.run_cleanup())
+        # Refactored: Connects to a dedicated GUI handler
+        self.clear_cache_item.connect("activate", self.on_clear_cache_clicked)
         file_menu.append(self.clear_cache_item)
 
         quit_item = Gtk.MenuItem(label=_("Quit"))
@@ -1220,13 +1281,17 @@ class SearchApp(Gtk.Window):
         self.spinner_counter = 0
         self.spinner_timeout_id = None
 
+        # Start recurring timers
         GLib.idle_add(self.update_sync_info_label)
-        # Start a recurring timer to check the sync time every 3 minutes
         GLib.timeout_add_seconds(60, self.periodic_sync_check)
 
-        self.cache_cleaner = CacheCleaner(self)
-        GLib.idle_add(self.cache_cleaner.update_menu_item)
-        GLib.timeout_add_seconds(60, lambda: self.cache_cleaner.update_menu_item() or True)
+        # Refactored: No instance, just call GUI update function
+        GLib.idle_add(self._update_cache_menu_item)
+        GLib.timeout_add_seconds(60, lambda: self._update_cache_menu_item() or True)
+
+    # ---------------------------------
+    # GUI State & Event Handlers
+    # ---------------------------------
 
     def on_expander_hover(self, widget, event):
         window = widget.get_window()
@@ -1264,6 +1329,10 @@ class SearchApp(Gtk.Window):
         self.treeview.set_sensitive(True)
 
     def on_search_clicked(self, widget):
+        """
+        GUI Handler for search.
+        Refactored to use PackageSearcher.
+        """
         package_name = self.search_entry.get_text().strip()
         if not package_name:
             return
@@ -1278,72 +1347,71 @@ class SearchApp(Gtk.Window):
         self.start_spinner(_("Searching for {}...").format(package_name))
         self.disable_gui()
 
+        # Start the thread, which calls the core logic
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
         self.search_thread.start()
 
     def run_search(self, search_command):
+        """
+        Worker thread function for search.
+        Calls core logic and schedules GUI update.
+        """
+        # Call the decoupled core logic
+        result_data = PackageSearcher.run_search_core(self.run_command, search_command)
+        
+        # Schedule the GUI update on the main thread
+        GLib.idle_add(self.on_search_finished, result_data)
+
+    def on_search_finished(self, result):
+        """
+        GUI callback for when search is complete.
+        Runs in the main thread.
+        """
         try:
-            res = self.run_command(search_command, require_root=True)
-            if res.returncode != 0:
-                GLib.idle_add(self.set_status_message, _("Error executing the search command"))
-                GLib.idle_add(self.stop_spinner, True)   # keep error visible
+            if "error" in result:
+                self.set_status_message(result["error"])
+                self.stop_spinner(True)   # keep error visible
                 return
 
-            output = (res.stdout or "").strip()
-            try:
-                data = json.loads(output)
-            except Exception:
-                GLib.idle_add(self.set_status_message, _("Invalid JSON output"))
-                GLib.idle_add(self.stop_spinner, True)   # keep error visible
-                return
+            packages = result.get("packages", [])
+            self.liststore.clear()
+            
+            for pkg in packages:
+                category = pkg.get("category", "")
+                name = pkg.get("name", "")
+                version = pkg.get("version", "")
+                repository = pkg.get("repository", "")
+                installed = pkg.get("installed", False)
+                key = "{}/{}".format(category, name)
 
-            packages = data.get("packages") if isinstance(data, dict) else None
-            if packages is None:
-                GLib.idle_add(self.liststore.clear)
-                GLib.idle_add(self.set_status_message, _("No results"))
-                GLib.idle_add(self.stop_spinner, True)
-                return
+                # Hide all packages from the "entity" category
+                if category == "entity":
+                    continue
 
-            def append_items():
-                self.liststore.clear()
-                for pkg in packages:
-                    category = pkg.get("category", "")
-                    name = pkg.get("name", "")
-                    version = pkg.get("version", "")
-                    repository = pkg.get("repository", "")
-                    installed = pkg.get("installed", False)
-                    key = "{}/{}".format(category, name)
+                if key in self.hidden_packages:
+                    continue
 
-                    # Hide all packages from the "entity" category
-                    if category == "entity":
-                        continue
-
-                    if key in self.hidden_packages:
-                        continue
-
-                    if key in self.protected_applications:
-                        action_text = _("Protected")
-                    else:
-                        action_text = _("Remove") if installed else _("Install")
-
-                    self.liststore.append([category, name, version, repository, action_text, _("Details"), None])
-
-                n = len(self.liststore)
-                if n > 0:
-                    self.set_status_message(_("Found {} results matching '{}'").format(n, self.last_search))
+                if key in self.protected_applications:
+                    action_text = _("Protected")
                 else:
-                    self.set_status_message(_("No results"))
+                    action_text = _("Remove") if installed else _("Install")
 
-                self.stop_spinner()
+                self.liststore.append([category, name, version, repository, action_text, _("Details"), None])
 
-            GLib.idle_add(append_items)
+            n = len(self.liststore)
+            if n > 0:
+                self.set_status_message(_("Found {} results matching '{}'").format(n, self.last_search))
+            else:
+                self.set_status_message(_("No results"))
+
+            self.stop_spinner()
 
         except Exception as e:
-            print(_("Error running search:"), e)
-            GLib.idle_add(self.set_status_message, _("Error executing the search command"))
-            GLib.idle_add(self.stop_spinner, True)   # keep error visible
+            print(_("Error processing search results:"), e)
+            self.set_status_message(_("Error displaying search results"))
+            self.stop_spinner(True)
         finally:
-            GLib.idle_add(self.enable_gui)
+            self.enable_gui()
 
     def on_treeview_button_clicked(self, treeview, event):
         if event.type != Gdk.EventType.BUTTON_PRESS or event.button != Gdk.BUTTON_PRIMARY:
@@ -1441,6 +1509,10 @@ class SearchApp(Gtk.Window):
         dlg.destroy()
 
     def confirm_install(self, iter_):
+        """
+        GUI Handler for installation.
+        Refactored to use PackageOperations.run_installation.
+        """
         category = self.liststore.get_value(iter_, 0)
         name = self.liststore.get_value(iter_, 1)
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to install {}?").format(name))
@@ -1451,14 +1523,62 @@ class SearchApp(Gtk.Window):
 
         advanced = self.advanced_search_checkbox.get_active()
         install_cmd = ["luet", "install", "-y", "{}/{}".format(category, name)]
+        
         self.disable_gui()
         self.start_spinner(_("Installing {}...").format(name))
 
-        PackageOperations.run_installation(self, install_cmd, name, advanced)
+        # --- GUI Prep ---
+        self.set_status_message(_("Installing {}...").format(name))
+        self.output_textview.get_buffer().set_text("")
+        self.output_expander.show()
+        self.output_expander.set_expanded(True)
+
+        def on_install_done(returncode):
+            """
+            GUI Callback for when installation finishes.
+            This runs in the main thread.
+            """
+            self.stop_spinner()
+            if returncode == 0:
+                PackageOperations._run_kbuildsycoca6()
+                if self.last_search:
+                    search_cmd = ["luet", "search", "-o", "json", "-q", self.last_search]
+                    if advanced:
+                        search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", self.last_search]
+                    self.clear_liststore()
+                    self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
+                    self.start_search_thread(search_cmd)
+                else:
+                    self.set_status_message(_("Ready"))
+            else:
+                self.set_status_message(_("Error installing package"))
+            self.enable_gui()
+
+        try:
+            # Call the decoupled core logic
+            PackageOperations.run_installation(
+                self.run_command_realtime,
+                self.append_to_log,
+                on_install_done,
+                install_cmd
+            )
+        except Exception as e:
+            # Handle exception during *launch*
+            print("Exception launching installation thread:", e)
+            self.set_status_message(_("Error installing package"))
+            self.output_expander.hide()
+            self.enable_gui()
+            self.stop_spinner()
 
     def confirm_uninstall(self, iter_):
+        """
+        GUI Handler for uninstallation.
+        Refactored to use PackageOperations.run_uninstallation.
+        """
         category = self.liststore.get_value(iter_, 0)
         name = self.liststore.get_value(iter_, 1)
+        pkg_fullname = "{}/{}".format(category, name)
+
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to uninstall {}?").format(name))
         res = dlg.run()
         dlg.destroy()
@@ -1467,19 +1587,64 @@ class SearchApp(Gtk.Window):
 
         advanced = self.advanced_search_checkbox.get_active()
         if category == "apps":
-            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name), "--solver-concurrent", "--full"]
+            uninstall_cmd = ["luet", "uninstall", "-y", pkg_fullname, "--solver-concurrent", "--full"]
         else:
-            uninstall_cmd = ["luet", "uninstall", "-y", "{}/{}".format(category, name)]
+            uninstall_cmd = ["luet", "uninstall", "-y", pkg_fullname]
 
         self.disable_gui()
         self.start_spinner(_("Uninstalling {}...").format(name))
 
-        PackageOperations.run_uninstallation(self, uninstall_cmd, category, name, advanced)
+        # --- GUI Prep ---
+        self.set_status_message(_("Uninstalling {}...").format(pkg_fullname))
+        self.output_textview.get_buffer().set_text("")
+        self.output_expander.show()
+        self.output_expander.set_expanded(True)
+        
+        def on_uninstall_done(returncode):
+            """
+            GUI Callback for when uninstallation finishes.
+            This runs in the main thread.
+            """
+            self.stop_spinner()
+            if returncode == 0:
+                PackageOperations._run_kbuildsycoca6()
+                if self.last_search:
+                    search_cmd = ["luet", "search", "-o", "json", "-q", self.last_search]
+                    if advanced:
+                        search_cmd = ["luet", "search", "-o", "json", "--by-label-regex", self.last_search]
+                    self.clear_liststore()
+                    self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
+                    self.start_search_thread(search_cmd)
+                else:
+                    self.set_status_message(_("Ready"))
+            else:
+                self.set_status_message(_("Error uninstalling package: '{}'").format(pkg_fullname))
+            self.enable_gui()
+
+        try:
+            # Call the decoupled core logic
+            PackageOperations.run_uninstallation(
+                self.run_command_realtime,
+                self.append_to_log,
+                on_uninstall_done,
+                uninstall_cmd
+            )
+        except Exception as e:
+            # Handle exception during *launch*
+            print("Exception launching uninstallation thread:", e)
+            self.set_status_message(_("Error uninstalling package"))
+            self.output_expander.hide()
+            self.enable_gui()
+            self.stop_spinner()
 
     def clear_liststore(self):
         self.liststore.clear()
 
     def show_package_details_popup(self, package_info):
+        """
+        GUI Handler for showing details.
+        Refactored to pass self.run_command, not self.
+        """
         category = package_info.get("category", "")
         name = package_info.get("name", "")
         repository = ""
@@ -1492,7 +1657,10 @@ class SearchApp(Gtk.Window):
             iter_ = self.liststore.iter_next(iter_)
 
         package_info["repository"] = repository
-        popup = PackageDetailsPopup(self, package_info)
+        
+        # Inject the command runner function into the popup
+        popup = PackageDetailsPopup(self.run_command, package_info)
+        
         popup.set_modal(True)
         popup.connect("destroy", lambda w: self.enable_gui())
         popup.show_all()
@@ -1501,6 +1669,10 @@ class SearchApp(Gtk.Window):
     def start_search_thread(self, search_cmd):
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
         self.search_thread.start()
+
+    # ---------------------------------
+    # GUI Status & Logging
+    # ---------------------------------
 
     def start_spinner(self, message):
         if self.spinner_timeout_id:
@@ -1553,15 +1725,18 @@ class SearchApp(Gtk.Window):
         
         GLib.idle_add(scroll_to_end)
 
+    # ---------------------------------
+    # Menu Action Handlers (GUI)
+    # ---------------------------------
+
     def update_repositories(self, widget):
+            """GUI Handler for repo update."""
             # --- GUI Setup/Prep (explicitly managed by the GUI class) ---
             self.disable_gui()
             self.start_spinner(_("Updating repositories..."))
-            # Clear the log output
-            GLib.idle_add(self.output_textview.get_buffer().set_text, "")
-            # Ensure the log area is visible
-            GLib.idle_add(self.output_expander.show)
-            GLib.idle_add(self.output_expander.set_expanded, True)
+            self.output_textview.get_buffer().set_text("")
+            self.output_expander.show()
+            self.output_expander.set_expanded(True)
             # --- End GUI Setup ---
 
             # Get the main application instance
@@ -1633,15 +1808,14 @@ class SearchApp(Gtk.Window):
             t.start()
 
     def check_system(self, widget=None):
-            import threading
+            """GUI Handler for system check."""
             import time 
             # --- GUI Setup/Prep ---
             self.disable_gui()
-            # FIX: Use the original required status text
             self.start_spinner(_("Checking system for missing files...")) 
-            GLib.idle_add(self.output_textview.get_buffer().set_text, "")
-            GLib.idle_add(self.output_expander.show)
-            GLib.idle_add(self.output_expander.set_expanded, True)
+            self.output_textview.get_buffer().set_text("")
+            self.output_expander.show()
+            self.output_expander.set_expanded(True)
             # --- End GUI Setup ---
 
             # ---------------------------------------------
@@ -1658,9 +1832,9 @@ class SearchApp(Gtk.Window):
                 self.set_status_message(message)
                 
             def output_setup_callback():
-                GLib.idle_add(self.output_textview.get_buffer().set_text, "")
-                GLib.idle_add(self.output_expander.show)
-                GLib.idle_add(self.output_expander.set_expanded, True)
+                self.output_textview.get_buffer().set_text("")
+                self.output_expander.show()
+                self.output_expander.set_expanded(True)
                 
             def enable_gui_callback():
                 self.enable_gui()
@@ -1670,7 +1844,9 @@ class SearchApp(Gtk.Window):
             
             # FINAL CLEANUP CALLBACK (used if no reinstall is needed or an exception occurs)
             def on_thread_exit_callback(final_message):
+                # This is called from the worker thread
                 def run_cleanup():
+                    # This runs in the main thread
                     stop_spinner_callback()
                     set_status_message_callback(final_message)
                     enable_gui_callback()
@@ -1686,14 +1862,16 @@ class SearchApp(Gtk.Window):
                 GLib.idle_add(set_status_message_callback, message)
                 
             def on_reinstall_finish(repair_ok):
+                # This is called from the worker thread
                 def run_final_status():
+                    # This runs in the main thread
                     if not repair_ok:
-                        GLib.idle_add(set_status_message_callback, _("Could not repair some packages"))
+                        self.set_status_message(_("Could not repair some packages"))
                     else:
-                        GLib.idle_add(set_status_message_callback, _("Ready"))
+                        self.set_status_message(_("Ready"))
 
-                    GLib.idle_add(stop_spinner_callback)
-                    GLib.idle_add(enable_gui_callback)
+                    self.stop_spinner()
+                    self.enable_gui()
                 
                 GLib.idle_add(run_final_status)
 
@@ -1719,7 +1897,10 @@ class SearchApp(Gtk.Window):
             )
 
     def on_full_system_upgrade(self, widget):
-        """Shows a confirmation dialog and starts the full system upgrade process."""
+        """
+        GUI Handler for full system upgrade.
+        Refactored to use SystemUpgrader.
+        """
         dlg = Gtk.MessageDialog(
             parent=self,
             modal=True,
@@ -1743,71 +1924,136 @@ class SearchApp(Gtk.Window):
                     _("Performing full system upgrade")
                 )
 
+            # --- GUI Prep ---
             self.disable_gui()
             self.start_spinner(_("Performing full system upgrade..."))
-            # Clear output, show and expand the expander
             self.output_textview.get_buffer().set_text("")
             self.output_expander.show()
             self.output_expander.set_expanded(True)
             
-            # Create an upgrader instance and run it in a thread
-            upgrader = SystemUpgrader(self)
+            # ---------------------------------------------
+            # 1. Define Callback Functions
+            # ---------------------------------------------
+            
+            def on_finish(returncode, message):
+                """GUI cleanup callback. Runs in the main thread."""
+                if self.inhibit_cookie:
+                    self.get_application().uninhibit(self.inhibit_cookie)
+                    self.inhibit_cookie = None
+
+                self.stop_spinner()
+                if returncode == 0:
+                    self.set_status_message(message)
+                    self.update_sync_info_label()
+                else:
+                    error_msg = _("Error during system upgrade") if message.startswith("System") else message
+                    self.set_status_message(error_msg)
+                
+                self.enable_gui()
+                self.set_status_message(_("Ready"))
+
+            # ---------------------------------------------
+            # 2. Call Refactored Core Logic
+            # ---------------------------------------------
+            
+            # Create an upgrader instance and pass it all the GUI callbacks
+            upgrader = SystemUpgrader(
+                command_runner_realtime = self.run_command_realtime,
+                log_callback = self.append_to_log,
+                status_callback = self.set_status_message,
+                schedule_callback = GLib.idle_add,
+                post_action_callback = PackageOperations._run_kbuildsycoca6,
+                on_finish_callback = on_finish,
+                inhibit_cookie = self.inhibit_cookie,
+                translation_func = _
+            )
+            
+            # Run the upgrader's worker function in a thread
             t = threading.Thread(target=upgrader.start_upgrade, daemon=True)
             t.start()
 
-    def get_last_sync_time(self):
-        sync_file_path = "/var/luet/db/repos/luet/SYNCTIME"
-        try:
-            with open(sync_file_path, 'r') as f:
-                timestamp = f.read().strip()
-                sync_dt = self.parse_timestamp(timestamp)
-                if sync_dt:
-                    time_ago = self.humanize_time_ago(sync_dt)
-                    return {"datetime": sync_dt.strftime("%Y-%m-%dT%H:%M:%S"), "ago": time_ago}
-        except (IOError, ValueError):
-            pass
-        return {"datetime": "N/A", "ago": _("repositories not synced")}
+    def on_clear_cache_clicked(self, widget):
+        """
+        GUI Handler for clearing cache.
+        Refactored to use CacheCleaner.run_cleanup_core.
+        """
+        dlg = Gtk.MessageDialog(
+            parent=self,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text=_("Clear Luet cache?"),
+        )
+        dlg.format_secondary_text(
+            _("This will run 'luet cleanup' and remove cached package data.")
+        )
+        response = dlg.run()
+        dlg.destroy()
+        if response != Gtk.ResponseType.YES:
+            return
 
-    def parse_timestamp(self, ts):
-        try:
-            if ts.endswith('Z'):
-                ts = ts[:-1]
-            try:
-                return datetime.datetime.fromisoformat(ts)
-            except Exception:
-                return datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
-        except Exception:
-            return None
+        # --- GUI Prep ---
+        self.output_textview.get_buffer().set_text("")
+        self.output_expander.show()
+        self.output_expander.set_expanded(True)
+        self.disable_gui()
+        self.start_spinner(_("Clearing Luet cache..."))
 
-    def humanize_time_ago(self, dt):
-        if dt.tzinfo is None:
-            now = datetime.datetime.now()
-        else:
-            now = datetime.datetime.now(dt.tzinfo)
-        delta = now - dt
+        def on_done(returncode):
+            """GUI cleanup callback. Runs in the main thread."""
+            self.stop_spinner()
+            if returncode != 0:
+                self.set_status_message(_("Error clearing Luet cache"))
+            else:
+                self.set_status_message(_("Ready"))
 
-        if delta.days > 0:
-            return ngettext(
-                "%d day ago", "%d days ago", delta.days
-            ) % delta.days
-        elif delta.seconds >= 3600:
-            hours = delta.seconds // 3600
-            return ngettext(
-                "%d hour ago", "%d hours ago", hours
-            ) % hours
-        elif delta.seconds >= 60:
-            minutes = delta.seconds // 60
-            return ngettext(
-                "%d minute ago", "%d minutes ago", minutes
-            ) % minutes
-        else:
-            return _("just now")
+            self.enable_gui()
+            self._update_cache_menu_item()
+
+        # Call the decoupled core logic
+        CacheCleaner.run_cleanup_core(
+            self.run_command_realtime,
+            self.append_to_log,
+            on_done
+        )
+
+    # ---------------------------------
+    # Timed/Periodic GUI Updaters
+    # ---------------------------------
+
+    def periodic_sync_check(self):
+            self.update_sync_info_label()
+            return True  # Return True to keep the timer running
 
     def update_sync_info_label(self):
-        sync_info = self.get_last_sync_time()
+        """
+        GUI update function.
+        Refactored to use SyncInfo class.
+        """
+        # Call core logic from SyncInfo helper
+        sync_info = SyncInfo.get_last_sync_time()
+        
         display_time = sync_info['datetime'].replace('T', ' @ ')
         GLib.idle_add(self.sync_info_label.set_text, _("Last sync: {}").format(sync_info['ago']))
         GLib.idle_add(self.sync_info_label.set_tooltip_text, display_time)
+
+    def _update_cache_menu_item(self):
+        """
+        GUI update function.
+        Refactored to use CacheCleaner helpers.
+        """
+        # Call core logic from CacheCleaner helper
+        size_bytes = CacheCleaner.get_cache_size_bytes()
+        human_str = CacheCleaner.get_cache_size_human(size_bytes)
+        
+        # Update the GUI
+        if human_str:
+            self.clear_cache_item.set_sensitive(True)
+            self.clear_cache_item.set_label(_("Clear Luet cache ({})").format(human_str))
+        else:
+            self.clear_cache_item.set_sensitive(False)
+            self.clear_cache_item.set_label(_("Clear Luet cache"))
+
 
 # -------------------------
 # Entrypoint
