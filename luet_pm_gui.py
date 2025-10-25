@@ -72,121 +72,124 @@ class AboutDialog(Gtk.AboutDialog):
 # -------------------------
 class RepositoryUpdater:
     @staticmethod
-    def run_repo_update(app):
-
-        def on_done(returncode):
-            if returncode == 0:
-                GLib.idle_add(app.set_status_message, _("Repositories updated"))
-                GLib.idle_add(app.update_sync_info_label)
-            else:
-                GLib.idle_add(app.set_status_message, _("Error updating repositories"))
-            GLib.idle_add(app.stop_spinner)
-            GLib.idle_add(app.enable_gui)
-
+    def run_repo_update(
+        command_runner,  # Replaces app.run_command_realtime
+        inhibit_setter,  # Function to manage window inhibition state
+        on_log_callback, 
+        on_success_callback, 
+        on_error_callback, 
+        on_finish_callback  # Called with the inhibition cookie
+    ):
+        """
+        Runs the luet repo update command. Accepts callbacks for decoupling.
+        """
+        inhibit_cookie = 0
         try:
-            GLib.idle_add(app.set_status_message, _("Updating repositories..."))
+            # 1. Set inhibition state via the injected setter
+            inhibit_cookie = inhibit_setter(True, _("Updating repositories"))
 
-            GLib.idle_add(app.output_textview.get_buffer().set_text, "")
-            GLib.idle_add(app.output_expander.show)
-            GLib.idle_add(app.output_expander.set_expanded, True)
+            def on_done(returncode):
+                # 3. Handle result on GLib thread
+                if returncode == 0:
+                    GLib.idle_add(on_success_callback)
+                else:
+                    GLib.idle_add(on_error_callback)
+                
+                # 4. Cleanup (Stop spinner, release inhibition)
+                GLib.idle_add(on_finish_callback, inhibit_cookie)
 
-            app.run_command_realtime(
+            # 2. Run the command using the injected runner
+            command_runner(
                 ["luet", "repo", "update"],
                 require_root=True,
-                on_line_received=app.append_to_log,
+                on_line_received=on_log_callback,
                 on_finished=on_done
             )
+
         except Exception as e:
+            # Handle exception during core logic setup/execution
             print("Exception during repo update:", e)
-            GLib.idle_add(app.set_status_message, _("Error updating repositories"))
-            GLib.idle_add(app.enable_gui)
+            GLib.idle_add(on_error_callback)
+            GLib.idle_add(on_finish_callback, inhibit_cookie)
 
 class SystemChecker:
-    def __init__(self, app):
-        self.app = app
+    @staticmethod
+    def run_check_system(
+        command_runner,  
+        start_spinner_callback, 
+        stop_spinner_callback, 
+        set_status_message_callback, 
+        output_setup_callback, 
+        enable_gui_callback,
+        log_callback,
+        on_thread_exit_callback,
+        translation_function
+    ):
+        """
+        Kicks off the system check process in a separate thread.
+        """
+        import threading
+        t = threading.Thread(
+            target=SystemChecker._do_check_system,
+            args=(
+                command_runner, 
+                log_callback,
+                on_thread_exit_callback,
+                translation_function
+            ),
+            daemon=True
+        )
+        t.start()
 
-    def run_check_system(self):
-        collected_lines = []
+    @staticmethod
+    def _do_check_system(
+        command_runner, 
+        log_callback,
+        on_thread_exit_callback,
+        _
+    ):
+        """
+        Performs the system check logic.
+        """
+        
+        status_message = None 
+        
+        # Helper to log output of synchronous commands
+        def log_result(command, result):
+            if result.stdout:
+                log_callback(result.stdout)
+            if result.stderr:
+                log_callback(result.stderr)
+            log_callback("\n")
 
-        def on_line(line):
-            collected_lines.append(line)
-            self.app.append_to_log(line)
-
-        def reinstall_packages(candidates):
-            repair_ok = True
-
-            for pkg in sorted(candidates.keys()):
-                GLib.idle_add(self.app.start_spinner, _("Reinstalling {}...").format(pkg))
-
-                def reinstall_done(returncode, pkg=pkg):
-                    nonlocal repair_ok
-                    GLib.idle_add(self.app.stop_spinner)
-                    if returncode != 0:
-                        repair_ok = False
-                        GLib.idle_add(self.app.set_status_message, _("Failed reinstalling {}").format(pkg))
-
-                # run reinstall with realtime streaming to log
-                self.app.run_command_realtime(
-                    ["luet", "reinstall", "-y", pkg],
-                    require_root=True,
-                    on_line_received=self.app.append_to_log,
-                    on_finished=reinstall_done
-                )
-
-                time.sleep(0.5)  # let spinner/status updates show
-
-            if not repair_ok:
-                GLib.idle_add(self.app.set_status_message, _("Could not repair some packages"))
-
-            # Always finish in Ready state
-            GLib.idle_add(self.app.set_status_message, _("Ready"))
-            GLib.idle_add(self.app.enable_gui)
-
-        def on_done(returncode):
-            output = "".join(collected_lines)
-            GLib.idle_add(self.app.stop_spinner)
-
-            # If returncode is clean and no missing files → just Ready
-            if returncode == 0 and "missing" not in output:
-                GLib.idle_add(self.app.set_status_message, _("Ready"))
-                GLib.idle_add(self.app.enable_gui)
-                return
-
-            # Otherwise: prepare reinstall
-            GLib.idle_add(self.app.set_status_message, _("Missing files: preparing to reinstall..."))
-
-            # Small countdown in status
-            for i in range(5, 0, -1):
-                GLib.idle_add(self.app.set_status_message, _("Reinstalling packages in {}...").format(i))
-                time.sleep(1)
-
-            # Parse missing package names from output
-            words = output.split()
-            candidates = {}
-            for w in words:
-                if '/' in w:
-                    m = re.search(r'(-\d+)|(:\S+)$', w)
-                    wclean = w[:m.start()] if m else w
-                    candidates[wclean] = True
-
-            reinstall_packages(candidates)
 
         try:
-            GLib.idle_add(self.app.set_status_message, _("Checking system for missing files..."))
-            GLib.idle_add(self.app.output_textview.get_buffer().set_text, "")
-            GLib.idle_add(self.app.output_expander.show)
-            GLib.idle_add(self.app.output_expander.set_expanded, True)
+            # Check 1: System Health / Repositories (luet oscheck)
+            command = ["luet", "oscheck"]
+            result = command_runner(command, require_root=True)
+            log_result(command, result)
 
-            self.app.run_command_realtime(
-                ["luet", "oscheck"],
-                require_root=True,
-                on_line_received=on_line,
-                on_finished=on_done
-            )
+            if result.returncode != 0:
+                # If oscheck fails, we skip setting status_message, letting it default to the exception block
+                # or finally block if no exception is raised.
+                # Since a non-zero return code means failure, we treat it as a critical error.
+                raise Exception(_("luet oscheck failed with return code {}").format(result.returncode))
+
+            # --- Status Determination (Success Path) ---
+            # Status_message remains None, which defaults to "Ready" in the finally block.
+            pass
+
         except Exception as e:
-            print("Error during system check:", e)
-            GLib.idle_add(self.app.set_status_message, _("Error during system check"))
-            GLib.idle_add(self.app.enable_gui)
+            # This catches all critical errors (luet oscheck failure, or luet not found).
+            print("System check critical exception:", e)
+            
+            # The only remaining specific failure string, as requested.
+            status_message = _("System check failed due to exception")
+
+        finally:
+            # Final status update via callback.
+            final_message = status_message if status_message else _("Ready")
+            on_thread_exit_callback(final_message)
 
 class SystemUpgrader:
     def __init__(self, app):
@@ -1434,17 +1437,144 @@ class SearchApp(Gtk.Window):
         GLib.idle_add(scroll_to_end)
 
     def update_repositories(self, widget):
-        self.disable_gui()
-        self.start_spinner(_("Updating repositories..."))
-        t = threading.Thread(target=RepositoryUpdater.run_repo_update, args=(self,), daemon=True)
-        t.start()
+            # --- GUI Setup/Prep (explicitly managed by the GUI class) ---
+            self.disable_gui()
+            self.start_spinner(_("Updating repositories..."))
+            # Clear the log output
+            GLib.idle_add(self.output_textview.get_buffer().set_text, "")
+            # Ensure the log area is visible
+            GLib.idle_add(self.output_expander.show)
+            GLib.idle_add(self.output_expander.set_expanded, True)
+            # --- End GUI Setup ---
 
-    def check_system(self, widget):
-        self.disable_gui()
-        self.start_spinner(_("Checking system for missing files..."))
-        checker = SystemChecker(self)
-        t = threading.Thread(target=checker.run_check_system, daemon=True)
-        t.start()
+            # Get the main application instance
+            luet_app = self.get_application()
+            
+            # ---------------------------------------------
+            # 1. Define Callback Functions (The Interface)
+            # ---------------------------------------------
+            
+            def on_log_line(line):
+                """Core logic calls this to stream output to the GUI log."""
+                self.append_to_log(line)
+            
+            def on_success():
+                """Core logic calls this upon successful completion."""
+                self.set_status_message(_("Repositories updated"))
+                self.update_sync_info_label()
+            
+            def on_error():
+                """Core logic calls this if an error occurs."""
+                self.set_status_message(_("Error updating repositories"))
+
+            def on_finish(cookie):
+                """Core logic calls this regardless of success/failure, passing the inhibit cookie."""
+                # Cleanup for GUI and inhibition (performed by the GUI class)
+                self.stop_spinner()
+                self.enable_gui()
+                
+                # Use the stored cookie for uninhibit (it is guaranteed to be the right one)
+                if self.inhibit_cookie:
+                    luet_app.uninhibit(self.inhibit_cookie) 
+                    self.inhibit_cookie = None
+                    
+                # Ensure final status is ready if no other errors occurred
+                if self.status_label.get_text() != _("Error updating repositories"):
+                    self.set_status_message(_("Ready"))
+                    
+            def inhibit_setter(inhibit_state, reason):
+                """
+                Provides the core logic with a generic way to request window inhibition
+                using the modern Gtk.Application.inhibit API.
+                """
+                if inhibit_state and not self.inhibit_cookie:
+                    # Use Gtk.Application.inhibit and store the cookie
+                    self.inhibit_cookie = luet_app.inhibit(
+                        self, # Pass 'self' (the window) as the transient widget
+                        Gtk.ApplicationInhibitFlags.IDLE,
+                        reason
+                    )
+                    # Return the cookie to the core logic for the on_finish call
+                    return self.inhibit_cookie
+                return 0 
+
+            # ---------------------------------------------
+            # 2. Call Refactored Core Logic
+            # ---------------------------------------------
+            t = threading.Thread(
+                target=RepositoryUpdater.run_repo_update, 
+                args=(
+                    self.run_command_realtime, # command_runner: How to execute commands
+                    inhibit_setter,           # inhibit_setter: How to inhibit the GUI
+                    on_log_line,              # on_log_callback
+                    on_success,               # on_success_callback
+                    on_error,                 # on_error_callback
+                    on_finish,                # on_finish_callback (receives cookie)
+                ), 
+                daemon=True
+            )
+            t.start()
+
+    def check_system(self, widget=None):
+            import threading
+            # --- GUI Setup/Prep ---
+            self.disable_gui()
+            self.start_spinner(_("Checking system status..."))
+            GLib.idle_add(self.output_textview.get_buffer().set_text, "")
+            GLib.idle_add(self.output_expander.show)
+            GLib.idle_add(self.output_expander.set_expanded, True)
+            # --- End GUI Setup ---
+
+            # ---------------------------------------------
+            # Define Callback Functions
+            # ---------------------------------------------
+            
+            def start_spinner_callback(message):
+                self.start_spinner(message)
+
+            def stop_spinner_callback():
+                self.stop_spinner()
+
+            def set_status_message_callback(message):
+                self.set_status_message(message)
+                
+            def output_setup_callback():
+                GLib.idle_add(self.output_textview.get_buffer().set_text, "")
+                GLib.idle_add(self.output_expander.show)
+                GLib.idle_add(self.output_expander.set_expanded, True)
+                
+            def enable_gui_callback():
+                self.enable_gui()
+                
+            def on_log_line(line):
+                self.append_to_log(line)
+            
+            # This callback handles all final GUI updates on the main thread
+            def on_thread_exit_callback(final_message):
+                
+                def run_cleanup():
+                    stop_spinner_callback()
+                    set_status_message_callback(final_message)
+                    enable_gui_callback() # MUST BE LAST TO UN-DIM
+                    return False 
+
+                GLib.idle_add(run_cleanup)
+
+
+            # ---------------------------------------------
+            # Call Refactored Core Logic
+            # ---------------------------------------------
+            SystemChecker.run_check_system(
+                self.run_command,          # 1. command_runner
+                start_spinner_callback,    # 2. start_spinner_callback
+                stop_spinner_callback,     # 3. stop_spinner_callback
+                set_status_message_callback, # 4. set_status_message_callback
+                output_setup_callback,     # 5. output_setup_callback
+                enable_gui_callback,       # 6. enable_gui_callback
+                on_log_line,               # 7. log_callback
+                on_thread_exit_callback,   # 8. on_thread_exit_callback
+                _                          # 9. translation_function
+            )
 
     def on_full_system_upgrade(self, widget):
         """Shows a confirmation dialog and starts the full system upgrade process."""
