@@ -246,20 +246,14 @@ class SystemChecker:
                     
                     
                     # Log the finding to the output panel immediately.
-                    found_message = _("Found {} missing packages. Starting repair countdown (5s)...\n").format(len(candidates))
+                    found_message = _("Found {} missing packages. Starting repair immediately.\n").format(len(candidates))
                     log_callback(found_message)
                     
-                    # FIX: Increased pause to 1.0s to ensure the log update is fully processed before the countdown loop starts.
-                    sleep_function(1.0) 
+                    # FIX: Aggressively increased pause to 2.0s to ensure the log update is fully processed and stabilized.
+                    sleep_function(2.0) 
 
 
-                    # 1. 5-second countdown
-                    for i in range(5, 0, -1):
-                        countdown_status = _("Reinstalling packages in {}...").format(i)
-                        log_callback(countdown_status + "\n")
-                        # FIX: Add a small dedicated synchronization sleep *after* logging
-                        sleep_function(0.1)
-                        sleep_function(0.9) # Pause for the rest of the second
+                    # NOTE: Countdown logging loop removed for stability.
 
                     # Reinstall loop
                     repair_ok = True
@@ -267,9 +261,9 @@ class SystemChecker:
                         reinstall_status = _("Reinstalling {}...").format(pkg)
                         log_callback(reinstall_status + "\n")
 
-                        # FIX: Increased pause to 0.5s to absolutely ensure the log is updated 
+                        # FIX: Increased pause to 2.0s to ensure the log is updated and stabilized 
                         # before the synchronous command_runner blocks the thread.
-                        sleep_function(0.5) 
+                        sleep_function(2.0) 
                         
                         # Use synchronous command_runner for sequential reinstall (BLOCKS THREAD)
                         reinstall_result = command_runner(
@@ -279,13 +273,14 @@ class SystemChecker:
                         
                         log_result(["luet", "reinstall", "-y", pkg], reinstall_result)
 
+                        # FIX: Pause after command logging to 1.0s for stability before moving to next package
+                        sleep_function(1.0) 
+
 
                         if reinstall_result.returncode != 0:
                             repair_ok = False
                             log_callback(_("Failed reinstalling {}").format(pkg) + "\n")
                         
-                        sleep_function(0.5) 
-
                     # 2. Finish status (updates the status bar to "Ready" or failure)
                     on_reinstall_finish_callback(repair_ok) 
                     return 
