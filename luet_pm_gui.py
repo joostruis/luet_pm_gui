@@ -114,16 +114,60 @@ class RepositoryUpdater:
 
 class SystemChecker:
     @staticmethod
+    def _parse_reinstall_candidates(output):
+        """
+        Parses oscheck output to find packages with missing files.
+        It looks for the 'category/package' format to be used for luet reinstall.
+        """
+        candidates = {}
+        import re
+        
+        # Regex to find a package identifier (e.g., category/package-version or category/package)
+        pkg_id_pattern = re.compile(r"(\S+/\S+)")
+        
+        for line in output.split('\n'):
+            line = line.strip()
+            
+            match = pkg_id_pattern.search(line)
+            
+            if match:
+                # pkg_id example: apps/filelight-25.04.3
+                full_pkg_id = match.group(1).split(':')[0] 
+                
+                # 1. Get the last two parts: category/package-name
+                parts = full_pkg_id.split('/')
+                
+                if len(parts) >= 2:
+                    category = parts[-2]
+                    pkg_name_with_version = parts[-1]
+                    
+                    # Strip the version (e.g., filelight-25.04.3 -> filelight)
+                    pkg_name_only = pkg_name_with_version.split('-')[0]
+                    
+                    # The full name to use for luet reinstall is category/package
+                    full_name_for_reinstall = f"{category}/{pkg_name_only}"
+                    
+                    if full_name_for_reinstall:
+                        candidates[full_name_for_reinstall] = True
+                    
+        return sorted(candidates.keys())
+
+    @staticmethod
     def run_check_system(
-        command_runner,  
-        start_spinner_callback, 
-        stop_spinner_callback, 
-        set_status_message_callback, 
-        output_setup_callback, 
-        enable_gui_callback,
-        log_callback,
-        on_thread_exit_callback,
-        translation_function
+        command_runner,                 # 1
+        realtime_runner,                # 2 (Kept for call-site argument matching)
+        start_spinner_callback,         # 3 
+        stop_spinner_callback,          # 4 
+        set_status_message_callback,    # 5 
+        output_setup_callback,          # 6 
+        enable_gui_callback,            # 7 
+        log_callback,                   # 8
+        on_thread_exit_callback,        # 9
+        on_reinstall_start_callback,    # 10
+        on_reinstall_status_callback,   # 11
+        on_reinstall_finish_callback,   # 12
+        sleep_function,                 # 13
+        translation_function            # 14
     ):
         """
         Kicks off the system check process in a separate thread.
@@ -132,9 +176,14 @@ class SystemChecker:
         t = threading.Thread(
             target=SystemChecker._do_check_system,
             args=(
+                # Pass only the 8 arguments the worker thread needs:
                 command_runner, 
                 log_callback,
                 on_thread_exit_callback,
+                on_reinstall_start_callback,
+                on_reinstall_status_callback,
+                on_reinstall_finish_callback,
+                sleep_function,
                 translation_function
             ),
             daemon=True
@@ -146,50 +195,123 @@ class SystemChecker:
         command_runner, 
         log_callback,
         on_thread_exit_callback,
+        on_reinstall_start_callback,
+        on_reinstall_status_callback,
+        on_reinstall_finish_callback,
+        sleep_function,
         _
     ):
         """
-        Performs the system check logic.
+        Performs the system check and optional reinstallation logic.
         """
         
         status_message = None 
         
-        # Helper to log output of synchronous commands
+        # Helper to log output of synchronous commands (Thread-safe logging fix)
         def log_result(command, result):
+            full_log = ""
             if result.stdout:
-                log_callback(result.stdout)
+                full_log += result.stdout
             if result.stderr:
-                log_callback(result.stderr)
-            log_callback("\n")
+                full_log += result.stderr
+            full_log += "\n"
+            if full_log.strip():
+                log_callback(full_log)
+            # Add a small pause to allow the GUI thread to process the log update
+            sleep_function(0.05)
 
 
+        # --- PHASE 1: SYSTEM CHECK ---
         try:
-            # Check 1: System Health / Repositories (luet oscheck)
             command = ["luet", "oscheck"]
-            result = command_runner(command, require_root=True)
-            log_result(command, result)
+            
+            # Use synchronous command_runner to get the full result object.
+            result = command_runner(command, require_root=True) 
+            
+            log_result(command, result) 
+            output = result.stdout + result.stderr
 
+            # Check for generic failure based on return code
             if result.returncode != 0:
-                # If oscheck fails, we skip setting status_message, letting it default to the exception block
-                # or finally block if no exception is raised.
-                # Since a non-zero return code means failure, we treat it as a critical error.
                 raise Exception(_("luet oscheck failed with return code {}").format(result.returncode))
 
-            # --- Status Determination (Success Path) ---
-            # Status_message remains None, which defaults to "Ready" in the finally block.
+            # Check for missing files (even if return code is 0)
+            if "missing" in output:
+                candidates = SystemChecker._parse_reinstall_candidates(output)
+                
+                if candidates:
+                    # --- PHASE 2: REINSTALLATION ---
+                    
+                    log_callback(_("Repair sequence started for {} missing packages.\n").format(len(candidates)))
+                    
+                    
+                    # Log the finding to the output panel immediately.
+                    found_message = _("Found {} missing packages. Starting repair countdown (5s)...\n").format(len(candidates))
+                    log_callback(found_message)
+                    
+                    # FIX: Increased pause to 1.0s to ensure the log update is fully processed before the countdown loop starts.
+                    sleep_function(1.0) 
+
+
+                    # 1. 5-second countdown
+                    for i in range(5, 0, -1):
+                        countdown_status = _("Reinstalling packages in {}...").format(i)
+                        log_callback(countdown_status + "\n")
+                        # FIX: Add a small dedicated synchronization sleep *after* logging
+                        sleep_function(0.1)
+                        sleep_function(0.9) # Pause for the rest of the second
+
+                    # Reinstall loop
+                    repair_ok = True
+                    for pkg in candidates:
+                        reinstall_status = _("Reinstalling {}...").format(pkg)
+                        log_callback(reinstall_status + "\n")
+
+                        # FIX: Increased pause to 0.5s to absolutely ensure the log is updated 
+                        # before the synchronous command_runner blocks the thread.
+                        sleep_function(0.5) 
+                        
+                        # Use synchronous command_runner for sequential reinstall (BLOCKS THREAD)
+                        reinstall_result = command_runner(
+                            ["luet", "reinstall", "-y", pkg],
+                            require_root=True,
+                        )
+                        
+                        log_result(["luet", "reinstall", "-y", pkg], reinstall_result)
+
+
+                        if reinstall_result.returncode != 0:
+                            repair_ok = False
+                            log_callback(_("Failed reinstalling {}").format(pkg) + "\n")
+                        
+                        sleep_function(0.5) 
+
+                    # 2. Finish status (updates the status bar to "Ready" or failure)
+                    on_reinstall_finish_callback(repair_ok) 
+                    return 
+            
+            # Success path: status_message remains None, leading to "Ready" in finally block.
             pass
 
+
         except Exception as e:
-            # This catches all critical errors (luet oscheck failure, or luet not found).
             print("System check critical exception:", e)
             
-            # The only remaining specific failure string, as requested.
-            status_message = _("System check failed due to exception")
+            # Use a more descriptive status for explicit luet oscheck failure
+            if isinstance(e, Exception) and "return code" in str(e):
+                status_message = str(e)
+            else:
+                # General failure (luet not found, parsing error, etc.)
+                status_message = _("System check failed due to exception")
 
         finally:
             # Final status update via callback.
-            final_message = status_message if status_message else _("Ready")
-            on_thread_exit_callback(final_message)
+            if status_message:
+                final_message = status_message
+                on_thread_exit_callback(final_message)
+            elif status_message is None:
+                # This path runs only if oscheck succeeded AND no packages needed repair.
+                on_thread_exit_callback(_("Ready"))
 
 class SystemUpgrader:
     def __init__(self, app):
@@ -1517,9 +1639,11 @@ class SearchApp(Gtk.Window):
 
     def check_system(self, widget=None):
             import threading
+            import time 
             # --- GUI Setup/Prep ---
             self.disable_gui()
-            self.start_spinner(_("Checking system status..."))
+            # FIX: Use the original required status text
+            self.start_spinner(_("Checking system for missing files...")) 
             GLib.idle_add(self.output_textview.get_buffer().set_text, "")
             GLib.idle_add(self.output_expander.show)
             GLib.idle_add(self.output_expander.set_expanded, True)
@@ -1549,31 +1673,54 @@ class SearchApp(Gtk.Window):
             def on_log_line(line):
                 self.append_to_log(line)
             
-            # This callback handles all final GUI updates on the main thread
+            # FINAL CLEANUP CALLBACK (used if no reinstall is needed or an exception occurs)
             def on_thread_exit_callback(final_message):
-                
                 def run_cleanup():
                     stop_spinner_callback()
                     set_status_message_callback(final_message)
-                    enable_gui_callback() # MUST BE LAST TO UN-DIM
+                    enable_gui_callback()
                     return False 
-
                 GLib.idle_add(run_cleanup)
+
+            # NEW REINSTALL CALLBACKS
+            def on_reinstall_start():
+                # This is the message used right before the countdown starts
+                GLib.idle_add(set_status_message_callback, _("Missing files: preparing to reinstall..."))
+            
+            def on_reinstall_status(message):
+                GLib.idle_add(set_status_message_callback, message)
+                
+            def on_reinstall_finish(repair_ok):
+                def run_final_status():
+                    if not repair_ok:
+                        GLib.idle_add(set_status_message_callback, _("Could not repair some packages"))
+                    else:
+                        GLib.idle_add(set_status_message_callback, _("Ready"))
+
+                    GLib.idle_add(stop_spinner_callback)
+                    GLib.idle_add(enable_gui_callback)
+                
+                GLib.idle_add(run_final_status)
 
 
             # ---------------------------------------------
             # Call Refactored Core Logic
             # ---------------------------------------------
             SystemChecker.run_check_system(
-                self.run_command,          # 1. command_runner
-                start_spinner_callback,    # 2. start_spinner_callback
-                stop_spinner_callback,     # 3. stop_spinner_callback
-                set_status_message_callback, # 4. set_status_message_callback
-                output_setup_callback,     # 5. output_setup_callback
-                enable_gui_callback,       # 6. enable_gui_callback
-                on_log_line,               # 7. log_callback
-                on_thread_exit_callback,   # 8. on_thread_exit_callback
-                _                          # 9. translation_function
+                self.run_command,          # 1. command_runner (sync)
+                self.run_command_realtime, # 2. realtime_runner (unused by core logic, but required here for signature)
+                start_spinner_callback,    # 3. start_spinner_callback
+                stop_spinner_callback,     # 4. stop_spinner_callback
+                set_status_message_callback, # 5. set_status_message_callback
+                output_setup_callback,     # 6. output_setup_callback
+                enable_gui_callback,       # 7. enable_gui_callback
+                on_log_line,               # 8. log_callback
+                on_thread_exit_callback,   # 9. on_thread_exit_callback
+                on_reinstall_start,        # 10. on_reinstall_start_callback
+                on_reinstall_status,       # 11. on_reinstall_status_callback
+                on_reinstall_finish,       # 12. on_reinstall_finish_callback
+                time.sleep,                # 13. sleep_function
+                _                          # 14. translation_function
             )
 
     def on_full_system_upgrade(self, widget):
