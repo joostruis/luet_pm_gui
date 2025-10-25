@@ -249,20 +249,20 @@ class SystemChecker:
                     found_message = _("Found {} missing packages. Starting repair immediately.\n").format(len(candidates))
                     log_callback(found_message)
                     
-                    # FIX: Aggressively increased pause to 2.0s to ensure the log update is fully processed and stabilized.
+                    # Pause for stabilization
                     sleep_function(2.0) 
 
 
-                    # NOTE: Countdown logging loop removed for stability.
+                    # NOTE: Countdown logging loop and status bar updates removed for stability.
 
                     # Reinstall loop
                     repair_ok = True
                     for pkg in candidates:
                         reinstall_status = _("Reinstalling {}...").format(pkg)
+                        # Log status to the output panel
                         log_callback(reinstall_status + "\n")
 
-                        # FIX: Increased pause to 2.0s to ensure the log is updated and stabilized 
-                        # before the synchronous command_runner blocks the thread.
+                        # Pause to ensure the log is updated and stabilized before blocking the thread.
                         sleep_function(2.0) 
                         
                         # Use synchronous command_runner for sequential reinstall (BLOCKS THREAD)
@@ -273,7 +273,7 @@ class SystemChecker:
                         
                         log_result(["luet", "reinstall", "-y", pkg], reinstall_result)
 
-                        # FIX: Pause after command logging to 1.0s for stability before moving to next package
+                        # Pause after command logging for stability before moving to next package
                         sleep_function(1.0) 
 
 
