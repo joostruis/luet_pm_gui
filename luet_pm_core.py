@@ -116,6 +116,106 @@ class CommandRunner:
 
 
 # -------------------------
+# Package Filter
+# -------------------------
+class PackageFilter:
+    """
+    Handles filtering of protected and hidden packages.
+    """
+    
+    @staticmethod
+    def get_protected_packages():
+        """
+        Returns a dictionary of protected packages with their protection messages.
+        """
+        return {
+            "apps/grub": "This package is protected and can't be removed",
+            "system/luet": "This package is protected and can't be removed",
+            "layers/system-x": "This layer is protected and can't be removed",
+            "layers/sys-fs": "This layer is protected and can't be removed",
+            "layers/X": "This layer is protected and can't be removed",
+        }
+    
+    @staticmethod
+    def get_hidden_packages():
+        """
+        Returns a dictionary of hidden packages with their hiding reasons.
+        """
+        return {
+            # Devel repositories we hide
+            "repository/mocaccino-desktop": "Devel repository",
+            "repository/mocaccino-os-commons": "Devel repository",
+            "repository/mocaccino-extra": "Devel repository",
+            "repository/mocaccino-community": "Devel repository",
+            # Crucial repositories users should not remove
+            "repository/luet": "This repository is crucial and can't be removed",
+            "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
+            # Stable repositories
+            "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
+            "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
+            "repository/mocaccino-extra-stable": "Stable repository can't be removed",
+            # Repositories we just want to hide
+            "repository/livecd": "This repository should be hidden",
+            "repository/mocaccino-stage3": "Old repository, not in use anymore",
+            "repository/mocaccino-portage": "Old repository, not in use anymore",
+            "repository/mocaccino-portage-stable": "Old repository, not in use anymore",
+            "repository/mocaccino-kernel": "Old repository, not in use anymore",
+            "repository/mocaccino-kernel-stable": "Old repository, not in use anymore",
+            "repository/mocaccino-extra-arm": "Old repository, not in use anymore",
+            "repository/mocaccino-musl-universe": "Hide musl repo",
+            "repository/mocaccino-musl-universe-stable": "Hide musl repo",
+            "repository/mocaccino-micro": "Hide micro repo",
+            "repository/mocaccino-micro-stable": "Hide micro repo",
+            "repo-updater/mocaccino-micro-stable": "Hide micro repo-updater",
+            "repo-updater/mocaccino-desktop-stable": "Hide desktop repo-updater",
+            "repo-updater/mocaccino-community-stable": "Hide desktop repo-updater",
+            "kernel-5.9/debian-full": "Old repository, not in use anymore",
+        }
+    
+    @staticmethod
+    def is_package_hidden(category, name):
+        """
+        Check if a package should be hidden from the search results.
+        
+        :param category: Package category
+        :param name: Package name
+        :return: True if package should be hidden, False otherwise
+        """
+        if category == "entity":
+            return True
+        
+        key = "{}/{}".format(category, name)
+        hidden_packages = PackageFilter.get_hidden_packages()
+        return key in hidden_packages
+    
+    @staticmethod
+    def is_package_protected(category, name):
+        """
+        Check if a package is protected from removal.
+        
+        :param category: Package category
+        :param name: Package name
+        :return: True if package is protected, False otherwise
+        """
+        key = "{}/{}".format(category, name)
+        protected_packages = PackageFilter.get_protected_packages()
+        return key in protected_packages
+    
+    @staticmethod
+    def get_protection_message(category, name):
+        """
+        Get the protection message for a protected package.
+        
+        :param category: Package category
+        :param name: Package name
+        :return: Protection message or None if not protected
+        """
+        key = "{}/{}".format(category, name)
+        protected_packages = PackageFilter.get_protected_packages()
+        return protected_packages.get(key)
+
+
+# -------------------------
 # Helpers: Core Logic Classes
 # (Decoupled from GUI)
 # -------------------------

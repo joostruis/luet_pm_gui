@@ -37,7 +37,7 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter
 except ImportError:
     print("WARNING: luet_pm_core.py not found. Using mock classes for core logic.")
 
@@ -85,6 +85,17 @@ except ImportError:
         @staticmethod
         def get_last_sync_time():
             return {'datetime': '1970-01-01T00:00:00', 'ago': _('never')}
+    class MockFilter:
+        @staticmethod
+        def get_protected_packages(): return {}
+        @staticmethod
+        def get_hidden_packages(): return {}
+        @staticmethod
+        def is_package_hidden(cat, name): return False
+        @staticmethod
+        def is_package_protected(cat, name): return False
+        @staticmethod
+        def get_protection_message(cat, name): return None
 
     # --- Assign Mock Names to Global Names ---
     RepositoryUpdater = MockUpdater
@@ -94,6 +105,7 @@ except ImportError:
     PackageOperations = MockOperations
     PackageSearcher = MockSearcher
     SyncInfo = MockSyncInfo
+    PackageFilter = MockFilter
 
 # -------------------------
 # About dialog
@@ -122,7 +134,7 @@ class AboutDialog(Gtk.AboutDialog):
         box.set_margin_start(10)
         box.set_margin_end(10)
 
-        label = Gtk.Label(label=_("© 2023 - 2025 MocaccinoOS. All Rights Reserved"))
+        label = Gtk.Label(label=_("Â© 2023 - 2025 MocaccinoOS. All Rights Reserved"))
         label.set_line_wrap(True)
 
         box.pack_start(label, False, False, 0)
@@ -435,49 +447,10 @@ class SearchApp(Gtk.Window):
         self.command_runner = CommandRunner(self.elevation_cmd, GLib.idle_add)
         # ---------------------------------
 
-        self.protected_applications = {
-            "apps/grub": "This package is protected and can't be removed",
-            "system/luet": "This package is protected and can't be removed",
-            "layers/system-x": "This layer is protected and can't be removed",
-            "layers/sys-fs": "This layer is protected and can't be removed",
-            "layers/X": "This layer is protected and can't be removed",
-        }
-
-        self.hidden_packages = {
-            # Devel repositories we hide
-            "repository/mocaccino-desktop": "Devel repository",
-            "repository/mocaccino-os-commons": "Devel repository",
-            "repository/mocaccino-extra": "Devel repository",
-            "repository/mocaccino-community": "Devel repository",
-            # Crucial repositories users should not remove
-            "repository/luet": "This repository is crucial and can't be removed",
-            "repository/mocaccino-repository-index": "This repository is crucial and can't be removed",
-            # Stable repositories
-            "repository/mocaccino-desktop-stable": "Stable repository can't be removed",
-            "repository/mocaccino-os-commons-stable": "Stable repository can't be removed",
-            "repository/mocaccino-extra-stable": "Stable repository can't be removed",
-            # Repositories we just want to hide
-            "repository/livecd": "This repository should be hidden",
-            "repository/mocaccino-stage3": "Old repository, not in use anymore",
-            "repository/mocaccino-portage": "Old repository, not in use anymore",
-            "repository/mocaccino-portage-stable": "Old repository, not in use anymore",
-            "repository/mocaccino-kernel": "Old repository, not in use anymore",
-            "repository/mocaccino-kernel-stable": "Old repository, not in use anymore",
-            "repository/mocaccino-extra-arm": "Old repository, not in use anymore",
-            "repository/mocaccino-musl-universe": "Hide musl repo",
-            "repository/mocaccino-musl-universe-stable": "Hide musl repo",
-            "repository/mocaccino-micro": "Hide micro repo",
-            "repository/mocaccino-micro-stable": "Hide micro repo",
-            "repo-updater/mocaccino-micro-stable": "Hide micro repo-updater",
-            "repo-updater/mocaccino-desktop-stable": "Hide desktop repo-updater",
-            "repo-updater/mocaccino-community-stable": "Hide desktop repo-updater",
-            "kernel-5.9/debian-full": "Old repository, not in use anymore",
-        }
-
         self.init_search_ui()
 
         if self.elevation_cmd is None and os.getuid() != 0:
-            GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found — admin actions will fail"))
+            GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found - admin actions will fail"))
     
     # Mocking for local development without luet_pm_core.py
     def get_last_sync_time(self):
@@ -702,16 +675,17 @@ class SearchApp(Gtk.Window):
             packages = result.get("packages", [])
             self.liststore.clear()
             
-            # FIX 3: Calculate and store integer ID (index 4) along with display text (index 5)
+            # FIX 3: Use PackageFilter from core to filter packages
             for pkg in packages:
                 category, name = pkg.get("category", ""), pkg.get("name", "")
-                key = "{}/{}".format(category, name)
-                if category == "entity" or key in self.hidden_packages:
+                
+                # Use core logic to determine if package should be hidden
+                if PackageFilter.is_package_hidden(category, name):
                     continue
                 
                 # Determine and store the integer ID
                 installed = pkg.get("installed", False)
-                if key in self.protected_applications:
+                if PackageFilter.is_package_protected(category, name):
                     action_id = self.ACTION_PROTECTED
                     action_display = _("Protected")
                 elif installed:
@@ -819,8 +793,11 @@ class SearchApp(Gtk.Window):
 
     def show_protected_popup(self, path):
         category, name = self.liststore[path][0], self.liststore[path][1]
-        key = "{}/{}".format(category, name)
-        msg = self.protected_applications.get(key, _("This package ({}) is protected and can't be removed.").format(key))
+        # Use core logic to get the protection message
+        msg = PackageFilter.get_protection_message(category, name)
+        if msg is None:
+            # Fallback if not found in protected packages
+            msg = _("This package ({}) is protected and can't be removed.").format("{}/{}".format(category, name))
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.INFO, buttons=Gtk.ButtonsType.OK, text=msg)
         dlg.run()
         dlg.destroy()
