@@ -274,10 +274,17 @@ class LuetTUI:
             self.stdscr.clrtoeol()
             status_text = self.status_message
             status_x = max(0, (w - len(status_text)) // 2)
-            self.stdscr.addstr(1, status_x, status_text[:w - 1 - status_x])
+            
+            # Determine status text attribute: bright (A_NORMAL) only if "Ready"
+            # Otherwise use A_DIM as requested.
+            status_attr = curses.A_NORMAL if status_text == _("Ready") else curses.A_DIM
+            
+            self.stdscr.addstr(1, status_x, status_text[:w - 1 - status_x], status_attr) 
+            
+            # Dim the sync text
             sync_text = _("Last sync: {}").format(self.sync_info)
             if len(sync_text) < w:
-                self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text)
+                self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text, curses.A_DIM)
 
         except curses.error: pass
         
@@ -384,7 +391,7 @@ class LuetTUI:
             self.results_win.addstr(0, 2, _(" Results "))
             
             # Results Header
-            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Ver'):8.8} {_('Repo'):22.22} {_('Action'):8}"
+            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Version'):8.8} {_('Repository'):22.22} {_('Action'):8}"
             self.results_win.addstr(1, 1, header[:win_w-2], curses.A_BOLD)
 
             # Ensure selected item is visible
