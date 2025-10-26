@@ -293,7 +293,7 @@ class LuetTUI:
             self.stdscr.addstr(results_top - 1, 0, "-" * (w - 1))
             self.stdscr.addstr(results_top - 1, 2, _(" Results "))
             # NOTE: Translated headers
-            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Ver'):8.8} {_('Repo'):15.15} {_('Action'):8}"
+            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Ver'):8.8} {_('Repo'):22.22} {_('Action'):8}"
             self.stdscr.addstr(results_top, 0, header, curses.A_BOLD)
         except curses.error: pass
 
@@ -324,7 +324,7 @@ class LuetTUI:
             else:
                 action = _("Install")
             
-            line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:15]:15} {action:8}"
+            line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
             try:
                 if row_idx == self.selected_index:
                     self.stdscr.addstr(y, 0, line[:w-1], curses.A_REVERSE)
