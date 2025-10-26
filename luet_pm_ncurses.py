@@ -8,6 +8,7 @@ and robust package listing and log viewing, with full translation support via _(
 
 import curses
 import curses.textpad
+import curses.ascii # Import ascii for key checks
 import threading
 import time
 import queue
@@ -173,18 +174,24 @@ class LuetTUI:
         self.lock = threading.Lock() # Global lock for thread safety
 
         # UI state
-        self.status_message = _("Ready") + " (Press F9 for menu, 's' to search.)"
+        # --- MODIFIED: Removed hardcoded hints ---
+        self.status_message = _("Ready")
         self.sync_info = _("Not Synced")
+        
+        # --- NEW: Search field state ---
+        self.focus = 'list' # 'list' or 'search'
         self.search_query = ""
+        self.search_cursor_pos = 0 # Cursor position within self.search_query
+        
         self.results = []
         self.selected_index = 0
-        self.results_scroll_offset = 0  # NEW: Track scroll position for results list
+        self.results_scroll_offset = 0  # Track scroll position for results list
         self.log_lines = []
         self.log_scroll = 0 # 0 means auto-scroll/viewing newest lines
-        self.log_visible = True # NEW: State variable to control log visibility (GTK Expander equivalent)
+        self.log_visible = True # State variable to control log visibility
 
         # Set up curses
-        curses.curs_set(0) # Hide cursor
+        curses.curs_set(0) # Hide cursor (will be shown selectively)
         self.stdscr.nodelay(True) # Non-blocking getch
         self.stdscr.keypad(True) # Enable F-keys, arrows, etc.
         curses.start_color()
@@ -230,6 +237,9 @@ class LuetTUI:
             
     # ---------------- UI Drawing ----------------
     def draw(self):
+        # Default to hidden cursor, will be enabled by search box if focused
+        curses.curs_set(0)
+        
         self.stdscr.erase()
         h, w = self.stdscr.getmaxyx()
 
@@ -254,22 +264,59 @@ class LuetTUI:
             self.stdscr.addstr(0, 0, menu_line[:w-1], curses.A_REVERSE)
         except curses.error: pass
 
-        # Status + sync (Line 1)
+        # --- MODIFIED: Status + sync (Line 1) ---
         try:
-            self.stdscr.addstr(1, 0, self.status_message[:w-1])
+            # Clear the line to prevent artifacts from previous centered messages
+            self.stdscr.move(1, 0)
+            self.stdscr.clrtoeol()
+
+            # Calculate center position for status message
+            status_text = self.status_message
+            status_x = max(0, (w - len(status_text)) // 2)
+
+            # Draw the status message, truncated if it hits the right edge
+            self.stdscr.addstr(1, status_x, status_text[:w - 1 - status_x])
+            
             # NOTE: Translated string
             sync_text = _("Last sync: {}").format(self.sync_info)
             if len(sync_text) < w:
+                # Draw right-aligned sync text (will overwrite status if necessary)
                 self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text)
         except curses.error: pass
 
-        # Search prompt (Line 3)
+        # --- NEW: Search input field (Line 3) ---
         try:
-            # NOTE: Translated string
-            self.stdscr.addstr(3, 0, _("Search (press 's'): "))
-            q = (self.search_query if len(self.search_query) < (w - 24) else ("..." + self.search_query[-(w - 27):]))
-            self.stdscr.addstr(3, 24, q)
+            search_label = _("Search:")
+            search_box_x = len(search_label) + 2
+            search_box_w = max(10, w - search_box_x - 2)
+            
+            self.stdscr.addstr(3, 0, search_label)
+            
+            # Clamp cursor position to be within the query string
+            self.search_cursor_pos = max(0, min(len(self.search_query), self.search_cursor_pos))
+            
+            # Calculate the visible part of the search query
+            visible_start = 0
+            visible_cursor_pos = self.search_cursor_pos
+            
+            if self.search_cursor_pos >= search_box_w:
+                visible_start = self.search_cursor_pos - search_box_w + 1
+                visible_cursor_pos = search_box_w - 1
+            
+            display_query = self.search_query[visible_start : visible_start + search_box_w]
+            
+            search_attr = curses.A_UNDERLINE
+            if self.focus == 'search':
+                search_attr = curses.A_REVERSE # Highlight focused field
+            
+            self.stdscr.addstr(3, search_box_x, display_query.ljust(search_box_w), search_attr)
+            
+            if self.focus == 'search':
+                curses.curs_set(1) # Show cursor
+                self.stdscr.move(3, search_box_x + visible_cursor_pos) # Move cursor
+
         except curses.error: pass
+
 
         # Results area calculations (Dynamic based on log visibility)
         results_top = 5
@@ -326,10 +373,12 @@ class LuetTUI:
             
             line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
             try:
-                if row_idx == self.selected_index:
-                    self.stdscr.addstr(y, 0, line[:w-1], curses.A_REVERSE)
-                else:
-                    self.stdscr.addstr(y, 0, line[:w-1])
+                # Highlight if list is focused AND it's the selected item
+                attr = curses.A_NORMAL
+                if self.focus == 'list' and row_idx == self.selected_index:
+                    attr = curses.A_REVERSE
+                
+                self.stdscr.addstr(y, 0, line[:w-1], attr)
             except curses.error: pass
 
         # Conditional Log area drawing
@@ -351,7 +400,7 @@ class LuetTUI:
                         self.log_scroll
                     ).format(self.log_scroll)
                     
-                    # Full translated header string
+                    # Full translated string
                     header_text = _("{} ({} PgUp/PgDn to navigate)").format(
                         base_header, 
                         plural_msg
@@ -389,21 +438,27 @@ class LuetTUI:
             except curses.error: pass
 
 
-        # Footer (remains at h - 1)
-        # NOTE: Translated string, includes new 'l=toggle log' instruction
-        footer = _("Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
+        # --- NEW: Dynamic Footer (remains at h - 1) ---
+        footer = ""
+        if self.focus == 'list':
+            footer = _("Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
+        elif self.focus == 'search':
+            footer = _("SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit | q=quit")
+            
         try:
-            self.stdscr.addstr(h - 1, 0, footer[:w-1], curses.A_DIM)
+            self.stdscr.addstr(h - 1, 0, footer.ljust(w-1)[:w-1], curses.A_DIM)
         except curses.error: pass
         
         self.stdscr.refresh()
         
         # Draw the menu dropdown AFTER the main screen refresh to ensure layering
         if self.menu.is_open:
+            curses.curs_set(0) # Hide text cursor when menu is open
             self.menu.draw(self.stdscr)
 
     # ---------------- Prompts & Dialogs ----------------
     def prompt_string(self, prompt, initial=""):
+        # This function is no longer used for search, but kept for future use
         curses.echo()
         curses.curs_set(1)
         h, w = self.stdscr.getmaxyx()
@@ -713,31 +768,60 @@ class LuetTUI:
                 if ch != -1:
                     if self.menu.is_open:
                         self.menu.handle_input(ch)
-                    else:
-                        # Global keys (when menu closed)
+                    
+                    # --- NEW: Focus-based Input Handling ---
+                    elif self.focus == 'search':
+                        # --- Search Box Input Handling ---
+                        if ch in (curses.KEY_ENTER, 10, 13):
+                            # Submit search
+                            if self.search_query:
+                                self.run_search(self.search_query)
+                            self.focus = 'list' # Move focus to results
+                        
+                        # --- FIX: Replaced curses.KEY_TAB with 9 (ASCII value for Tab) ---
+                        elif ch in (curses.KEY_DOWN, 9, 27): # Down, Tab (ASCII 9), or Escape
+                            self.focus = 'list'
+                        elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                            if self.search_cursor_pos > 0:
+                                self.search_query = self.search_query[:self.search_cursor_pos - 1] + self.search_query[self.search_cursor_pos:]
+                                self.search_cursor_pos -= 1
+                        elif ch == curses.KEY_DC: # Delete
+                            self.search_query = self.search_query[:self.search_cursor_pos] + self.search_query[self.search_cursor_pos + 1:]
+                        elif ch == curses.KEY_LEFT:
+                            self.search_cursor_pos = max(0, self.search_cursor_pos - 1)
+                        elif ch == curses.KEY_RIGHT:
+                            self.search_cursor_pos = min(len(self.search_query), self.search_cursor_pos + 1)
+                        elif ch == curses.KEY_HOME:
+                            self.search_cursor_pos = 0
+                        elif ch == curses.KEY_END:
+                            self.search_cursor_pos = len(self.search_query)
+                        elif curses.ascii.isprint(ch):
+                            try:
+                                s = chr(ch)
+                                self.search_query = self.search_query[:self.search_cursor_pos] + s + self.search_query[self.search_cursor_pos:]
+                                self.search_cursor_pos += 1
+                            except:
+                                pass # Ignore non-printable chars
+                    
+                    elif self.focus == 'list':
+                        # --- List/Global Input Handling ---
                         if ch in (curses.KEY_F9,):
                             self.menu.is_open = True
                         elif ch in (ord('q'), ord('Q')):
                             self.running = False
                             break
                         elif ch in (ord('s'), ord('S')):
-                            # NOTE: Translated string for prompt
-                            q = self.prompt_string(_("Search query"), self.search_query)
-                            if q is not None:
-                                self.search_query = q.strip()
-                                if self.search_query:
-                                    self.run_search(self.search_query)
+                            # Focus the search box
+                            self.focus = 'search'
+                            self.search_cursor_pos = len(self.search_query) # Move cursor to end
                         
-                        # NEW: Key binding to toggle log visibility
                         elif ch in (ord('l'), ord('L')):
                             self.log_visible = not self.log_visible
                             self.log_scroll = 0 # Reset scroll when toggling
                         
-                        # Log scroll keys (PgUp/PgDn) - Now part of the main elif chain
                         elif ch == curses.KEY_PPAGE:
                             if self.log_visible:
                                 # Log height calculation must match the draw function's logic
-                                # NOTE: Duplicated calculation is necessary here to keep the structure flat
                                 log_top = 5 + max(6, int((h - 5) * 0.55)) + 1
                                 log_height_lines = h - log_top - 2
                                 log_height_lines = max(3, log_height_lines)
@@ -747,19 +831,21 @@ class LuetTUI:
                         elif ch == curses.KEY_NPAGE:
                             if self.log_visible:
                                 # Log height calculation must match the draw function's logic
-                                # NOTE: Duplicated calculation is necessary here to keep the structure flat
                                 log_top = 5 + max(6, int((h - 5) * 0.55)) + 1
                                 log_height_lines = h - log_top - 2
                                 log_height_lines = max(3, log_height_lines)
                                 self.log_scroll = max(0, self.log_scroll - log_height_lines)
 
-                        # PACKAGE LIST NAVIGATION: These are now correctly chained using elif
                         elif ch == curses.KEY_DOWN:
                             if self.selected_index < len(self.results) - 1:
                                 self.selected_index += 1
                         elif ch == curses.KEY_UP:
                             if self.selected_index > 0:
                                 self.selected_index -= 1
+                            else:
+                                # At top of list, move focus to search
+                                self.focus = 'search'
+                                self.search_cursor_pos = len(self.search_query)
                         elif ch in (10, 13):
                             self.show_details()
                         elif ch in (ord('i'), ord('I'), ord(' ')):
