@@ -473,7 +473,7 @@ class LuetTUI:
             
     # ---------------- Business Wrappers (Logic Calls) ----------------
     def run_update_repositories(self):
-        self.append_to_log(_("Starting repository update..."))
+        # self.append_to_log(_("Starting repository update..."))
         self.set_status(_("Updating repositories..."))
         self.draw()
 
@@ -501,9 +501,48 @@ class LuetTUI:
         self.append_to_log(_("Full system upgrade initiated (implementation TBD in core)."))
         
     def run_check_system(self):
-        self.append_to_log(_("Starting system check..."))
-        self.set_status(_("Checking system..."))
-        self.append_to_log(_("System check initiated (implementation TBD in core)."))
+            """
+            Runs the SystemChecker core logic, scheduling all log and status updates 
+            to happen safely on the main thread via the scheduler.
+            """
+            # self.append_to_log(_("Checking system for missing files..."))
+            self.set_status(_("Checking system for missing files..."))
+            self.draw()
+
+            # 1. Define callbacks to be scheduled on the main thread
+            def on_log(line): 
+                # Output from luet oscheck or reinstall commands
+                self.scheduler.schedule(self.append_to_log, line)
+                
+            def on_exit_status(msg): 
+                # Final status message after the check/repair sequence is completely done
+                self.scheduler.schedule(self.set_status, msg)
+                
+            def on_reinstall_start():
+                # Triggered when missing packages are identified and repair is about to begin
+                self.scheduler.schedule(self.append_to_log, _("\n--- Missing packages found. Starting repair sequence. ---"))
+                
+            def on_reinstall_status(status):
+                # Status update during the repair loop (e.g., Reinstalling pkg...)
+                self.scheduler.schedule(self.set_status, status)
+                
+            def on_reinstall_finish(success):
+                # Final message after all repair attempts are complete
+                msg = _("System repair finished successfully.") if success else _("Could not repair some packages")
+                self.scheduler.schedule(self.append_to_log, msg)
+
+            # 2. Call the core logic
+            # SystemChecker.run_check_system handles its own threading.
+            SystemChecker.run_check_system(
+                self.command_runner.run_sync,  # Uses synchronous command runner for long-running checks
+                on_log,
+                on_exit_status,
+                on_reinstall_start,
+                on_reinstall_status,
+                on_reinstall_finish,
+                time.sleep,                    # Uses standard Python sleep for delays inside the worker thread
+                _                              # Passes the translation function
+            )
         
     def run_clear_cache(self):
         """
