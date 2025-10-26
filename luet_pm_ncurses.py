@@ -173,7 +173,7 @@ class LuetTUI:
         self.lock = threading.Lock() # Global lock for thread safety
 
         # UI state
-        self.status_message = _("Ready. Press F1 for menu, 's' to search.")
+        self.status_message = _("Ready.") + " (Press F1 for menu, 's' to search.)"
         self.sync_info = _("Not Synced")
         self.search_query = ""
         self.results = []
