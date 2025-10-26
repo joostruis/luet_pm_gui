@@ -341,7 +341,7 @@ class LuetTUI:
             try:
                 self.stdscr.addstr(log_top - 1, 0, "-" * (w - 1))
                 
-                base_header = _("Output Log")
+                base_header = _("Toggle output log")
                 
                 if self.log_scroll > 0:
                     # Use ngettext for correct pluralization of 'line'/'lines'
