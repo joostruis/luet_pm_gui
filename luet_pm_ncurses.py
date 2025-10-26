@@ -166,6 +166,9 @@ class Menu:
 
 # --- Main Application Class ---
 class LuetTUI:
+    # ADDED: Spinner Frames for visual feedback during asynchronous tasks
+    SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    
     def __init__(self, stdscr):
         self.stdscr = stdscr
         self.running = True
@@ -177,6 +180,9 @@ class LuetTUI:
         self.status_message = _("Ready")
         self.sync_info = _("Not Synced")
         
+        # ADDED: Spinner state
+        self.spinner_frame_index = 0 # Current index for the spinner frame
+        
         # Search field state
         self.focus = 'list' # 'list' or 'search'
         self.search_query = ""
@@ -187,7 +193,8 @@ class LuetTUI:
         self.results_scroll_offset = 0  # Track scroll position for results list
         self.log_lines = []
         self.log_scroll = 0 # 0 means auto-scroll/viewing newest lines
-        self.log_visible = True # State variable to control log visibility
+        # FIX: Set log to hidden by default
+        self.log_visible = False # State variable to control log visibility 
 
         # Sub-windows for boxes
         self.search_win = None # The window object for the input box
@@ -257,40 +264,68 @@ class LuetTUI:
             self.stdscr.refresh() # Use regular refresh here
             return
             
+        is_ready = self.status_message == _("Ready")
+        
+        # Define common attributes based on readiness
+        dim_attr = curses.A_DIM if not is_ready else curses.A_NORMAL
+        header_attr = curses.A_DIM if not is_ready else curses.A_BOLD
+
         # 1. Draw on stdscr (Menu, Status)
         try:
             # Menu bar (Line 0)
-            menu_line = ""
+            x_pos = 0
             for i, (title, index) in enumerate(Menu.MENU_TITLES):
                 seg = f"  {title}  "
-                attr = curses.A_NORMAL
-                if self.menu.is_open and index == self.menu.active_menu:
-                    attr = curses.A_REVERSE
-                menu_line += seg
-            self.stdscr.addstr(0, 0, menu_line[:w-1], curses.A_REVERSE)
+                
+                # Default attribute: reversed background
+                attr = curses.A_REVERSE
+                
+                # Apply dimming if not ready
+                if not is_ready:
+                    attr |= curses.A_DIM
+                # If ready AND the menu is active, use A_NORMAL (not dimmed)
+                elif self.menu.is_open and index == self.menu.active_menu:
+                    attr |= curses.A_NORMAL 
+                
+                self.stdscr.addstr(0, x_pos, seg, attr)
+                x_pos += len(seg)
+                
+            # Fill the remainder of the line with a plain reversed background
+            if x_pos < w:
+                self.stdscr.addstr(0, x_pos, " " * (w - x_pos), curses.A_REVERSE)
 
-            # Status + sync (Line 1) - Status is centered
-            self.stdscr.move(1, 0) # Clear line
+            # STATUS PADDING FIX: Clear Line 1 to create space
+            self.stdscr.move(1, 0) 
             self.stdscr.clrtoeol()
-            status_text = self.status_message
+            
+            # Status + sync (Line 2) - Status is centered
+            self.stdscr.move(2, 0) # Clear line 2
+            self.stdscr.clrtoeol()
+            
+            # ADDED: Spinner Logic
+            status_prefix = ""
+            if not is_ready:
+                # Add the current spinner frame if not ready
+                status_prefix = self.SPINNER_FRAMES[self.spinner_frame_index] + " "
+                
+            status_text = status_prefix + self.status_message
             status_x = max(0, (w - len(status_text)) // 2)
             
             # Determine status text attribute: bright (A_NORMAL) only if "Ready"
-            # Otherwise use A_DIM as requested.
-            status_attr = curses.A_NORMAL if status_text == _("Ready") else curses.A_DIM
+            status_attr = curses.A_NORMAL if is_ready else curses.A_DIM
             
-            self.stdscr.addstr(1, status_x, status_text[:w - 1 - status_x], status_attr) 
+            self.stdscr.addstr(2, status_x, status_text[:w - 1 - status_x], status_attr) 
             
             # Dim the sync text
             sync_text = _("Last sync: {}").format(self.sync_info)
             if len(sync_text) < w:
-                self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text, curses.A_DIM)
+                self.stdscr.addstr(2, max(0, w - len(sync_text) - 1), sync_text, curses.A_DIM)
 
         except curses.error: pass
         
         
         # 2. Calculate Window Dimensions
-        search_y = 2
+        search_y = 3 # FIX: Start search window one line lower for padding
         search_h = 3 # Height is 3 for border, input line, and bottom border
         results_y = search_y + search_h
         results_x = 0
@@ -325,10 +360,17 @@ class LuetTUI:
                 self.search_win.mvwin(search_y, results_x)
 
             self.search_win.erase()
-            self.search_win.border()
             
-            # Draw window title/indicator
-            self.search_win.addstr(0, 2, " " + _("Search") + " ")
+            # Determine base attribute for the window content and title/border
+            base_attr = curses.A_DIM if not is_ready else curses.A_BOLD
+            
+            # Apply attribute to the border
+            self.search_win.attrset(base_attr)
+            self.search_win.border()
+            self.search_win.attrset(curses.A_NORMAL) # Reset to ensure addstr uses only specified attr
+
+            # Draw window title/indicator, applying dimming/bolding
+            self.search_win.addstr(0, 2, " " + _("Search") + " ", base_attr) 
 
             # Draw the input content inside the new window
             input_y = 1
@@ -339,14 +381,15 @@ class LuetTUI:
             display_query = self.search_query
             cursor_pos_in_win = 0
             
-            # Clear the input line first
-            self.search_win.addstr(input_y, input_x, " " * max_input_len, curses.A_NORMAL)
+            # Clear the input line first (using base_attr)
+            self.search_win.addstr(input_y, input_x, " " * max_input_len, base_attr)
             
             if not display_query:
                 # --- Draw Placeholder Text ---
                 placeholder_text = _("Enter package name")
-                # Use A_DIM attribute to make the placeholder look grey/faded
-                self.search_win.addstr(input_y, input_x, placeholder_text[:max_input_len], curses.A_DIM)
+                # Placeholder is always A_DIM, regardless of ready status
+                attr = curses.A_DIM
+                self.search_win.addstr(input_y, input_x, placeholder_text[:max_input_len], attr)
                 
             else:
                 # --- Draw Actual Search Query with Scrolling Logic ---
@@ -360,20 +403,25 @@ class LuetTUI:
                 # The actual part of the query to display
                 display_query = self.search_query[scroll_offset : scroll_offset + max_input_len]
                 
-                # Draw the (potentially clipped/scrolled) search query
-                self.search_win.addstr(input_y, input_x, display_query.ljust(max_input_len), curses.A_NORMAL)
+                # Draw the (potentially clipped/scrolled) search query (using base_attr)
+                self.search_win.addstr(input_y, input_x, display_query.ljust(max_input_len), base_attr)
                 
                 # The cursor position inside the visible window is relative to the scroll_offset
                 cursor_pos_in_win = self.search_cursor_pos - scroll_offset
                 
             # --- Cursor Management for Search Window ---
-            if self.focus == 'search':
+            if self.focus == 'search' and is_ready:
                 # Move the cursor to the correct position *within the search_win*
                 cursor_y = input_y
                 cursor_x = input_x + min(cursor_pos_in_win, max_input_len)
                 
                 curses.curs_set(1) # Enable cursor visibility
                 self.search_win.move(cursor_y, cursor_x)
+            else:
+                # If not focused OR not ready, ensure cursor is hidden and focus is forced to 'list'
+                curses.curs_set(0)
+                if not is_ready:
+                    self.focus = 'list' # Prevents search input processing in run()
 
         except curses.error: pass
 
@@ -387,12 +435,18 @@ class LuetTUI:
                 self.results_win.mvwin(results_y, results_x)
             
             self.results_win.erase()
-            self.results_win.border()
-            self.results_win.addstr(0, 2, _(" Results "))
             
-            # Results Header
+            # Apply attribute to the border (using dim_attr)
+            self.results_win.attrset(dim_attr)
+            self.results_win.border()
+            self.results_win.attrset(curses.A_NORMAL)
+            
+            # Apply dim_attr to title
+            self.results_win.addstr(0, 2, " " + _(" Results ") + " ", dim_attr)
+            
+            # Results Header - Use the calculated header_attr (Bold or Dim)
             header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Version'):8.8} {_('Repository'):22.22} {_('Action'):8}"
-            self.results_win.addstr(1, 1, header[:win_w-2], curses.A_BOLD)
+            self.results_win.addstr(1, 1, header[:win_w-2], header_attr)
 
             # Ensure selected item is visible
             if self.selected_index < self.results_scroll_offset:
@@ -416,8 +470,10 @@ class LuetTUI:
                     action = _("Install")
                 
                 line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
-                attr = curses.A_NORMAL
-                if self.focus == 'list' and row_idx == self.selected_index:
+                
+                # Apply dimming if not ready, or reverse if selected and ready
+                attr = dim_attr # Default to dimmed or normal based on is_ready
+                if is_ready and self.focus == 'list' and row_idx == self.selected_index:
                     attr = curses.A_REVERSE
                 
                 self.results_win.addstr(y_in_win, 1, line[:win_w-2], attr)
@@ -584,6 +640,7 @@ class LuetTUI:
         def on_log(line): self.append_to_log(line)
         def on_success(): self.set_status(_("Repositories updated"))
         def on_error(): self.set_status(_("Error updating repositories"))
+        # on_finish sets status back to ready
         def on_finish(cookie): self.set_status(_("Ready"))
         threading.Thread(
             target=lambda: RepositoryUpdater.run_repo_update(
@@ -621,6 +678,7 @@ class LuetTUI:
             # This runs on the main thread via self.scheduler.schedule
             # Refresh sync time / system state
             self.init_app()
+            # on_post_action sets status back to ready
             self.set_status(_("Ready"))
 
 
@@ -650,7 +708,9 @@ class LuetTUI:
             def on_log(line): 
                 self.scheduler.schedule(self.append_to_log, line)
             def on_exit_status(msg): 
+                # After displaying exit status, ensure state returns to Ready
                 self.scheduler.schedule(self.set_status, msg)
+                self.scheduler.schedule(self.set_status, _("Ready"))
             def on_reinstall_start():
                 self.scheduler.schedule(self.append_to_log, _("\n--- Missing packages found. Starting repair sequence. ---"))
             def on_reinstall_status(status):
@@ -698,14 +758,20 @@ class LuetTUI:
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
+                # Error path for search command execution failure
                 self.scheduler.schedule(self.append_to_log, _("Search error: {}").format(e))
                 self.scheduler.schedule(self.set_status, _("Error executing search command"))
+                self.scheduler.schedule(self.set_status, _("Ready")) # Ensure Ready state is restored
         threading.Thread(target=worker, daemon=True).start()
 
     def on_search_finished(self, result):
         if "error" in result:
             self.set_status(result["error"])
+            # The worker thread's exception handler should already handle the Ready state, 
+            # but we ensure it here if 'error' is in the JSON response payload.
+            self.set_status(_("Ready"))
             return
+        
         self.results = []
         for pkg in result.get("packages", []):
             category = pkg.get("category", "")
@@ -723,7 +789,12 @@ class LuetTUI:
             })
         self.selected_index = 0
         self.results_scroll_offset = 0
+        
+        # Display search summary
         self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
+        
+        # Ensure the TUI is released to the "Ready" state immediately after search completion.
+        self.set_status(_("Ready"))
 
     def do_install_uninstall_selected(self):
         if not (0 <= self.selected_index < len(self.results)): return
@@ -803,10 +874,49 @@ class LuetTUI:
     def run(self):
             while self.running:
                 self.scheduler.drain()
+                
+                # ADDED: Advance the spinner frame index on each loop iteration
+                self.spinner_frame_index = (self.spinner_frame_index + 1) % len(self.SPINNER_FRAMES)
+                
                 ch = self.stdscr.getch()
                 h, w = self.stdscr.getmaxyx()
+                
+                is_ready = self.status_message == _("Ready")
 
                 if ch != -1:
+                    # --- Global Keys (Always Enabled: Quit) ---
+                    if ch in (ord('q'), ord('Q')):
+                        self.running = False
+                        break
+                    
+                    # FIX: Only toggle log if not in search mode
+                    if ch in (ord('l'), ord('L')) and self.focus != 'search': 
+                        self.log_visible = not self.log_visible
+                        self.log_scroll = 0 
+                    
+                    elif ch == curses.KEY_PPAGE:
+                        if self.log_visible and self.visible_log_height_lines > 0:
+                            log_height_lines = self.visible_log_height_lines
+                            max_scroll = max(0, len(self.log_lines) - log_height_lines)
+                            self.log_scroll = min(max_scroll, self.log_scroll + log_height_lines)
+                    
+                    elif ch == curses.KEY_NPAGE:
+                        if self.log_visible and self.visible_log_height_lines > 0:
+                            log_height_lines = self.visible_log_height_lines
+                            self.log_scroll = max(0, self.log_scroll - log_height_lines)
+
+                    # --- Block Ready-Dependent Keys (Menu/Search/List Actions) ---
+                    if not is_ready:
+                        # Allow F9/Esc to close an *already open* menu
+                        if self.menu.is_open and ch in (27, curses.KEY_F9):
+                             self.menu.is_open = False
+                        
+                        self.draw()
+                        time.sleep(0.03)
+                        continue # Skip command/list processing
+                    
+                    # --- Ready-Dependent Keys (is_ready is True here) ---
+
                     if self.menu.is_open:
                         self.menu.handle_input(ch)
                     
@@ -822,6 +932,11 @@ class LuetTUI:
                         elif ch in (curses.KEY_DOWN, 9, 27): # Down, Tab (ASCII 9), or Escape (ASCII 27)
                             self.focus = 'list'
                         
+                        # Fix: Handle F9 to open menu, regardless of being in search mode
+                        elif ch == curses.KEY_F9:
+                            self.focus = 'list'
+                            self.menu.is_open = True
+
                         # Search bar editing keys
                         elif ch in (curses.KEY_BACKSPACE, 127, 8):
                             if self.search_cursor_pos > 0:
@@ -837,6 +952,7 @@ class LuetTUI:
                             self.search_cursor_pos = 0
                         elif ch == curses.KEY_END:
                             self.search_cursor_pos = len(self.search_query)
+                        # Printable characters, including 'l' and 'L' when focus == 'search'
                         elif curses.ascii.isprint(ch):
                             try:
                                 s = chr(ch)
@@ -849,29 +965,12 @@ class LuetTUI:
                         # --- List/Global Input Handling ---
                         if ch in (curses.KEY_F9,):
                             self.menu.is_open = True
-                        elif ch in (ord('q'), ord('Q')):
-                            self.running = False
-                            break
                         elif ch in (ord('s'), ord('S')):
                             # Focus the search box
                             self.focus = 'search'
                             self.search_cursor_pos = len(self.search_query) # Move cursor to end
                         
-                        elif ch in (ord('l'), ord('L')):
-                            self.log_visible = not self.log_visible
-                            self.log_scroll = 0 # Reset scroll when toggling
-                        
-                        elif ch == curses.KEY_PPAGE:
-                            if self.log_visible and self.visible_log_height_lines > 0:
-                                log_height_lines = self.visible_log_height_lines
-                                max_scroll = max(0, len(self.log_lines) - log_height_lines)
-                                self.log_scroll = min(max_scroll, self.log_scroll + log_height_lines)
-                        
-                        elif ch == curses.KEY_NPAGE:
-                            if self.log_visible and self.visible_log_height_lines > 0:
-                                log_height_lines = self.visible_log_height_lines
-                                self.log_scroll = max(0, self.log_scroll - log_height_lines)
-
+                        # List movement/action keys
                         elif ch == curses.KEY_DOWN:
                             if self.selected_index < len(self.results) - 1:
                                 self.selected_index += 1
@@ -906,6 +1005,9 @@ def main(stdscr):
         traceback.print_exc()
 
 if __name__ == "__main__":
+    # NOTE: The _() function is required to be defined for the print statement below
+    # In a real environment, this means a basic gettext init is needed here or _() is mocked.
+    # Assuming _() is available due to the module structure importing it from luet_pm_core.
     try:
         print(_("Starting Luet TUI...")) 
         curses.wrapper(main)
