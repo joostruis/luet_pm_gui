@@ -123,7 +123,7 @@ class Menu:
 
     def handle_input(self, ch):
         """Handles key presses when the menu is open."""
-        if ch in (27, curses.KEY_F1):  # Esc or F1: close menu
+        if ch in (27, curses.KEY_F9):  # Esc or F9: close menu
             self.is_open = False
         elif ch in (curses.KEY_LEFT,):
             self.active_menu = (self.active_menu - 1) % len(self.MENU_TITLES)
@@ -173,7 +173,7 @@ class LuetTUI:
         self.lock = threading.Lock() # Global lock for thread safety
 
         # UI state
-        self.status_message = _("Ready") + " (Press F1 for menu, 's' to search.)"
+        self.status_message = _("Ready") + " (Press F9 for menu, 's' to search.)"
         self.sync_info = _("Not Synced")
         self.search_query = ""
         self.results = []
@@ -391,7 +391,7 @@ class LuetTUI:
 
         # Footer (remains at h - 1)
         # NOTE: Translated string, includes new 'l=toggle log' instruction
-        footer = _("Keys: F1=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
+        footer = _("Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
         try:
             self.stdscr.addstr(h - 1, 0, footer[:w-1], curses.A_DIM)
         except curses.error: pass
@@ -676,7 +676,7 @@ class LuetTUI:
                         self.menu.handle_input(ch)
                     else:
                         # Global keys (when menu closed)
-                        if ch in (curses.KEY_F1,):
+                        if ch in (curses.KEY_F9,):
                             self.menu.is_open = True
                         elif ch in (ord('q'), ord('Q')):
                             self.running = False
