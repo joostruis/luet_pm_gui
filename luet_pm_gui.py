@@ -873,11 +873,19 @@ class SearchApp(Gtk.Window):
         Appends text to the output log and ensures it's scrolled to the end.
         FIX 5: Uses scroll_to_mark to fix Gtk:ERROR:gtk_text_view_validate_onscreen assertion.
         """
-        buf = self.output_textview.get_buffer()
-        # 1. Insert text to the end of the buffer
-        buf.insert(buf.get_end_iter(), text, -1)
+        # This is already running via GLib.idle_add, so it's on the main thread.
+        # However, we must wrap it in GLib.idle_add again in case it's called
+        # directly without being scheduled from a separate thread context.
+        GLib.idle_add(self._append_to_log_in_gui_thread, text)
 
-        # 2. Create a temporary mark at the new end position.
+    def _append_to_log_in_gui_thread(self, text):
+        buf = self.output_textview.get_buffer()
+        
+        # 1. Insert text to the end of the buffer
+        # This mutation invalidates iterators.
+        buf.insert(buf.get_end_iter(), text, -1) 
+
+        # 2. Create a temporary mark at the new end position (Mark is an anchor and is safe).
         mark = buf.create_mark(None, buf.get_end_iter(), False)
         
         # 3. Use the canonical scroll_to_mark API.
@@ -885,6 +893,7 @@ class SearchApp(Gtk.Window):
         
         # 4. Immediately delete the temporary mark
         buf.delete_mark(mark)
+        return False # Required for GLib.idle_add
 
     # ---------------------------------
     # Menu Action Handlers (GUI)
