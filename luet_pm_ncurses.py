@@ -190,6 +190,13 @@ class LuetTUI:
         self.log_scroll = 0 # 0 means auto-scroll/viewing newest lines
         self.log_visible = True # State variable to control log visibility
 
+        # --- NEW: Sub-windows for boxes ---
+        self.results_win = None
+        self.log_win = None
+        self.visible_results_count = 0      # Used for scrolling logic
+        self.visible_log_height_lines = 0 # Used for scrolling logic
+
+
         # Set up curses
         curses.curs_set(0) # Hide cursor (will be shown selectively)
         self.stdscr.nodelay(True) # Non-blocking getch
@@ -218,7 +225,6 @@ class LuetTUI:
         si = SyncInfo.get_last_sync_time()
         # NOTE: Wrapped strings
         self.sync_info = si.get("ago", _("repositories not synced"))
-        # FIX 1: Removed self.run_search("") to stop the unnecessary startup search.
 
     # ---------------- Thread Safety Helpers ----------------
     def append_to_log(self, text):
@@ -235,7 +241,7 @@ class LuetTUI:
         with self.lock:
             self.status_message = str(msg)
             
-    # ---------------- UI Drawing ----------------
+    # ---------------- UI Drawing (Major Refactor) ----------------
     def draw(self):
         # Default to hidden cursor, will be enabled by search box if focused
         curses.curs_set(0)
@@ -247,68 +253,47 @@ class LuetTUI:
         if h < 20 or w < 80:
             try:
                 self.stdscr.addstr(0, 0, _("Terminal too small! Min 20x80."))
-                self.stdscr.refresh()
             except curses.error: pass
+            self.stdscr.refresh() # Use regular refresh here
             return
             
-        # Menu bar (Line 0)
-        menu_line = ""
-        for i, (title, index) in enumerate(Menu.MENU_TITLES):
-            seg = f"  {title}  "
-            attr = curses.A_NORMAL
-            if self.menu.is_open and index == self.menu.active_menu:
-                attr = curses.A_REVERSE
-            menu_line += seg
-            
+        # 1. Draw on stdscr (Menu, Status, Search)
         try:
+            # Menu bar (Line 0)
+            menu_line = ""
+            for i, (title, index) in enumerate(Menu.MENU_TITLES):
+                seg = f"  {title}  "
+                attr = curses.A_NORMAL
+                if self.menu.is_open and index == self.menu.active_menu:
+                    attr = curses.A_REVERSE
+                menu_line += seg
             self.stdscr.addstr(0, 0, menu_line[:w-1], curses.A_REVERSE)
-        except curses.error: pass
 
-        # --- MODIFIED: Status + sync (Line 1) ---
-        try:
-            # Clear the line to prevent artifacts from previous centered messages
-            self.stdscr.move(1, 0)
+            # Status + sync (Line 1) - Status is centered
+            self.stdscr.move(1, 0) # Clear line
             self.stdscr.clrtoeol()
-
-            # Calculate center position for status message
             status_text = self.status_message
             status_x = max(0, (w - len(status_text)) // 2)
-
-            # Draw the status message, truncated if it hits the right edge
             self.stdscr.addstr(1, status_x, status_text[:w - 1 - status_x])
-            
-            # NOTE: Translated string
             sync_text = _("Last sync: {}").format(self.sync_info)
             if len(sync_text) < w:
-                # Draw right-aligned sync text (will overwrite status if necessary)
                 self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text)
-        except curses.error: pass
 
-        # --- NEW: Search input field (Line 3) ---
-        try:
+            # Search input field (Line 3)
             search_label = _("Search:")
             search_box_x = len(search_label) + 2
             search_box_w = max(10, w - search_box_x - 2)
-            
             self.stdscr.addstr(3, 0, search_label)
-            
-            # Clamp cursor position to be within the query string
             self.search_cursor_pos = max(0, min(len(self.search_query), self.search_cursor_pos))
-            
-            # Calculate the visible part of the search query
             visible_start = 0
             visible_cursor_pos = self.search_cursor_pos
-            
             if self.search_cursor_pos >= search_box_w:
                 visible_start = self.search_cursor_pos - search_box_w + 1
                 visible_cursor_pos = search_box_w - 1
-            
             display_query = self.search_query[visible_start : visible_start + search_box_w]
-            
             search_attr = curses.A_UNDERLINE
             if self.focus == 'search':
                 search_attr = curses.A_REVERSE # Highlight focused field
-            
             self.stdscr.addstr(3, search_box_x, display_query.ljust(search_box_w), search_attr)
             
             if self.focus == 'search':
@@ -316,142 +301,151 @@ class LuetTUI:
                 self.stdscr.move(3, search_box_x + visible_cursor_pos) # Move cursor
 
         except curses.error: pass
-
-
-        # Results area calculations (Dynamic based on log visibility)
-        results_top = 5
+        
+        
+        # 2. Calculate Window Dimensions
+        results_y = 4
+        results_x = 0
+        win_w = w
+        footer_h = 1
+        content_bottom = h - footer_h # Line *before* footer
+        
+        log_h = 0
+        log_y = 0
         
         if self.log_visible:
-            # Log is visible: Results take 55% of the remaining screen
-            results_height = max(6, int((h - results_top) * 0.55))
+            total_content_h = content_bottom - results_y
+            results_h = max(6, int(total_content_h * 0.55))
+            log_h = max(3, total_content_h - results_h)
+            log_y = results_y + results_h
         else:
-            # Log is hidden: Results take up almost all remaining space
-            results_height = max(6, h - results_top - 2) # -2 for separator and footer
+            log_bar_h = 1
+            results_h = max(6, content_bottom - results_y - log_bar_h)
+            log_y = results_y + results_h # Y pos of the *hidden* bar
+        
+        # Store content heights for scroll logic
+        self.visible_results_count = max(0, results_h - 3) # -border, -header, -border
+        self.visible_log_height_lines = max(0, log_h - 2)    # -border, -border
 
-        # Log separator line (Dynamic position)
-        log_separator_line = results_top + results_height
-        
+        # 3. Draw Results Window
         try:
-            self.stdscr.addstr(log_separator_line, 0, "-" * (w - 1))
-        except curses.error: pass
-        
-        # Results area header (Line results_top - 1 and results_top)
-        try:
-            self.stdscr.addstr(results_top - 1, 0, "-" * (w - 1))
-            self.stdscr.addstr(results_top - 1, 2, _(" Results "))
-            # NOTE: Translated headers
-            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Ver'):8.8} {_('Repo'):22.22} {_('Action'):8}"
-            self.stdscr.addstr(results_top, 0, header, curses.A_BOLD)
-        except curses.error: pass
-
-        # Results list drawing
-        visible_results_count = results_height - 2
-        
-        # Ensure selected item is visible within the scroll window
-        if self.selected_index < self.results_scroll_offset:
-            self.results_scroll_offset = self.selected_index
-        elif self.selected_index >= self.results_scroll_offset + visible_results_count:
-            self.results_scroll_offset = self.selected_index - visible_results_count + 1
-        
-        for idx in range(visible_results_count):
-            row_idx = idx + self.results_scroll_offset
-            y = results_top + 1 + idx
-            if row_idx >= len(self.results):
-                try:
-                    self.stdscr.addstr(y, 0, " " * (w - 1))
-                except curses.error: pass
-                continue
-            
-            pkg = self.results[row_idx]
-            # Determine action based on protection status and installed state
-            if pkg.get("protected", False):
-                action = _("Protected")
-            elif pkg.get("installed", False):
-                action = _("Remove")
+            if self.results_win is None:
+                self.results_win = curses.newwin(results_h, win_w, results_y, results_x)
             else:
-                action = _("Install")
+                self.results_win.resize(results_h, win_w)
+                self.results_win.mvwin(results_y, results_x)
             
-            line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
-            try:
-                # Highlight if list is focused AND it's the selected item
+            self.results_win.erase()
+            self.results_win.border()
+            self.results_win.addstr(0, 2, _(" Results "))
+            
+            # Results Header
+            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Ver'):8.8} {_('Repo'):22.22} {_('Action'):8}"
+            self.results_win.addstr(1, 1, header[:win_w-2], curses.A_BOLD)
+
+            # Ensure selected item is visible
+            if self.selected_index < self.results_scroll_offset:
+                self.results_scroll_offset = self.selected_index
+            elif self.selected_index >= self.results_scroll_offset + self.visible_results_count:
+                self.results_scroll_offset = self.selected_index - self.visible_results_count + 1
+            
+            # Results List
+            for idx in range(self.visible_results_count):
+                row_idx = idx + self.results_scroll_offset
+                y_in_win = 2 + idx
+                if row_idx >= len(self.results):
+                    continue # .erase() already cleared the line
+                
+                pkg = self.results[row_idx]
+                if pkg.get("protected", False):
+                    action = _("Protected")
+                elif pkg.get("installed", False):
+                    action = _("Remove")
+                else:
+                    action = _("Install")
+                
+                line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
                 attr = curses.A_NORMAL
                 if self.focus == 'list' and row_idx == self.selected_index:
                     attr = curses.A_REVERSE
                 
-                self.stdscr.addstr(y, 0, line[:w-1], attr)
-            except curses.error: pass
+                self.results_win.addstr(y_in_win, 1, line[:win_w-2], attr)
 
-        # Conditional Log area drawing
-        if self.log_visible:
-            log_top = log_separator_line + 1
-            log_height = h - log_top - 2
-            
-            # Log area header (NOTE: Corrected for translation consistency)
-            try:
-                self.stdscr.addstr(log_top - 1, 0, "-" * (w - 1))
-                
-                base_header = _("Toggle output log")
-                
-                if self.log_scroll > 0:
-                    # Use ngettext for correct pluralization of 'line'/'lines'
-                    plural_msg = ngettext(
-                        "Scrolled Up: {} line.", 
-                        "Scrolled Up: {} lines.", 
-                        self.log_scroll
-                    ).format(self.log_scroll)
-                    
-                    # Full translated string
-                    header_text = _("{} ({} PgUp/PgDn to navigate)").format(
-                        base_header, 
-                        plural_msg
-                    )
-                else:
-                    # No extra text when at bottom (auto-scrolling)
-                    header_text = base_header
-                    
-                self.stdscr.addstr(log_top - 1, 2, header_text)
-            except curses.error: pass
-
-            # Log lines content
-            visible_lines_to_show = log_height
-            
-            if self.log_scroll == 0:
-                start_idx = max(0, len(self.log_lines) - visible_lines_to_show)
-            else:
-                start_idx = len(self.log_lines) - (self.log_scroll + visible_lines_to_show)
-                start_idx = max(0, start_idx)
-
-            visible_log = self.log_lines[start_idx : start_idx + visible_lines_to_show]
-
-            for i in range(log_height):
-                y = log_top + i
-                try:
-                    ln = visible_log[i] if i < len(visible_log) else ""
-                    self.stdscr.addstr(y, 0, ln[:w-1])
-                except curses.error: pass
-
-        else:
-            # Log is hidden: Show a small indicator on the separator line
-            indicator_text = _("Toggle output log") + " (Press 'l' to expand)"
-            try:
-                self.stdscr.addstr(log_separator_line, 2, indicator_text, curses.A_DIM)
-            except curses.error: pass
-
-
-        # --- NEW: Dynamic Footer (remains at h - 1) ---
-        footer = ""
-        if self.focus == 'list':
-            footer = _("Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
-        elif self.focus == 'search':
-            footer = _("SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit | q=quit")
-            
+        except curses.error: pass
+        
+        
+        # 4. Draw Log Window (or hidden bar)
         try:
+            if self.log_visible:
+                if self.log_win is None:
+                    self.log_win = curses.newwin(log_h, win_w, log_y, results_x)
+                else:
+                    self.log_win.resize(log_h, win_w)
+                    self.log_win.mvwin(log_y, results_x)
+                
+                self.log_win.erase()
+                self.log_win.border()
+                
+                # Log Header
+                base_header = _("Toggle output log")
+                header_text = base_header
+                if self.log_scroll > 0:
+                    plural_msg = ngettext("Scrolled Up: {} line.", "Scrolled Up: {} lines.", self.log_scroll).format(self.log_scroll)
+                    header_text = _("{} ({} PgUp/PgDn to navigate)").format(base_header, plural_msg)
+                self.log_win.addstr(0, 2, header_text[:win_w-4])
+
+                # Log Content
+                if self.log_scroll == 0:
+                    start_idx = max(0, len(self.log_lines) - self.visible_log_height_lines)
+                else:
+                    start_idx = len(self.log_lines) - (self.log_scroll + self.visible_log_height_lines)
+                    start_idx = max(0, start_idx)
+
+                visible_log = self.log_lines[start_idx : start_idx + self.visible_log_height_lines]
+                
+                for i in range(self.visible_log_height_lines):
+                    y_in_win = 1 + i
+                    ln = visible_log[i] if i < len(visible_log) else ""
+                    self.log_win.addstr(y_in_win, 1, ln[:win_w-2])
+            
+            else:
+                # Log is hidden: Clear the old window and draw the separator bar on stdscr
+                if self.log_win:
+                    # Clear the log window area if it was previously visible
+                    self.log_win.clear()
+                    self.log_win.noutrefresh() 
+                
+                # Draw the visual indicator for the collapsed log on the main screen
+                indicator_text = _("Toggle output log") + " (Press 'l' to expand)"
+                self.stdscr.addstr(log_y, 0, "—" * (w - 1))
+                self.stdscr.addstr(log_y, 2, indicator_text[:w-4], curses.A_DIM)
+
+        except curses.error: pass
+        
+        
+        # 5. Draw Footer (on stdscr)
+        try:
+            footer = ""
+            if self.focus == 'list':
+                footer = _("Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit")
+            elif self.focus == 'search':
+                footer = _("SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit | q=quit")
             self.stdscr.addstr(h - 1, 0, footer.ljust(w-1)[:w-1], curses.A_DIM)
         except curses.error: pass
         
-        self.stdscr.refresh()
         
-        # Draw the menu dropdown AFTER the main screen refresh to ensure layering
+        # 6. Refresh all windows in order
+        try:
+            self.stdscr.noutrefresh()
+            if self.results_win:
+                self.results_win.noutrefresh()
+            if self.log_visible and self.log_win:
+                self.log_win.noutrefresh()
+            curses.doupdate()
+        except curses.error: pass
+        
+        
+        # 7. Draw the menu dropdown LAST (on top)
         if self.menu.is_open:
             curses.curs_set(0) # Hide text cursor when menu is open
             self.menu.draw(self.stdscr)
@@ -491,9 +485,7 @@ class LuetTUI:
         
         ch = -1
         try:
-            # Displays the single line message. The short message is used for compatibility.
             win.addstr(1, 2, message[:ww - 4]) 
-            # NOTE: Translated string
             win.addstr(3, 2, _("Press 'y' to confirm, any other key to cancel."))
             win.refresh()
             ch = win.getch()
@@ -516,7 +508,6 @@ class LuetTUI:
             lines = str(message).splitlines()
             for i, ln in enumerate(lines[: hh - 4]):
                 win.addstr(2 + i, 2, ln[: ww - 4])
-            # NOTE: Translated string
             win.addstr(hh - 2, 2, _("Press any key to continue"))
             win.refresh()
             if pause:
@@ -528,15 +519,12 @@ class LuetTUI:
             
     # ---------------- Business Wrappers (Logic Calls) ----------------
     def run_update_repositories(self):
-        # self.append_to_log(_("Starting repository update..."))
         self.set_status(_("Updating repositories..."))
         self.draw()
-
         def on_log(line): self.append_to_log(line)
         def on_success(): self.set_status(_("Repositories updated"))
         def on_error(): self.set_status(_("Error updating repositories"))
         def on_finish(cookie): self.set_status(_("Ready"))
-        
         threading.Thread(
             target=lambda: RepositoryUpdater.run_repo_update(
                 self.command_runner.run_realtime,
@@ -556,63 +544,37 @@ class LuetTUI:
         self.append_to_log(_("Full system upgrade initiated (implementation TBD in core)."))
         
     def run_check_system(self):
-            """
-            Runs the SystemChecker core logic, scheduling all log and status updates 
-            to happen safely on the main thread via the scheduler.
-            """
-            # self.append_to_log(_("Checking system for missing files..."))
             self.set_status(_("Checking system for missing files..."))
             self.draw()
-
-            # 1. Define callbacks to be scheduled on the main thread
             def on_log(line): 
-                # Output from luet oscheck or reinstall commands
                 self.scheduler.schedule(self.append_to_log, line)
-                
             def on_exit_status(msg): 
-                # Final status message after the check/repair sequence is completely done
                 self.scheduler.schedule(self.set_status, msg)
-                
             def on_reinstall_start():
-                # Triggered when missing packages are identified and repair is about to begin
                 self.scheduler.schedule(self.append_to_log, _("\n--- Missing packages found. Starting repair sequence. ---"))
-                
             def on_reinstall_status(status):
-                # Status update during the repair loop (e.g., Reinstalling pkg...)
                 self.scheduler.schedule(self.set_status, status)
-                
             def on_reinstall_finish(success):
-                # Final message after all repair attempts are complete
                 msg = _("System repair finished successfully.") if success else _("Could not repair some packages")
                 self.scheduler.schedule(self.append_to_log, msg)
-
-            # 2. Call the core logic
-            # SystemChecker.run_check_system handles its own threading.
             SystemChecker.run_check_system(
-                self.command_runner.run_sync,  # Uses synchronous command runner for long-running checks
+                self.command_runner.run_sync,
                 on_log,
                 on_exit_status,
                 on_reinstall_start,
                 on_reinstall_status,
                 on_reinstall_finish,
-                time.sleep,                    # Uses standard Python sleep for delays inside the worker thread
-                _                              # Passes the translation function
+                time.sleep,
+                _
             )
         
     def run_clear_cache(self):
-        """
-        Calls the core logic to run 'luet cleanup' and clear the cache.
-        """
-        # FIX 2: Using the short, existing translated string to ensure compatibility and fit the dialog box.
         if not self.confirm_yes_no(_("Clear Luet cache?")):
             return
-            
         self.set_status(_("Clearing Luet cache..."))
         self.append_to_log(_("--- Running 'luet cleanup' ---"))
         self.draw()
-
         def on_log(line): self.append_to_log(line)
-            
         def on_done(returncode):
             if returncode == 0:
                 self.append_to_log(_("Luet cache cleanup finished successfully."))
@@ -620,7 +582,6 @@ class LuetTUI:
             else:
                 self.append_to_log(_("Luet cache cleanup finished with errors."))
                 self.set_status(_("Error clearing Luet cache"))
-
         CacheCleaner.run_cleanup_core(
             self.command_runner.run_realtime, 
             lambda ln: self.scheduler.schedule(on_log, ln),
@@ -630,7 +591,6 @@ class LuetTUI:
     def run_search(self, query):
         self.set_status(_("Searching for {}...").format(query))
         self.draw()
-        
         def worker():
             try:
                 search_cmd = ["luet", "search", "-o", "json", "-q", query]
@@ -649,14 +609,9 @@ class LuetTUI:
         for pkg in result.get("packages", []):
             category = pkg.get("category", "")
             name = pkg.get("name", "")
-            
-            # Use PackageFilter from core to filter hidden packages
             if PackageFilter.is_package_hidden(category, name):
                 continue
-            
-            # Check if package is protected
             is_protected = PackageFilter.is_package_protected(category, name)
-            
             self.results.append({
                 "category": category,
                 "name": name,
@@ -666,7 +621,7 @@ class LuetTUI:
                 "protected": is_protected
             })
         self.selected_index = 0
-        self.results_scroll_offset = 0  # Reset scroll when new search results arrive
+        self.results_scroll_offset = 0
         self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
 
     def do_install_uninstall_selected(self):
@@ -676,40 +631,32 @@ class LuetTUI:
         installed = pkg.get("installed", False)
         protected = pkg.get("protected", False)
         
-        # Handle protected packages
         if protected:
             msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
             if msg is None:
+                full_name = f"{pkg['category']}/{pkg['name']}"
                 msg = _("This package ({}) is protected and can't be removed.").format(full_name)
             self.show_message(_("Protected"), msg)
             return
         
         if installed:
-            # NOTE: Translated string for confirmation
             if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): return
-            
             if pkg['category'] == 'apps':
                 cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
             else:
                 cmd = ["luet", "uninstall", "-y", full_name]
-
             self.set_status(_("Uninstalling {}...").format(full_name))
             self.append_to_log(_("Uninstall {} initiated.").format(full_name))
             self.draw()
-            
             def on_log(line): self.append_to_log(line)
-            
             def on_done(returncode):
                 if returncode == 0:
                     self.append_to_log(_("Uninstall completed successfully."))
                     self.set_status(_("Ready"))
-                    # Refresh search results
-                    if self.search_query:
-                        self.run_search(self.search_query)
+                    if self.search_query: self.run_search(self.search_query)
                 else:
                     self.append_to_log(_("Uninstall failed."))
                     self.set_status(_("Error uninstalling package"))
-            
             PackageOperations.run_uninstallation(
                 self.command_runner.run_realtime,
                 lambda ln: self.scheduler.schedule(on_log, ln),
@@ -717,26 +664,20 @@ class LuetTUI:
                 cmd
             )
         else:
-            # NOTE: Translated string for confirmation
             if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
             cmd = ["luet", "install", "-y", full_name]
             self.set_status(_("Installing {}...").format(full_name))
             self.append_to_log(_("Install {} initiated.").format(full_name))
             self.draw()
-            
             def on_log(line): self.append_to_log(line)
-            
             def on_done(returncode):
                 if returncode == 0:
                     self.append_to_log(_("Install completed successfully."))
                     self.set_status(_("Ready"))
-                    # Refresh search results
-                    if self.search_query:
-                        self.run_search(self.search_query)
+                    if self.search_query: self.run_search(self.search_query)
                 else:
                     self.append_to_log(_("Install failed."))
                     self.set_status(_("Error installing package"))
-            
             PackageOperations.run_installation(
                 self.command_runner.run_realtime,
                 lambda ln: self.scheduler.schedule(on_log, ln),
@@ -748,7 +689,6 @@ class LuetTUI:
         if not (0 <= self.selected_index < len(self.results)): return
         pkg = self.results[self.selected_index]
         
-        # Check if package is protected and show appropriate message
         if pkg.get("protected", False):
             msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
             if msg is None:
@@ -769,7 +709,6 @@ class LuetTUI:
                     if self.menu.is_open:
                         self.menu.handle_input(ch)
                     
-                    # --- NEW: Focus-based Input Handling ---
                     elif self.focus == 'search':
                         # --- Search Box Input Handling ---
                         if ch in (curses.KEY_ENTER, 10, 13):
@@ -778,7 +717,6 @@ class LuetTUI:
                                 self.run_search(self.search_query)
                             self.focus = 'list' # Move focus to results
                         
-                        # --- FIX: Replaced curses.KEY_TAB with 9 (ASCII value for Tab) ---
                         elif ch in (curses.KEY_DOWN, 9, 27): # Down, Tab (ASCII 9), or Escape
                             self.focus = 'list'
                         elif ch in (curses.KEY_BACKSPACE, 127, 8):
@@ -820,20 +758,14 @@ class LuetTUI:
                             self.log_scroll = 0 # Reset scroll when toggling
                         
                         elif ch == curses.KEY_PPAGE:
-                            if self.log_visible:
-                                # Log height calculation must match the draw function's logic
-                                log_top = 5 + max(6, int((h - 5) * 0.55)) + 1
-                                log_height_lines = h - log_top - 2
-                                log_height_lines = max(3, log_height_lines)
+                            if self.log_visible and self.visible_log_height_lines > 0:
+                                log_height_lines = self.visible_log_height_lines
                                 max_scroll = max(0, len(self.log_lines) - log_height_lines)
                                 self.log_scroll = min(max_scroll, self.log_scroll + log_height_lines)
                         
                         elif ch == curses.KEY_NPAGE:
-                            if self.log_visible:
-                                # Log height calculation must match the draw function's logic
-                                log_top = 5 + max(6, int((h - 5) * 0.55)) + 1
-                                log_height_lines = h - log_top - 2
-                                log_height_lines = max(3, log_height_lines)
+                            if self.log_visible and self.visible_log_height_lines > 0:
+                                log_height_lines = self.visible_log_height_lines
                                 self.log_scroll = max(0, self.log_scroll - log_height_lines)
 
                         elif ch == curses.KEY_DOWN:
@@ -857,10 +789,14 @@ class LuetTUI:
             curses.curs_set(1)
 
 def main(stdscr):
+    app = None
     try:
         app = LuetTUI(stdscr)
         app.run()
     except Exception:
+        # Clean up windows on error
+        if app and app.log_win: app.log_win = None
+        if app and app.results_win: app.results_win = None
         curses.endwin()
         traceback.print_exc()
 
