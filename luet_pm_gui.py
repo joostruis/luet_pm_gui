@@ -32,80 +32,15 @@ _ = gettext.gettext
 ngettext = gettext.ngettext
 
 # -------------------------
-# Core Logic Dependencies (Import or Mock)
-# FIX: Ensure all core component names are defined globally
+# Core Logic Dependencies (Import or Crash if missing)
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
     from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo
 except ImportError:
-    print("WARNING: luet_pm_core.py not found. Using mock classes for core logic.")
+    print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
+    sys.exit(1)
 
-    # --- Mock Class Definitions ---
-    class CommandRunner:
-        def __init__(self, elevation_cmd, schedule_callback):
-            pass
-        def run_sync(self, cmd, require_root=False):
-            class MockResult:
-                def __init__(self):
-                    self.returncode = 0
-                    self.stdout = ""
-                    self.stderr = ""
-            return MockResult()
-        def run_realtime(self, cmd, log_callback, on_finish):
-            pass
-            
-    class MockUpdater:
-        @staticmethod
-        def run_repo_update(*args): pass
-    class MockChecker:
-        @staticmethod
-        def run_check_system(*args): pass
-    class MockUpgrader:
-        def __init__(self, *args): pass
-        def start_upgrade(self): pass
-    class MockCleaner:
-        @staticmethod
-        def run_cleanup_core(*args): pass
-        @staticmethod
-        def get_cache_size_bytes(): return 0
-        @staticmethod
-        def get_cache_size_human(size): return ""
-    class MockOperations:
-        @staticmethod
-        def _run_kbuildsycoca6(): pass
-        @staticmethod
-        def run_installation(*args): pass
-        @staticmethod
-        def run_uninstallation(*args): pass
-    class MockSearcher:
-        @staticmethod
-        def run_search_core(*args): return {"packages": []}
-    class MockSyncInfo:
-        @staticmethod
-        def get_last_sync_time():
-            return {'datetime': '1970-01-01T00:00:00', 'ago': _('never')}
-    class MockFilter:
-        @staticmethod
-        def get_protected_packages(): return {}
-        @staticmethod
-        def get_hidden_packages(): return {}
-        @staticmethod
-        def is_package_hidden(cat, name): return False
-        @staticmethod
-        def is_package_protected(cat, name): return False
-        @staticmethod
-        def get_protection_message(cat, name): return None
-
-    # --- Assign Mock Names to Global Names ---
-    RepositoryUpdater = MockUpdater
-    SystemChecker = MockChecker
-    SystemUpgrader = MockUpgrader
-    CacheCleaner = MockCleaner
-    PackageOperations = MockOperations
-    PackageSearcher = MockSearcher
-    SyncInfo = MockSyncInfo
-    PackageFilter = MockFilter
 
 # -------------------------
 # About dialog
@@ -843,6 +778,7 @@ class SearchApp(Gtk.Window):
         category, name = self.liststore.get_value(iter_, 0), self.liststore.get_value(iter_, 1)
         pkg_fullname = "{}/{}".format(category, name)
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to uninstall {}?").format(name))
+        dlg.format_secondary_text(_("This will remove the package and its dependencies not required by other packages."))
         if dlg.run() != Gtk.ResponseType.YES:
             dlg.destroy()
             return

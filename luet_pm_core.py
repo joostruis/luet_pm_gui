@@ -15,7 +15,6 @@ import locale
 
 # -------------------------
 # Set up locale and translation
-# (Core logic needs to return translated strings)
 # -------------------------
 
 try:
@@ -29,9 +28,9 @@ except Exception:
     print("Warning: Could not set up locale. Using fallback translations.")
     _ = lambda s: s
     ngettext = lambda s, p, n: s if n == 1 else p
-    
+
 # -------------------------
-# Application Metadata/About Info (NEW)
+# Application Metadata/About Info
 # -------------------------
 class AboutInfo:
     """
@@ -72,7 +71,6 @@ class AboutInfo:
 
 # -------------------------
 # Core Command Runner
-# (This is the key piece of plumbing)
 # -------------------------
 class CommandRunner:
     """
@@ -257,7 +255,6 @@ class PackageFilter:
 
 # -------------------------
 # Helpers: Core Logic Classes
-# (Decoupled from GUI)
 # -------------------------
 class RepositoryUpdater:
     @staticmethod
