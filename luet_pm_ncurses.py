@@ -190,6 +190,7 @@ class LuetTUI:
         self.log_visible = True # State variable to control log visibility
 
         # Sub-windows for boxes
+        self.search_win = None # The window object for the input box
         self.results_win = None
         self.log_win = None
         self.visible_results_count = 0      # Used for scrolling logic
@@ -256,7 +257,7 @@ class LuetTUI:
             self.stdscr.refresh() # Use regular refresh here
             return
             
-        # 1. Draw on stdscr (Menu, Status, Search)
+        # 1. Draw on stdscr (Menu, Status)
         try:
             # Menu bar (Line 0)
             menu_line = ""
@@ -278,32 +279,13 @@ class LuetTUI:
             if len(sync_text) < w:
                 self.stdscr.addstr(1, max(0, w - len(sync_text) - 1), sync_text)
 
-            # Search input field (Line 3)
-            search_label = _("Search:")
-            search_box_x = len(search_label) + 2
-            search_box_w = max(10, w - search_box_x - 2)
-            self.stdscr.addstr(3, 0, search_label)
-            self.search_cursor_pos = max(0, min(len(self.search_query), self.search_cursor_pos))
-            visible_start = 0
-            visible_cursor_pos = self.search_cursor_pos
-            if self.search_cursor_pos >= search_box_w:
-                visible_start = self.search_cursor_pos - search_box_w + 1
-                visible_cursor_pos = search_box_w - 1
-            display_query = self.search_query[visible_start : visible_start + search_box_w]
-            search_attr = curses.A_UNDERLINE
-            if self.focus == 'search':
-                search_attr = curses.A_REVERSE # Highlight focused field
-            self.stdscr.addstr(3, search_box_x, display_query.ljust(search_box_w), search_attr)
-            
-            if self.focus == 'search':
-                curses.curs_set(1) # Show cursor
-                self.stdscr.move(3, search_box_x + visible_cursor_pos) # Move cursor
-
         except curses.error: pass
         
         
         # 2. Calculate Window Dimensions
-        results_y = 4
+        search_y = 2
+        search_h = 3 # Height is 3 for border, input line, and bottom border
+        results_y = search_y + search_h
         results_x = 0
         win_w = w
         footer_h = 1
@@ -326,7 +308,70 @@ class LuetTUI:
         self.visible_results_count = max(0, results_h - 3) # -border, -header, -border
         self.visible_log_height_lines = max(0, log_h - 2)    # -border, -border
 
-        # 3. Draw Results Window
+        # 3. Draw Search Input Window
+        try:
+            # Create or resize the search window
+            if self.search_win is None:
+                self.search_win = curses.newwin(search_h, win_w, search_y, results_x)
+            else:
+                self.search_win.resize(search_h, win_w)
+                self.search_win.mvwin(search_y, results_x)
+
+            self.search_win.erase()
+            self.search_win.border()
+            
+            # Draw window title/indicator
+            self.search_win.addstr(0, 2, " " + _("Search") + " ")
+
+            # Draw the input content inside the new window
+            input_y = 1
+            input_x = 1
+            # max_input_len is the maximum space available for the query text inside the border
+            max_input_len = win_w - 2 
+
+            display_query = self.search_query
+            cursor_pos_in_win = 0
+            
+            # Clear the input line first
+            self.search_win.addstr(input_y, input_x, " " * max_input_len, curses.A_NORMAL)
+            
+            if not display_query:
+                # --- Draw Placeholder Text ---
+                placeholder_text = _("Enter package name")
+                # Use A_DIM attribute to make the placeholder look grey/faded
+                self.search_win.addstr(input_y, input_x, placeholder_text[:max_input_len], curses.A_DIM)
+                
+            else:
+                # --- Draw Actual Search Query with Scrolling Logic ---
+                
+                # Calculate scroll offset to keep the cursor visible
+                if self.search_cursor_pos >= max_input_len: 
+                    scroll_offset = self.search_cursor_pos - max_input_len + 1
+                else:
+                    scroll_offset = 0
+
+                # The actual part of the query to display
+                display_query = self.search_query[scroll_offset : scroll_offset + max_input_len]
+                
+                # Draw the (potentially clipped/scrolled) search query
+                self.search_win.addstr(input_y, input_x, display_query.ljust(max_input_len), curses.A_NORMAL)
+                
+                # The cursor position inside the visible window is relative to the scroll_offset
+                cursor_pos_in_win = self.search_cursor_pos - scroll_offset
+                
+            # --- Cursor Management for Search Window ---
+            if self.focus == 'search':
+                # Move the cursor to the correct position *within the search_win*
+                cursor_y = input_y
+                cursor_x = input_x + min(cursor_pos_in_win, max_input_len)
+                
+                curses.curs_set(1) # Enable cursor visibility
+                self.search_win.move(cursor_y, cursor_x)
+
+        except curses.error: pass
+
+
+        # 4. Draw Results Window
         try:
             if self.results_win is None:
                 self.results_win = curses.newwin(results_h, win_w, results_y, results_x)
@@ -373,7 +418,7 @@ class LuetTUI:
         except curses.error: pass
         
         
-        # 4. Draw Log Window (or hidden bar)
+        # 5. Draw Log Window (or hidden bar)
         try:
             if self.log_visible:
                 if self.log_win is None:
@@ -410,7 +455,6 @@ class LuetTUI:
             else:
                 # Log is hidden: Clear the old window and draw the separator bar on stdscr
                 if self.log_win:
-                    # Clear the log window area if it was previously visible
                     self.log_win.clear()
                     self.log_win.noutrefresh() 
                 
@@ -422,7 +466,7 @@ class LuetTUI:
         except curses.error: pass
         
         
-        # 5. Draw Footer (on stdscr)
+        # 6. Draw Footer (on stdscr)
         try:
             footer = ""
             if self.focus == 'list':
@@ -433,18 +477,28 @@ class LuetTUI:
         except curses.error: pass
         
         
-        # 6. Refresh all windows in order
+        # 7. Refresh all windows in order (FIXED SEQUENCE)
         try:
             self.stdscr.noutrefresh()
+            
+            # 1. Refresh general/non-cursor-moving windows first
             if self.results_win:
                 self.results_win.noutrefresh()
             if self.log_visible and self.log_win:
                 self.log_win.noutrefresh()
-            curses.doupdate()
+
+            # 2. Refresh the search window LAST if it is focused.
+            # This ensures that the move() call inside Section 3 (if focus == 'search') 
+            # is the one that sets the final cursor position.
+            if self.search_win:
+                self.search_win.noutrefresh()
+            
+            # The doupdate() applies all pending noutrefresh() calls.
+            curses.doupdate() 
         except curses.error: pass
         
         
-        # 7. Draw the menu dropdown LAST (on top)
+        # 8. Draw the menu dropdown LAST (on top)
         if self.menu.is_open:
             curses.curs_set(0) # Hide text cursor when menu is open
             self.menu.draw(self.stdscr)
@@ -757,8 +811,11 @@ class LuetTUI:
                                 self.run_search(self.search_query)
                             self.focus = 'list' # Move focus to results
                         
-                        elif ch in (curses.KEY_DOWN, 9, 27): # Down, Tab (ASCII 9), or Escape
+                        # Explicitly handle keys that shift focus away from search
+                        elif ch in (curses.KEY_DOWN, 9, 27): # Down, Tab (ASCII 9), or Escape (ASCII 27)
                             self.focus = 'list'
+                        
+                        # Search bar editing keys
                         elif ch in (curses.KEY_BACKSPACE, 127, 8):
                             if self.search_cursor_pos > 0:
                                 self.search_query = self.search_query[:self.search_cursor_pos - 1] + self.search_query[self.search_cursor_pos:]
@@ -820,7 +877,7 @@ class LuetTUI:
                                 self.search_cursor_pos = len(self.search_query)
                         elif ch in (10, 13):
                             self.show_details()
-                        elif ch in (ord('i'), ord('I'), ord(' ')):
+                        elif ch in (ord('i'), ord('I'), ord(' ')): 
                             self.do_install_uninstall_selected()
                             
                 self.draw()
@@ -835,6 +892,7 @@ def main(stdscr):
         app.run()
     except Exception:
         # Clean up windows on error
+        if app and app.search_win: app.search_win = None
         if app and app.log_win: app.log_win = None
         if app and app.results_win: app.results_win = None
         curses.endwin()
