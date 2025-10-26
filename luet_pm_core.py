@@ -29,6 +29,46 @@ except Exception:
     print("Warning: Could not set up locale. Using fallback translations.")
     _ = lambda s: s
     ngettext = lambda s, p, n: s if n == 1 else p
+    
+# -------------------------
+# Application Metadata/About Info (NEW)
+# -------------------------
+class AboutInfo:
+    """
+    Centralized metadata for the luet package manager frontend.
+    """
+    @staticmethod
+    def get_program_name():
+        return _("Luet Package Manager Frontend")
+        
+    @staticmethod
+    def get_version():
+        return "0.7.1"
+
+    @staticmethod
+    def get_copyright():
+        return _("© 2023 - 2025 MocaccinoOS. All Rights Reserved")
+
+    @staticmethod
+    def get_website():
+        return "https://www.mocaccino.org"
+        
+    @staticmethod
+    def get_authors():
+        return ["Joost Ruis"]
+
+    @staticmethod
+    def get_github_repo_uri():
+        return "https://github.com/joostruis/luet_pm_gui"
+        
+    @staticmethod
+    def get_ncurses_about_text():
+        """Returns a consolidated, translated string for the ncurses TUI about box."""
+        return _("Luet Package Manager TUI (ncurses)\nVersion: {}\nWebsite: {}\nAuthors: {}\n(Uses luet_pm_core.py)").format(
+            AboutInfo.get_version(),
+            AboutInfo.get_website(),
+            ", ".join(AboutInfo.get_authors())
+        )
 
 # -------------------------
 # Core Command Runner

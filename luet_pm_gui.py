@@ -37,7 +37,7 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo
 except ImportError:
     print("WARNING: luet_pm_core.py not found. Using mock classes for core logic.")
 
@@ -113,11 +113,14 @@ except ImportError:
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
-        self.set_program_name(_("Luet Package Search"))
-        self.set_version("0.7.1")
-        self.set_website("https://www.mocaccino.org")
+        # Use AboutInfo for all centralized metadata (MODIFIED)
+        self.set_program_name(AboutInfo.get_program_name())
+        self.set_version(AboutInfo.get_version())
+        self.set_website(AboutInfo.get_website())
         self.set_website_label(_("Visit our website"))
-        self.set_authors(["Joost Ruis"])
+        self.set_authors(AboutInfo.get_authors())
+        self.set_copyright(AboutInfo.get_copyright())
+
         icon_theme = Gtk.IconTheme.get_default()
         try:
             icon = icon_theme.load_icon("luet_pm_gui", 64, 0)
@@ -126,7 +129,7 @@ class AboutDialog(Gtk.AboutDialog):
             pass
 
         github_link = Gtk.LinkButton.new_with_label(
-            uri="https://github.com/joostruis/luet_pm_gui",
+            uri=AboutInfo.get_github_repo_uri(),
             label=_("GitHub Repository")
         )
 
@@ -134,10 +137,6 @@ class AboutDialog(Gtk.AboutDialog):
         box.set_margin_start(10)
         box.set_margin_end(10)
 
-        label = Gtk.Label(label=_("Â© 2023 - 2025 MocaccinoOS. All Rights Reserved"))
-        label.set_line_wrap(True)
-
-        box.pack_start(label, False, False, 0)
         box.pack_start(github_link, False, False, 0)
         self.get_content_area().add(box)
 

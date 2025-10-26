@@ -30,6 +30,7 @@ try:
         PackageSearcher,
         SyncInfo,
         PackageFilter,
+        AboutInfo,
         _, # REQUIRED: Translation wrapper (gettext alias)
         ngettext, # REQUIRED: Plural translation wrapper
     )
@@ -159,7 +160,7 @@ class Menu:
         elif item == _("Documentation"):
             self.app.show_message(_("Info"), _("Opening luet documentation (URL TBD)"))
         elif item == _("About"):
-            about_text = _("Luet Package Manager TUI (ncurses)\nAuthor: Your Friendly TUI\n(Uses luet_pm_core.py)")
+            about_text = AboutInfo.get_ncurses_about_text()
             self.app.show_message(_("About"), about_text)
 
 # --- Main Application Class ---
