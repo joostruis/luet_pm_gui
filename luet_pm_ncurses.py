@@ -174,11 +174,10 @@ class LuetTUI:
         self.lock = threading.Lock() # Global lock for thread safety
 
         # UI state
-        # --- MODIFIED: Removed hardcoded hints ---
         self.status_message = _("Ready")
         self.sync_info = _("Not Synced")
         
-        # --- NEW: Search field state ---
+        # Search field state
         self.focus = 'list' # 'list' or 'search'
         self.search_query = ""
         self.search_cursor_pos = 0 # Cursor position within self.search_query
@@ -190,7 +189,7 @@ class LuetTUI:
         self.log_scroll = 0 # 0 means auto-scroll/viewing newest lines
         self.log_visible = True # State variable to control log visibility
 
-        # --- NEW: Sub-windows for boxes ---
+        # Sub-windows for boxes
         self.results_win = None
         self.log_win = None
         self.visible_results_count = 0      # Used for scrolling logic
@@ -528,7 +527,7 @@ class LuetTUI:
         threading.Thread(
             target=lambda: RepositoryUpdater.run_repo_update(
                 self.command_runner.run_realtime,
-                lambda state, reason: 0,
+                lambda state, reason: 0, # Inhibit setter placeholder
                 lambda l: self.scheduler.schedule(on_log, l),
                 lambda: self.scheduler.schedule(on_success),
                 lambda: self.scheduler.schedule(on_error),
@@ -540,9 +539,50 @@ class LuetTUI:
 
     def run_full_upgrade(self):
         if not self.confirm_yes_no(_("Perform a full system upgrade?")): return
-        self.set_status(_("Performing full system upgrade..."))
-        self.append_to_log(_("Full system upgrade initiated (implementation TBD in core)."))
         
+        self.set_status(_("Performing full system upgrade..."))
+        self.append_to_log(_("Full system upgrade initiated."))
+        self.draw()
+
+        def on_log(line): self.append_to_log(line)
+        def on_status(msg): self.set_status(msg)
+        
+        def on_finish(returncode, message):
+            # This runs on the main thread via self.scheduler.schedule
+            if returncode == 0:
+                self.set_status(_("System upgrade completed successfully"))
+            else:
+                # Use the message from finalize if not successful, or a generic error
+                final_msg = message if returncode != 0 else _("Error during system upgrade")
+                self.set_status(final_msg, error=True)
+
+        def on_post_action():
+            # This runs on the main thread via self.scheduler.schedule
+            # Refresh sync time / system state
+            self.init_app()
+            self.set_status(_("Ready"))
+
+
+        def start_worker():
+            try:
+                # Instantiate SystemUpgrader with all required callbacks
+                upgrader = SystemUpgrader(
+                    command_runner_realtime=self.command_runner.run_realtime,
+                    log_callback=lambda l: self.scheduler.schedule(on_log, l),
+                    status_callback=lambda s: self.scheduler.schedule(on_status, s),
+                    schedule_callback=self.scheduler.schedule, 
+                    post_action_callback=lambda: self.scheduler.schedule(on_post_action),
+                    on_finish_callback=on_finish,
+                    inhibit_cookie=0, # Placeholder for the unused inhibit cookie
+                    translation_func=_
+                )
+                upgrader.start_upgrade() # Start the upgrade process
+            except Exception as e:
+                self.scheduler.schedule(on_log, _("Upgrade initiation failed: {}").format(e))
+                self.scheduler.schedule(on_finish, -1, _("Upgrade failed to start"))
+
+        threading.Thread(target=start_worker, daemon=True).start()
+
     def run_check_system(self):
             self.set_status(_("Checking system for missing files..."))
             self.draw()
