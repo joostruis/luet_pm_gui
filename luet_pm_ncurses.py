@@ -383,8 +383,7 @@ class LuetTUI:
 
         else:
             # Log is hidden: Show a small indicator on the separator line
-            # NOTE: Translated string
-            indicator_text = _("Output Log (Press 'l' to expand)")
+            indicator_text = _("Toggle output log") + " (Press 'l' to expand)"
             try:
                 self.stdscr.addstr(log_separator_line, 2, indicator_text, curses.A_DIM)
             except curses.error: pass
