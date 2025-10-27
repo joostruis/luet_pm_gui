@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-10-27 12:38+0100\n"
-"PO-Revision-Date: 2025-10-27 16:18+0100\n"
+"PO-Revision-Date: 2025-10-27 17:00+0100\n"
 "Last-Translator: \n"
 "Language-Team: Dutch <vertaling@vrijschrift.org>\n"
 "Language: nl\n"
@@ -213,7 +213,7 @@ msgstr "Details"
 
 #: luet_pm_gui.py:515 luet_pm_tui.py:461 luet_pm_tui.py:486
 msgid "Toggle output log"
-msgstr "Uitvoerlogboek wisselen"
+msgstr "Toon uitvoerlog"
 
 #: luet_pm_gui.py:592 luet_pm_tui.py:696
 msgid "Searching for {}..."
