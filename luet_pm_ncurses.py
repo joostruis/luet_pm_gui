@@ -32,6 +32,7 @@ try:
         SyncInfo,
         PackageFilter,
         AboutInfo,
+        Spinner,
         _, # REQUIRED: Translation wrapper (gettext alias)
         ngettext, # REQUIRED: Plural translation wrapper
     )
@@ -166,8 +167,6 @@ class Menu:
 
 # --- Main Application Class ---
 class LuetTUI:
-    # ADDED: Spinner Frames for visual feedback during asynchronous tasks
-    SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     
     def __init__(self, stdscr):
         self.stdscr = stdscr
@@ -180,8 +179,8 @@ class LuetTUI:
         self.status_message = _("Ready")
         self.sync_info = _("Not Synced")
         
-        # ADDED: Spinner state
-        self.spinner_frame_index = 0 # Current index for the spinner frame
+        # ADDED: Centralized Spinner instance
+        self.spinner = Spinner()
         
         # Search field state
         self.focus = 'list' # 'list' or 'search'
@@ -302,11 +301,11 @@ class LuetTUI:
             self.stdscr.move(2, 0) # Clear line 2
             self.stdscr.clrtoeol()
             
-            # ADDED: Spinner Logic
+            # ADDED: Spinner Logic using centralized Spinner class
             status_prefix = ""
             if not is_ready:
                 # Add the current spinner frame if not ready
-                status_prefix = self.SPINNER_FRAMES[self.spinner_frame_index] + " "
+                status_prefix = self.spinner.get_current_frame() + " "
                 
             status_text = status_prefix + self.status_message
             status_x = max(0, (w - len(status_text)) // 2)
@@ -523,7 +522,7 @@ class LuetTUI:
                 
                 # Draw the visual indicator for the collapsed log on the main screen
                 indicator_text = _("Toggle output log") + " (Press 'l' to expand)"
-                self.stdscr.addstr(log_y, 0, "—" * (w - 1))
+                self.stdscr.addstr(log_y, 0, "─" * (w - 1))
                 self.stdscr.addstr(log_y, 2, indicator_text[:w-4], curses.A_DIM)
 
         except curses.error: pass
@@ -875,8 +874,8 @@ class LuetTUI:
             while self.running:
                 self.scheduler.drain()
                 
-                # ADDED: Advance the spinner frame index on each loop iteration
-                self.spinner_frame_index = (self.spinner_frame_index + 1) % len(self.SPINNER_FRAMES)
+                # ADDED: Advance the spinner frame using centralized Spinner class
+                self.spinner.advance()
                 
                 ch = self.stdscr.getch()
                 h, w = self.stdscr.getmaxyx()

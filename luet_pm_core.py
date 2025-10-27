@@ -30,6 +30,69 @@ except Exception:
     ngettext = lambda s, p, n: s if n == 1 else p
 
 # -------------------------
+# Spinner Class
+# -------------------------
+class Spinner:
+    """
+    Centralized spinner animation frames and management.
+    Provides a consistent spinner animation across GUI and TUI interfaces.
+    """
+    
+    # Unicode Braille pattern spinner frames
+    FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    
+    def __init__(self):
+        """Initialize a new spinner instance."""
+        self._frame_index = 0
+    
+    @classmethod
+    def get_frames(cls):
+        """
+        Get the list of spinner frames.
+        
+        :return: List of spinner frame characters
+        """
+        return cls.FRAMES.copy()
+    
+    def get_current_frame(self):
+        """
+        Get the current spinner frame without advancing.
+        
+        :return: Current frame character
+        """
+        return self.FRAMES[self._frame_index]
+    
+    def get_next_frame(self):
+        """
+        Get the next spinner frame and advance the counter.
+        
+        :return: Next frame character
+        """
+        frame = self.FRAMES[self._frame_index]
+        self.advance()
+        return frame
+    
+    def advance(self):
+        """Advance to the next frame in the sequence."""
+        self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
+    
+    def reset(self):
+        """Reset the spinner to the first frame."""
+        self._frame_index = 0
+    
+    @classmethod
+    def format_message(cls, frame_index, message):
+        """
+        Format a message with a spinner frame prefix.
+        
+        :param frame_index: Index of the frame to use
+        :param message: Message to display
+        :return: Formatted string with spinner and message
+        """
+        frame = cls.FRAMES[frame_index % len(cls.FRAMES)]
+        return "{} {}".format(frame, message)
+
+# -------------------------
 # Application Metadata/About Info
 # -------------------------
 class AboutInfo:

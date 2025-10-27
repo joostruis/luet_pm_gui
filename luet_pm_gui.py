@@ -36,7 +36,7 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner
 except ImportError:
     print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
     sys.exit(1)
@@ -379,6 +379,10 @@ class SearchApp(Gtk.Window):
         # Core Logic Initialization
         # ---------------------------------
         self.command_runner = CommandRunner(self.elevation_cmd, GLib.idle_add)
+        
+        # ADDED: Centralized Spinner instance
+        self.spinner = Spinner()
+        self.spinner_timeout_id = None
         # ---------------------------------
 
         self.init_search_ui()
@@ -544,10 +548,6 @@ class SearchApp(Gtk.Window):
         main_vbox.pack_start(self.output_expander, False, False, 0)
         self.output_expander.hide()
         self.add(main_vbox)
-
-        self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        self.spinner_counter = 0
-        self.spinner_timeout_id = None
 
         GLib.idle_add(self.update_sync_info_label)
         GLib.timeout_add_seconds(60, self.periodic_sync_check)
@@ -854,8 +854,8 @@ class SearchApp(Gtk.Window):
             self.spinner_timeout_id = None
             if not keep_message: self.set_status_message(_("Ready"))
     def _spinner_tick(self, message):
-        self.spinner_counter = (self.spinner_counter + 1) % len(self.spinner_frames)
-        frame = self.spinner_frames[self.spinner_counter]
+        # ADDED: Use centralized Spinner class
+        frame = self.spinner.get_next_frame()
         self.set_status_message("{} {}".format(frame, message))
         return True
     def set_status_message(self, message):
