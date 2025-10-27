@@ -26,9 +26,7 @@ done
 
 # Install Python core module
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-SITE_PACKAGES_DIR="/usr/lib${LIBDIRSUFFIX:-64}/python${PYTHON_VERSION}/site-packages"
+SITE_PACKAGES_DIR="/usr/lib/python${PYTHON_VERSION}/site-packages"
 
 install -d "$SITE_PACKAGES_DIR"
 install -m644 luet_pm_core.py "$SITE_PACKAGES_DIR/luet_pm_core.py"
-
-echo "✅ luet_pm_core.py installed to $SITE_PACKAGES_DIR"
