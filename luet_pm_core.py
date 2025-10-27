@@ -52,45 +52,26 @@ class Spinner:
         
         :return: List of spinner frame characters
         """
-        return cls.FRAMES.copy()
-    
+        return cls.FRAMES
+
     def get_current_frame(self):
         """
-        Get the current spinner frame without advancing.
+        Get the current spinner frame character.
         
-        :return: Current frame character
+        :return: The current spinner character (string)
         """
         return self.FRAMES[self._frame_index]
-    
-    def get_next_frame(self):
-        """
-        Get the next spinner frame and advance the counter.
-        
-        :return: Next frame character
-        """
-        frame = self.FRAMES[self._frame_index]
-        self.advance()
-        return frame
-    
+
     def advance(self):
-        """Advance to the next frame in the sequence."""
+        """
+        Advance the spinner to the next frame in the sequence.
+        (Fixes the AttributeError for 'advance' in app.run())
+        """
         self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
-    
-    def reset(self):
-        """Reset the spinner to the first frame."""
-        self._frame_index = 0
-    
-    @classmethod
-    def format_message(cls, frame_index, message):
-        """
-        Format a message with a spinner frame prefix.
         
-        :param frame_index: Index of the frame to use
-        :param message: Message to display
-        :return: Formatted string with spinner and message
-        """
-        frame = cls.FRAMES[frame_index % len(cls.FRAMES)]
-        return "{} {}".format(frame, message)
+    # Alias 'next_frame' to 'advance' to maintain compatibility 
+    # with the show_package_files function.
+    next_frame = advance
 
 # -------------------------
 # Application Metadata/About Info
@@ -717,3 +698,204 @@ class SyncInfo:
         except (IOError, ValueError):
             pass
         return {"datetime": "N/A", "ago": _("repositories not synced")}
+
+
+# -------------------------
+# PackageDetails - shared logic for GUI + TUI
+# -------------------------
+class PackageDetails:
+    """
+    Retrieve Luet package metadata, file lists, and reverse dependencies.
+    All methods accept a run_command_sync function (CommandRunner.run_sync) so the
+    caller controls elevation and scheduling.
+    """
+
+    @staticmethod
+    def get_definition_yaml(run_command_sync, repository, category, name, version):
+        """Load definition.yaml content for the package via run_command_sync.
+        Returns a dict or None.
+        """
+        try:
+            path = f"/var/luet/db/repos/{repository}/treefs/{category}/{name}/{version}/definition.yaml"
+            res = run_command_sync(["cat", path], require_root=True)
+            if res.returncode != 0:
+                return None
+            return yaml.safe_load(res.stdout) if res.stdout else None
+        except Exception:
+            return None
+
+    @staticmethod
+    def get_files(run_command_sync, category, name):
+        try:
+            cmd = ["luet", "search", f"{category}/{name}", "-o", "json"]
+            res = run_command_sync(cmd, require_root=True)
+            if res.returncode != 0:
+                return []
+            data = json.loads(res.stdout or "{}")
+            if isinstance(data, dict) and data.get("packages"):
+                return data["packages"][0].get("files", [])
+            return []
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_required_by(run_command_sync, category, name):
+        try:
+            cmd = ["luet", "search", "--revdeps", f"{category}/{name}", "-q", "--installed", "-o", "json"]
+            res = run_command_sync(cmd, require_root=True)
+            if res.returncode != 0:
+                return []
+            data = json.loads(res.stdout or "{}")
+            if isinstance(data, dict) and data.get("packages"):
+                return [f"{p.get('category','')}/{p.get('name','')}" for p in data.get("packages", [])]
+            return []
+        except Exception:
+            return []
+
+    @staticmethod
+    def format_for_tui(details, files, revdeps, repository=None, version=None, installed=None):
+        if not details:
+            return _("No metadata found for this package.")
+        
+        # --- Labels for alignment ---
+        # Fixed width for the left column alignment
+        align_width_left = 10 
+        
+        # Left Column Labels
+        version_label = _("Version")
+        installed_label = _("Installed")
+        license_label = _("License")
+        
+        # Right Column Labels
+        repo_label = _("Repository")
+        desc_label = _("Description")
+        homepage_label = _("Homepage")
+        
+        # Dynamic width calculation for the right column to ensure perfect colon alignment
+        align_width_right = max(
+            len(repo_label),
+            len(desc_label),
+            len(homepage_label)
+        )
+        # --- End Labels ---
+        
+        # 1. Prepare data variables
+        installed_text = _("Yes") if installed else _("No") if installed is not None else _("(unknown)")
+        
+        uri = details.get("uri") or details.get("source") or ""
+        if isinstance(uri, list):
+            uri = uri[0] if uri else ""
+        
+        license_ = details.get("license") or details.get("licenses") or ""
+        if isinstance(license_, list):
+            license_ = ", ".join(license_)
+        
+        # 2. Build the left and right columns (as aligned strings)
+        left_column = []
+        right_column = []
+
+        # LEFT Column: Labels use fixed align_width_left
+        if version:
+            left_column.append(f"{version_label:>{align_width_left}}: {version}")
+        
+        left_column.append(f"{installed_label:>{align_width_left}}: {installed_text}")
+        
+        # --- License Wrapping Logic (NEW) ---
+        wrap_width_left = 30 # Safe width for the left column's data
+        license_indent = " " * (align_width_left + 2) 
+        
+        license_lines = []
+        license_value = license_ if license_ else _('(none)')
+
+        if license_value != _('(none)'):
+            words = license_value.split()
+            current_line = ""
+            for word in words:
+                # Check if adding the word exceeds the wrap width
+                if len(current_line) + len(word) + (1 if current_line else 0) > wrap_width_left:
+                    license_lines.append(current_line.strip())
+                    current_line = word + " "
+                else:
+                    current_line += (word + " ")
+            if current_line: # Append the last line
+                license_lines.append(current_line.strip())
+        else:
+            license_lines.append(license_value)
+        
+        # Add the first line with the label
+        left_column.append(f"{license_label:>{align_width_left}}: {license_lines[0]}")
+
+        # Add subsequent lines with indentation
+        for line in license_lines[1:]:
+            left_column.append(f"{license_indent}{line}")
+        # --- End License Wrapping Logic ---
+
+        # RIGHT Column: Labels now use dynamically calculated align_width_right
+        if repository:
+            right_column.append(f"{repo_label:>{align_width_right}}: {repository}")
+        
+        # --- Description Wrapping Logic (EXISTING) ---
+        desc = details.get("description") or details.get("long_description") or ""
+        wrap_width_right = 33 # Width for the right column's data
+        desc_indent = " " * (align_width_right + 2) 
+
+        desc_lines = []
+        if desc:
+            words = desc.split()
+            current_line = ""
+            for word in words:
+                if len(current_line) + len(word) + (1 if current_line else 0) > wrap_width_right:
+                    desc_lines.append(current_line.strip())
+                    current_line = word + " "
+                else:
+                    current_line += (word + " ")
+            if current_line:
+                desc_lines.append(current_line.strip())
+        else:
+            desc_lines.append(_('(none)'))
+        
+        # Add the first line with the label
+        right_column.append(f"{desc_label:>{align_width_right}}: {desc_lines[0]}")
+
+        # Add subsequent lines with indentation
+        for line in desc_lines[1:]:
+            right_column.append(f"{desc_indent}{line}")
+        # --- End Description Wrapping Logic ---
+        
+        right_column.append(f"{homepage_label:>{align_width_right}}: {uri if uri else _('(none)')}")
+        
+        # 3. Interleave the columns and format output
+        out = []
+        
+        # Combine the lists, padding the shorter one with empty strings
+        max_lines = max(len(left_column), len(right_column))
+        
+        left_column.extend([""] * (max_lines - len(left_column)))
+        right_column.extend([""] * (max_lines - len(right_column)))
+        
+        # Calculate padding for the left column to create separation.
+        # This width ensures the right column starts where it needs to.
+        left_width = align_width_left + 2 + 30 
+
+        for left_line, right_line in zip(left_column, right_column):
+            # Pad the left line with spaces to create separation between columns
+            padded_left = left_line.ljust(left_width)
+            out.append(f"{padded_left}{right_line}")
+        
+        out.append("")
+        out.append(_("Required by:"))
+        if revdeps:
+            out.extend(["  - " + r for r in revdeps])
+        else:
+            out.append("  " + _("(none)"))
+        
+        # Only show files section if files is explicitly provided and not None
+        if files is not None:
+            out.append("")
+            out.append(_("Files:"))
+            if files:
+                out.extend(["  - " + f for f in files])
+            else:
+                out.append("  " + _("(none)"))
+        
+        return "\n".join(out)

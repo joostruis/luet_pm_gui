@@ -36,7 +36,7 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails
 except ImportError:
     print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
     sys.exit(1)
@@ -220,15 +220,11 @@ class PackageDetailsPopup(Gtk.Window):
         self.add(main_box)
         self.show_all()
 
+    
     def load_definition_yaml(self, repository, category, name, version):
         try:
-            path = "/var/luet/db/repos/{}/treefs/{}/{}/{}/definition.yaml".format(repository, category, name, version)
-            # Use CommandRunner.run_sync instead of self.command_runner.run_sync here, since we injected it
-            res = self.run_command_sync(["cat", path], require_root=True)
-            if res.returncode != 0:
-                print("Error reading definition.yaml:", res.stderr)
-                return None
-            return yaml.safe_load(res.stdout) if res.stdout else None
+            # Use centralized PackageDetails to fetch definition.yaml (handles elevation)
+            return PackageDetails.get_definition_yaml(self.run_command_sync, repository, category, name, version)
         except Exception as e:
             print("Error loading definition.yaml:", e)
             return None

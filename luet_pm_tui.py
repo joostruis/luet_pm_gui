@@ -32,6 +32,7 @@ try:
         PackageFilter,
         AboutInfo,
         Spinner,
+        PackageDetails,
         _,
         ngettext,
     )
@@ -415,7 +416,7 @@ class LuetTUI:
             
             self.results_win.addstr(0, 2, " " + _(" Results ") + " ", dim_attr)
             
-            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Version'):8.8} {_('Repository'):22.22} {_('Action'):8}"
+            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Version'):16.16} {_('Repository'):22.22} {_('Action'):8}"
             self.results_win.addstr(1, 1, header[:win_w-2], header_attr)
 
             if self.selected_index < self.results_scroll_offset:
@@ -437,7 +438,7 @@ class LuetTUI:
                 else:
                     action = _("Install")
                 
-                line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:8]:8} {pkg.get('repository','')[:22]:22} {action:8}"
+                line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:16]:16} {pkg.get('repository','')[:22]:22} {action:8}"
                 
                 attr = dim_attr
                 if is_ready and self.focus == 'list' and row_idx == self.selected_index:
@@ -797,16 +798,216 @@ class LuetTUI:
     def show_details(self):
         if not (0 <= self.selected_index < len(self.results)): return
         pkg = self.results[self.selected_index]
-        
+
         if pkg.get("protected", False):
             msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
             if msg is None:
                 full_name = f"{pkg['category']}/{pkg['name']}"
                 msg = _("This package ({}) is protected and can't be removed.").format(full_name)
             self.show_message(_("Protected"), msg)
-        else:
-            self.show_message(_("Details"), _("Details for {}/{} (Logic TBD in core)").format(pkg['category'], pkg['name']))
+            return
+
+        category = pkg['category']
+        name = pkg['name']
+        version = pkg.get('version', '')
+        repository = pkg.get('repository', '')
+        installed = pkg.get('installed', False)
+
+        details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version)
+        revdeps = PackageDetails.get_required_by(self.command_runner.run_sync, category, name)
+
+        text = PackageDetails.format_for_tui(details, None, revdeps, repository, version, installed)
+        title = _("Details for {}/{}").format(category, name)
+        self.show_package_details_interactive(title, text, category, name)
+    
+    def show_package_details_interactive(self, title, message, category, name):
+        """Show package details with option to view files by pressing 'f'."""
+        self.draw()
+        h, w = self.stdscr.getmaxyx()
+        ww = min(100, w - 6); hh = min(15, h - 6)
+        y = max(2, (h - hh) // 2); x = max(2, (w - ww) // 2)
+        win = curses.newwin(hh, ww, y, x)
+        win.keypad(True)
+        win.nodelay(False)
         
+        scroll_offset = 0
+        lines = str(message).splitlines()
+        max_visible = hh - 4
+        max_scroll = max(0, len(lines) - max_visible)
+        
+        while True:
+            win.erase()
+            win.border()
+            try:
+                win.addstr(0, 2, f" {title} ")
+                
+                visible_lines = lines[scroll_offset:scroll_offset + max_visible]
+                for i, ln in enumerate(visible_lines):
+                    win.addstr(2 + i, 2, ln[: ww - 4])
+                
+                # Show scroll indicator if needed
+                if max_scroll > 0:
+                    scroll_info = _("Line {}/{}").format(scroll_offset + 1, len(lines))
+                    win.addstr(hh - 2, 2, scroll_info, curses.A_DIM)
+                
+                # Show key hints
+                hints = _("Keys: f=files | Up/Down=scroll | Any other key=close")
+                hint_x = max(2, ww - len(hints) - 2)
+                win.addstr(hh - 2, hint_x, hints[:ww - hint_x - 2], curses.A_DIM)
+                
+                win.refresh()
+                
+                ch = win.getch()
+                
+                if ch in (ord('f'), ord('F')):
+                    self.show_package_files(category, name)
+                elif ch == curses.KEY_UP:
+                    scroll_offset = max(0, scroll_offset - 1)
+                elif ch == curses.KEY_DOWN:
+                    scroll_offset = min(max_scroll, scroll_offset + 1)
+                elif ch == curses.KEY_PPAGE:
+                    scroll_offset = max(0, scroll_offset - max_visible)
+                elif ch == curses.KEY_NPAGE:
+                    scroll_offset = min(max_scroll, scroll_offset + max_visible)
+                else:
+                    break
+                    
+            except curses.error:
+                break
+        
+        self.draw()
+    
+    def show_package_files(self, category, name):
+            """Show a scrollable list of files for the package."""
+            self.draw()
+            h, w = self.stdscr.getmaxyx()
+            ww = min(100, w - 6); hh = min(20, h - 6)
+            y = max(2, (h - hh) // 2); x = max(2, (w - ww) // 2)
+            win = curses.newwin(hh, ww, y, x)
+            win.keypad(True)
+            # Set nodelay to true while loading for the animation loop
+            # It will be set back to False later if files are found
+            win.nodelay(True) 
+            
+            # --- File Fetching Thread Setup ---
+            # A simple function to run in the background thread
+            def fetcher(q):
+                # Blocking call runs here
+                files = PackageDetails.get_files(self.command_runner.run_sync, category, name)
+                q.put(files)
+
+            # Start the background operation
+            q = queue.Queue()
+            thread = threading.Thread(target=fetcher, args=(q,))
+            thread.daemon = True
+            thread.start()
+            
+            # --- Animation Loop ---
+            title = _("Files for {}/{}").format(category, name)
+            loading_msg = _("Loading file list...")
+            
+            # Run loop while the thread is still working
+            while thread.is_alive():
+                win.erase()
+                win.border()
+                
+                # Redraw title and advance spinner frame
+                win.addstr(0, 2, f" {title} "[:ww - 4])
+                
+                # Advance spinner and get the new frame
+                self.spinner.next_frame()
+                spinner_frame = self.spinner.get_current_frame()
+                
+                display_msg = f"{spinner_frame} {loading_msg}"
+                
+                # Display dimmed loading message
+                win.addstr(2, 2, display_msg, curses.A_DIM) 
+                win.refresh()
+                
+                # Control animation speed (0.1s delay between frames)
+                time.sleep(0.1)
+
+                # Check for input, but don't process it (just keeps the TUI responsive)
+                win.getch() 
+            
+            # Get results from the thread (should be available now)
+            try:
+                files = q.get(timeout=0.1)
+            except queue.Empty:
+                files = None # Should not happen if thread is joined, but safe
+            
+            # Set nodelay back to False for scrollable list input
+            win.nodelay(False)
+            # --- End Animation Loop ---
+
+            if not files:
+                win.erase()
+                win.border()
+                win.addstr(0, 2, f" {title} ")
+                no_files_msg = _("No files found or package not installed")
+                win.addstr(2, 2, no_files_msg)
+                hints = _("Press any key to close")
+                win.addstr(hh - 2, 2, hints, curses.A_DIM)
+                win.refresh()
+                win.getch()
+                self.draw()
+                return
+            
+            # Display scrollable file list
+            scroll_offset = 0
+            max_visible = hh - 4
+            max_scroll = max(0, len(files) - max_visible)
+            
+            while True:
+                win.erase()
+                win.border()
+                try:
+                    title = _("Files for {}/{} ({} files)").format(category, name, len(files))
+                    win.addstr(0, 2, f" {title} "[:ww - 4])
+                    
+                    visible_files = files[scroll_offset:scroll_offset + max_visible]
+                    for i, file_path in enumerate(visible_files):
+                        win.addstr(2 + i, 2, file_path[: ww - 4])
+                    
+                    # Show scroll indicator
+                    if max_scroll > 0:
+                        scroll_info = _("File {}/{} | Page {}/{}").format(
+                            scroll_offset + 1,
+                            len(files),
+                            (scroll_offset // max_visible) + 1,
+                            (len(files) + max_visible - 1) // max_visible
+                        )
+                        win.addstr(hh - 2, 2, scroll_info, curses.A_DIM)
+                    
+                    # Show key hints
+                    hints = _("Keys: Up/Down/PgUp/PgDn=scroll | Any other key=close")
+                    hint_x = max(2, ww - len(hints) - 2)
+                    win.addstr(hh - 2, hint_x, hints[:ww - hint_x - 2], curses.A_DIM)
+                    
+                    win.refresh()
+                    
+                    ch = win.getch()
+                    
+                    if ch == curses.KEY_UP:
+                        scroll_offset = max(0, scroll_offset - 1)
+                    elif ch == curses.KEY_DOWN:
+                        scroll_offset = min(max_scroll, scroll_offset + 1)
+                    elif ch == curses.KEY_PPAGE:
+                        scroll_offset = max(0, scroll_offset - max_visible)
+                    elif ch == curses.KEY_NPAGE:
+                        scroll_offset = min(max_scroll, scroll_offset + max_visible)
+                    elif ch == curses.KEY_HOME:
+                        scroll_offset = 0
+                    elif ch == curses.KEY_END:
+                        scroll_offset = max_scroll
+                    else:
+                        break
+                        
+                except curses.error:
+                    break
+            
+            self.draw()
+
     def run(self):
         while self.running:
             self.scheduler.drain()
