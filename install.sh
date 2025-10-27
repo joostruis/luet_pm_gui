@@ -18,9 +18,9 @@ chown root:root /etc/polkit-1/rules.d/99-luet.rules
 
 # Install translations
 for lang in $(ls locale 2>/dev/null); do
-    if [ -f "locale/$lang/LC_MESSAGES/luet_pm_gui.mo" ]; then
-        install -Dm644 "locale/$lang/LC_MESSAGES/luet_pm_gui.mo" \
-            "/usr/share/locale/$lang/LC_MESSAGES/luet_pm_gui.mo"
+    if [ -f "locale/$lang/LC_MESSAGES/luet_pm_ui.mo" ]; then
+        install -Dm644 "locale/$lang/LC_MESSAGES/luet_pm_ui.mo" \
+            "/usr/share/locale/$lang/LC_MESSAGES/luet_pm_ui.mo"
     fi
 done
 
