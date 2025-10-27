@@ -8,6 +8,7 @@ install -Dm644 luet_pm_gui.png /usr/share/pixmaps/luet_pm_gui.png
 install -Dm644 luet_pm_gui.desktop /usr/share/applications/luet_pm_gui.desktop
 
 # Install executables
+install -Dm755 luet_pm_tui.py /usr/bin/luet_pm_tui.py
 install -Dm755 luet_pm_gui.py /usr/bin/luet_pm_gui.py
 install -Dm755 luet_pm_gui.sh /usr/bin/luet_pm_gui.sh
 
