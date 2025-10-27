@@ -796,32 +796,34 @@ class LuetTUI:
             )
 
     def show_details(self):
-        if not (0 <= self.selected_index < len(self.results)): return
-        pkg = self.results[self.selected_index]
+            if not (0 <= self.selected_index < len(self.results)): return
+            pkg = self.results[self.selected_index]
 
-        if pkg.get("protected", False):
-            msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
-            if msg is None:
-                full_name = f"{pkg['category']}/{pkg['name']}"
-                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
-            self.show_message(_("Protected"), msg)
-            return
+            if pkg.get("protected", False):
+                msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
+                if msg is None:
+                    full_name = f"{pkg['category']}/{pkg['name']}"
+                    msg = _("This package ({}) is protected and can't be removed.").format(full_name)
+                self.show_message(_("Protected"), msg)
+                return
 
-        category = pkg['category']
-        name = pkg['name']
-        version = pkg.get('version', '')
-        repository = pkg.get('repository', '')
-        installed = pkg.get('installed', False)
+            category = pkg['category']
+            name = pkg['name']
+            version = pkg.get('version', '')
+            repository = pkg.get('repository', '')
+            # --- MODIFIED: Capture installed status ---
+            installed = pkg.get('installed', False) 
 
-        details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version)
-        revdeps = PackageDetails.get_required_by(self.command_runner.run_sync, category, name)
-
-        text = PackageDetails.format_for_tui(details, None, revdeps, repository, version, installed)
-        title = _("Details for {}/{}").format(category, name)
-        self.show_package_details_interactive(title, text, category, name)
+            details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version)
+            
+            text = PackageDetails.format_for_tui(details, None, None, repository, version, installed)
+            title = _("Details for {}/{}").format(category, name)
+            
+            # --- MODIFIED: Pass installed status ---
+            self.show_package_details_interactive(title, text, category, name, installed)
     
-    def show_package_details_interactive(self, title, message, category, name):
-        """Show package details with option to view files by pressing 'f'."""
+    def show_package_details_interactive(self, title, message, category, name, installed):
+        """Show package details with option to view files ('f') or revdeps ('r')."""
         self.draw()
         h, w = self.stdscr.getmaxyx()
         ww = min(100, w - 6); hh = min(15, h - 6)
@@ -850,8 +852,22 @@ class LuetTUI:
                     scroll_info = _("Line {}/{}").format(scroll_offset + 1, len(lines))
                     win.addstr(hh - 2, 2, scroll_info, curses.A_DIM)
                 
-                # Show key hints
-                hints = _("Keys: f=files | Up/Down=scroll | Any other key=close")
+                # --- MODIFIED: Conditional Key Hints ---
+                hints_parts = ["Keys:"]
+                
+                # 'f' for files is always enabled regardless of install status,
+                # as files details can sometimes still be retrieved.
+                hints_parts.append("f=files") 
+                
+                # Only show 'r' hint if the package is installed
+                if installed:
+                    hints_parts.append("r=required by")
+                    
+                hints_parts.append("Up/Down/PgUp/PgDn=scroll")
+                hints_parts.append("Any other key=close")
+
+                hints = " | ".join(hints_parts)
+                
                 hint_x = max(2, ww - len(hints) - 2)
                 win.addstr(hh - 2, hint_x, hints[:ww - hint_x - 2], curses.A_DIM)
                 
@@ -861,6 +877,9 @@ class LuetTUI:
                 
                 if ch in (ord('f'), ord('F')):
                     self.show_package_files(category, name)
+                # --- MODIFIED: 'r' key is only handled if installed is True ---
+                elif installed and ch in (ord('r'), ord('R')):
+                    self.show_package_revdeps(category, name)
                 elif ch == curses.KEY_UP:
                     scroll_offset = max(0, scroll_offset - 1)
                 elif ch == curses.KEY_DOWN:
@@ -876,7 +895,129 @@ class LuetTUI:
                 break
         
         self.draw()
-    
+
+    def show_package_revdeps(self, category, name):
+            """Show a scrollable list of packages that require this package (revdeps) with spinner animation."""
+            self.draw()
+            h, w = self.stdscr.getmaxyx()
+            ww = min(100, w - 6); hh = min(20, h - 6)
+            y = max(2, (h - hh) // 2); x = max(2, (w - ww) // 2)
+            win = curses.newwin(hh, ww, y, x)
+            win.keypad(True)
+            win.nodelay(True) # Non-blocking input for animation loop
+            
+            # --- Dependency Fetching Thread Setup ---
+            def fetcher(q):
+                # Blocking call runs here
+                revdeps = PackageDetails.get_required_by(self.command_runner.run_sync, category, name)
+                q.put(revdeps)
+
+            q = queue.Queue()
+            thread = threading.Thread(target=fetcher, args=(q,))
+            thread.daemon = True
+            thread.start()
+            
+            # --- Animation Loop ---
+            title = _("Required by for {}/{}").format(category, name)
+            loading_msg = _("Loading required by list...")
+            
+            while thread.is_alive():
+                win.erase()
+                win.border()
+                
+                win.addstr(0, 2, f" {title} "[:ww - 4])
+                
+                # Advance spinner and get the new frame
+                spinner_frame = self.spinner.advance()
+                
+                display_msg = f"{spinner_frame} {loading_msg}"
+                
+                win.addstr(2, 2, display_msg, curses.A_DIM) 
+                win.refresh()
+                
+                time.sleep(0.1)
+
+                win.getch() # Keep TUI responsive
+            
+            # Get results from the thread
+            try:
+                revdeps = q.get(timeout=0.1)
+            except queue.Empty:
+                revdeps = []
+            
+            win.nodelay(False) # Blocking input for scrollable list
+
+            if not revdeps:
+                win.erase()
+                win.border()
+                win.addstr(0, 2, f" {title} ")
+                no_revdeps_msg = _("This package is not required by any other package.")
+                win.addstr(2, 2, no_revdeps_msg)
+                hints = _("Press any key to close")
+                win.addstr(hh - 2, 2, hints, curses.A_DIM)
+                win.refresh()
+                win.getch()
+                self.draw()
+                return
+            
+            # Format the revdeps list (e.g., add "- " prefix)
+            display_list = ["- " + r for r in revdeps]
+            
+            # Display scrollable revdeps list
+            scroll_offset = 0
+            max_visible = hh - 4
+            max_scroll = max(0, len(display_list) - max_visible)
+            
+            while True:
+                win.erase()
+                win.border()
+                try:
+                    title_full = _("Required by for {}/{} ({} packages)").format(category, name, len(display_list))
+                    win.addstr(0, 2, f" {title_full} "[:ww - 4])
+                    
+                    visible_revdeps = display_list[scroll_offset:scroll_offset + max_visible]
+                    for i, pkg_name in enumerate(visible_revdeps):
+                        win.addstr(2 + i, 2, pkg_name[: ww - 4])
+                    
+                    # Show scroll indicator
+                    if max_scroll > 0:
+                        scroll_info = _("Package {}/{} | Page {}/{}").format(
+                            scroll_offset + 1,
+                            len(display_list),
+                            (scroll_offset // max_visible) + 1,
+                            (len(display_list) + max_visible - 1) // max_visible
+                        )
+                        win.addstr(hh - 2, 2, scroll_info, curses.A_DIM)
+                    
+                    # Show key hints
+                    hints = _("Keys: Up/Down/PgUp/PgDn=scroll | Any other key=close")
+                    hint_x = max(2, ww - len(hints) - 2)
+                    win.addstr(hh - 2, hint_x, hints[:ww - hint_x - 2], curses.A_DIM)
+                    
+                    win.refresh()
+                    
+                    ch = win.getch()
+                    
+                    if ch == curses.KEY_UP:
+                        scroll_offset = max(0, scroll_offset - 1)
+                    elif ch == curses.KEY_DOWN:
+                        scroll_offset = min(max_scroll, scroll_offset + 1)
+                    elif ch == curses.KEY_PPAGE:
+                        scroll_offset = max(0, scroll_offset - max_visible)
+                    elif ch == curses.KEY_NPAGE:
+                        scroll_offset = min(max_scroll, scroll_offset + max_visible)
+                    elif ch == curses.KEY_HOME:
+                        scroll_offset = 0
+                    elif ch == curses.KEY_END:
+                        scroll_offset = max_scroll
+                    else:
+                        break
+                        
+                except curses.error:
+                    break
+            
+            self.draw()
+
     def show_package_files(self, category, name):
             """Show a scrollable list of files for the package."""
             self.draw()

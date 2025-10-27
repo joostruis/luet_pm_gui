@@ -804,7 +804,7 @@ class PackageDetails:
         
         left_column.append(f"{installed_label:>{align_width_left}}: {installed_text}")
         
-        # --- License Wrapping Logic (NEW) ---
+        # --- License Wrapping Logic ---
         wrap_width_left = 30 # Safe width for the left column's data
         license_indent = " " * (align_width_left + 2) 
         
@@ -838,7 +838,7 @@ class PackageDetails:
         if repository:
             right_column.append(f"{repo_label:>{align_width_right}}: {repository}")
         
-        # --- Description Wrapping Logic (EXISTING) ---
+        # --- Description Wrapping Logic ---
         desc = details.get("description") or details.get("long_description") or ""
         wrap_width_right = 33 # Width for the right column's data
         desc_indent = " " * (align_width_right + 2) 
@@ -878,7 +878,6 @@ class PackageDetails:
         right_column.extend([""] * (max_lines - len(right_column)))
         
         # Calculate padding for the left column to create separation.
-        # This width ensures the right column starts where it needs to.
         left_width = align_width_left + 2 + 30 
 
         for left_line, right_line in zip(left_column, right_column):
@@ -886,20 +885,5 @@ class PackageDetails:
             padded_left = left_line.ljust(left_width)
             out.append(f"{padded_left}{right_line}")
         
-        out.append("")
-        out.append(_("Required by:"))
-        if revdeps:
-            out.extend(["  - " + r for r in revdeps])
-        else:
-            out.append("  " + _("(none)"))
-        
-        # Only show files section if files is explicitly provided and not None
-        if files is not None:
-            out.append("")
-            out.append(_("Files:"))
-            if files:
-                out.extend(["  - " + f for f in files])
-            else:
-                out.append("  " + _("(none)"))
-        
+        # NOTE: Removed 'Required by:' and 'Files:' sections here.
         return "\n".join(out)
