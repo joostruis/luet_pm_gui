@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-27 09:53+0100\n"
+"POT-Creation-Date: 2025-10-27 12:38+0100\n"
 "PO-Revision-Date: 2025-09-16 20:56+0200\n"
 "Last-Translator: Joost Ruis \n"
 "Language-Team: German \n"
@@ -143,8 +143,7 @@ msgstr "Vollständiges System-Upgrade"
 msgid "Check system"
 msgstr "System prüfen"
 
-#: luet_pm_gui.py:423 luet_pm_gui.py:1054 luet_pm_tui.py:88
-#: luet_pm_core.py:1158
+#: luet_pm_gui.py:423 luet_pm_gui.py:1054 luet_pm_tui.py:88 luet_pm_core.py:602
 msgid "Clear Luet cache"
 msgstr "Luet-Cache leeren"
 
@@ -169,7 +168,7 @@ msgstr "Hilfe"
 #: luet_pm_gui.py:1028 luet_pm_tui.py:200 luet_pm_tui.py:278 luet_pm_tui.py:590
 #: luet_pm_tui.py:623 luet_pm_tui.py:651 luet_pm_tui.py:684 luet_pm_tui.py:706
 #: luet_pm_tui.py:712 luet_pm_tui.py:734 luet_pm_tui.py:764 luet_pm_tui.py:785
-#: luet_pm_tui.py:819 luet_pm_core.py:479 luet_pm_core.py:1035
+#: luet_pm_tui.py:819 luet_pm_core.py:479
 msgid "Ready"
 msgstr "Bereit"
 
@@ -365,7 +364,7 @@ msgstr "Fehler beim Leeren des Luet-Cache"
 msgid "Last sync: {}"
 msgstr "Letzte Synchronisierung: {}"
 
-#: luet_pm_gui.py:1051 luet_pm_core.py:1156
+#: luet_pm_gui.py:1051 luet_pm_core.py:600
 msgid "Clear Luet cache ({})"
 msgstr "Leere Luet-Cache ({})"
 
@@ -381,7 +380,7 @@ msgstr ""
 msgid "Not Synced"
 msgstr ""
 
-#: luet_pm_tui.py:245 luet_pm_core.py:1275 luet_pm_core.py:1376
+#: luet_pm_tui.py:245 luet_pm_core.py:719
 msgid "repositories not synced"
 msgstr "Repositorien nicht synchronisiert"
 
@@ -430,7 +429,6 @@ msgid "Full system upgrade initiated."
 msgstr "Vollständiges System-Upgrade"
 
 #: luet_pm_tui.py:616 luet_pm_core.py:532 luet_pm_core.py:545
-#: luet_pm_core.py:1088 luet_pm_core.py:1101
 msgid "System upgrade completed successfully"
 msgstr "System-Upgrade erfolgreich abgeschlossen"
 
@@ -521,19 +519,19 @@ msgstr "Luet-Cache wird geleert..."
 msgid "An error occurred outside of curses: {}"
 msgstr ""
 
-#: luet_pm_core.py:104 luet_pm_core.py:660
+#: luet_pm_core.py:104
 #, fuzzy
 msgid "Luet Package Manager Frontend"
 msgstr "Luet Paket-Suche"
 
-#: luet_pm_core.py:112 luet_pm_core.py:668
+#: luet_pm_core.py:112
 #, fuzzy
 msgid "© 2023 - 2025 MocaccinoOS. All Rights Reserved"
 msgstr ""
 "© 2023 - 2025 MocaccinoOS.\n"
 "Alle Rechte vorbehalten"
 
-#: luet_pm_core.py:129 luet_pm_core.py:685
+#: luet_pm_core.py:129
 msgid ""
 "Luet Package Manager TUI (ncurses)\n"
 "Version: {}\n"
@@ -542,11 +540,11 @@ msgid ""
 "(Uses luet_pm_core.py)"
 msgstr ""
 
-#: luet_pm_core.py:161 luet_pm_core.py:717
+#: luet_pm_core.py:161
 msgid "No elevation helper available"
 msgstr "Kein Hilfsprogramm zur Erhöhung der Rechte verfügbar"
 
-#: luet_pm_core.py:211 luet_pm_core.py:767
+#: luet_pm_core.py:211
 msgid ""
 "\n"
 "Error executing command: {}\n"
@@ -554,44 +552,44 @@ msgstr ""
 "\n"
 "Fehler beim Ausführen des Befehls: {}\n"
 
-#: luet_pm_core.py:335 luet_pm_core.py:891
+#: luet_pm_core.py:335
 #, fuzzy
 msgid "Updating repositories"
 msgstr "Repositorien werden aktualisiert..."
 
-#: luet_pm_core.py:434 luet_pm_core.py:990
+#: luet_pm_core.py:434
 msgid "luet oscheck failed with return code {}"
 msgstr ""
 
-#: luet_pm_core.py:440 luet_pm_core.py:996
+#: luet_pm_core.py:440
 msgid "Repair sequence started for {} missing packages.\n"
 msgstr ""
 
-#: luet_pm_core.py:441 luet_pm_core.py:997
+#: luet_pm_core.py:441
 msgid "Found {} missing packages. Starting repair immediately.\n"
 msgstr ""
 
-#: luet_pm_core.py:447 luet_pm_core.py:1003
+#: luet_pm_core.py:447
 msgid "Reinstalling {}..."
 msgstr "Neuinstallation von {}..."
 
-#: luet_pm_core.py:460 luet_pm_core.py:1016
+#: luet_pm_core.py:460
 msgid "Failed reinstalling {}"
 msgstr "Fehler beim Neuinstallieren von {}"
 
-#: luet_pm_core.py:471 luet_pm_core.py:1027
+#: luet_pm_core.py:471
 msgid "System check failed due to exception"
 msgstr ""
 
-#: luet_pm_core.py:515 luet_pm_core.py:1071
+#: luet_pm_core.py:515
 msgid "Error starting upgrade process"
 msgstr "Fehler beim Start des Upgrade-Prozesses"
 
-#: luet_pm_core.py:523 luet_pm_core.py:1079
+#: luet_pm_core.py:523
 msgid "Error during initial upgrade step"
 msgstr "Fehler im ersten Upgrade-Schritt"
 
-#: luet_pm_core.py:535 luet_pm_core.py:1091
+#: luet_pm_core.py:535
 #, fuzzy
 msgid ""
 "\n"
@@ -602,29 +600,28 @@ msgstr ""
 "--- Repositorien aktualisiert, fahre mit Package-Upgrade fort...\n"
 "---\n"
 
-#: luet_pm_core.py:536 luet_pm_core.py:1092
+#: luet_pm_core.py:536
 msgid "Continuing with package upgrade..."
 msgstr "Package-Upgrade wird fortgesetzt..."
 
-#: luet_pm_core.py:549 luet_pm_core.py:1105
+#: luet_pm_core.py:549
 msgid "Error starting second upgrade step"
 msgstr "Fehler beim Start des zweiten Upgrade-Schritts"
 
-#: luet_pm_core.py:1211 luet_pm_core.py:1229 luet_pm_core.py:1312
-#: luet_pm_core.py:1330
+#: luet_pm_core.py:655 luet_pm_core.py:673
 msgid "Error executing the search command"
 msgstr "Fehler beim Ausführen des Suchbefehls"
 
-#: luet_pm_core.py:1226 luet_pm_core.py:1327
+#: luet_pm_core.py:670
 msgid "Invalid JSON output"
 msgstr "Ungültige JSON-Ausgabe"
 
-#: luet_pm_core.py:1228 luet_pm_core.py:1329
+#: luet_pm_core.py:672
 msgid "Error running search:"
 msgstr "Fehler bei der Suchausführung:"
 
 # , python-format
-#: luet_pm_core.py:1253 luet_pm_core.py:1354
+#: luet_pm_core.py:697
 #, python-format
 msgid "%d day ago"
 msgid_plural "%d days ago"
@@ -632,7 +629,7 @@ msgstr[0] "%d Tag zuvor"
 msgstr[1] "%d Tage zuvor"
 
 # , python-format
-#: luet_pm_core.py:1256 luet_pm_core.py:1357
+#: luet_pm_core.py:700
 #, python-format
 msgid "%d hour ago"
 msgid_plural "%d hours ago"
@@ -640,14 +637,14 @@ msgstr[0] "%d Stunde zuvor"
 msgstr[1] "%d Stunden zuvor"
 
 # , python-format
-#: luet_pm_core.py:1259 luet_pm_core.py:1360
+#: luet_pm_core.py:703
 #, python-format
 msgid "%d minute ago"
 msgid_plural "%d minutes ago"
 msgstr[0] "%d Minute zuvor"
 msgstr[1] "%d Minuten zuvor"
 
-#: luet_pm_core.py:1261 luet_pm_core.py:1362
+#: luet_pm_core.py:705
 msgid "just now"
 msgstr "gerade eben"
 
