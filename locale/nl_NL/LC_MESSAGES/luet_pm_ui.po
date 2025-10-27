@@ -1,0 +1,473 @@
+# Dutch translations for luet_pm_gui package.
+# Copyright (C) 2025 MocaccinoOS
+# This file is distributed under the same license as the luet_pm_gui package.
+# Joost Ruis <joost.ruis@mocaccino.org>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: luet_pm_gui VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-27 09:53+0100\n"
+"PO-Revision-Date: 2025-10-27 10:40+0100\n"
+"Last-Translator: Joost Ruis <joost.ruis@mocaccino.org>\n"
+"Language-Team: Dutch <vertaling@vrijschrift.org>\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.5\n"
+
+#: luet_pm_gui.py:55
+msgid "Visit our website"
+msgstr "Bezoek onze website"
+
+#: luet_pm_gui.py:68
+msgid "GitHub Repository"
+msgstr "GitHub Broncode"
+
+#: luet_pm_gui.py:88
+msgid "Package Details"
+msgstr "Pakketdetails"
+
+#: luet_pm_gui.py:124
+msgid "Package:"
+msgstr "Pakketnaam:"
+
+#: luet_pm_gui.py:125
+msgid "Version:"
+msgstr "Versie:"
+
+#: luet_pm_gui.py:126
+msgid "Installed:"
+msgstr "Geinstalleerd:"
+
+#: luet_pm_gui.py:126
+msgid "Yes"
+msgstr "Ja"
+
+#: luet_pm_gui.py:126
+msgid "No"
+msgstr "Nee"
+
+#: luet_pm_gui.py:163
+msgid "Repository:"
+msgstr "Pakketbron:"
+
+#: luet_pm_gui.py:171
+msgid "Description:"
+msgstr "Omschrijving:"
+
+#: luet_pm_gui.py:176
+msgid "License:"
+msgstr "Licentie:"
+
+#: luet_pm_gui.py:183
+msgid "Required by"
+msgstr "Vereist door"
+
+#: luet_pm_gui.py:195
+msgid "Package files"
+msgstr "Pakketbestanden"
+
+#: luet_pm_gui.py:197
+msgid "Filter files..."
+msgstr "Bestanden filteren..."
+
+#: luet_pm_gui.py:202 luet_pm_gui.py:436 luet_pm_tui.py:73
+msgid "File"
+msgstr "Bestand"
+
+#: luet_pm_gui.py:217
+msgid "Close"
+msgstr "Sluiten"
+
+#: luet_pm_gui.py:247
+msgid "Copy All Files"
+msgstr "Alle bestanden kopiëren"
+
+#: luet_pm_gui.py:268
+msgid "Error retrieving required by information."
+msgstr "Fout bij het ophalen van 'vereist door' informatie."
+
+#: luet_pm_gui.py:276
+msgid "There are no packages installed that require this package."
+msgstr "Er zijn geen geïnstalleerde pakketten die dit pakket vereisen."
+
+#: luet_pm_gui.py:285
+msgid "Loading..."
+msgstr "Laden..."
+
+#: luet_pm_gui.py:295
+msgid "Error retrieving package files information."
+msgstr "Fout bij het ophalen van pakketbestandsinformatie."
+
+#: luet_pm_gui.py:298
+msgid "No files found for this package."
+msgstr "Geen bestanden gevonden voor dit pakket."
+
+#: luet_pm_gui.py:320
+msgid "revdeps failed:"
+msgstr "omgekeerde afhankelijkheden mislukt:"
+
+#: luet_pm_gui.py:329
+msgid "Error retrieving required by info:"
+msgstr "Fout bij het ophalen van 'vereist door' info:"
+
+#: luet_pm_gui.py:336
+msgid "search for package failed:"
+msgstr "zoeken naar pakket mislukt:"
+
+#: luet_pm_gui.py:344
+msgid "Error retrieving package files info:"
+msgstr "Fout bij het ophalen van pakketbestandsinfo:"
+
+#: luet_pm_gui.py:352
+msgid "Luet Package Search"
+msgstr "Luet Pakketzoeker"
+
+#: luet_pm_gui.py:391
+msgid "Warning: no pkexec/sudo found - admin actions will fail"
+msgstr "Waarschuwing: geen pkexec/sudo gevonden - beheerdersacties zullen mislukken"
+
+#: luet_pm_gui.py:413 luet_pm_tui.py:79 luet_pm_tui.py:175
+msgid "Update repositories"
+msgstr "Pakketbronnen bijwerken"
+
+#: luet_pm_gui.py:417 luet_pm_tui.py:79 luet_pm_tui.py:177
+msgid "Full system upgrade"
+msgstr "Volledige systeemupgrade"
+
+#: luet_pm_gui.py:420 luet_pm_tui.py:79 luet_pm_tui.py:179
+msgid "Check system"
+msgstr "Systeem controleren"
+
+#: luet_pm_gui.py:423 luet_pm_gui.py:1054 luet_pm_tui.py:88 luet_pm_core.py:1158
+msgid "Clear Luet cache"
+msgstr "Luet cache wissen"
+
+#: luet_pm_gui.py:426 luet_pm_tui.py:79 luet_pm_tui.py:173
+msgid "Quit"
+msgstr "Afsluiten"
+
+#: luet_pm_gui.py:430 luet_pm_tui.py:80 luet_pm_tui.py:184
+msgid "Documentation"
+msgstr "Documentatie"
+
+#: luet_pm_gui.py:433 luet_pm_tui.py:80 luet_pm_tui.py:186 luet_pm_tui.py:188
+msgid "About"
+msgstr "Over"
+
+#: luet_pm_gui.py:438 luet_pm_tui.py:73
+msgid "Help"
+msgstr "Hulp"
+
+#: luet_pm_gui.py:457 luet_pm_gui.py:766 luet_pm_gui.py:809 luet_pm_gui.py:855 luet_pm_gui.py:869 luet_pm_gui.py:920 luet_pm_gui.py:953 luet_pm_gui.py:998 luet_pm_gui.py:1028
+#: luet_pm_tui.py:200 luet_pm_tui.py:278 luet_pm_tui.py:590 luet_pm_tui.py:623 luet_pm_tui.py:651 luet_pm_tui.py:684 luet_pm_tui.py:706 luet_pm_tui.py:712 luet_pm_tui.py:734
+#: luet_pm_tui.py:764 luet_pm_tui.py:785 luet_pm_tui.py:819 luet_pm_core.py:479 luet_pm_core.py:1035
+msgid "Ready"
+msgstr "Klaar"
+
+#: luet_pm_gui.py:464 luet_pm_gui.py:773 luet_pm_gui.py:816 luet_pm_gui.py:862 luet_pm_gui.py:876 luet_pm_gui.py:927 luet_pm_gui.py:960 luet_pm_gui.py:1005 luet_pm_gui.py:1035
+#: luet_pm_tui.py:205 luet_pm_tui.py:283 luet_pm_tui.py:596 luet_pm_tui.py:628 luet_pm_tui.py:656 luet_pm_tui.py:689 luet_pm_tui.py:717 luet_pm_tui.py:739 luet_pm_tui.py:769
+#: luet_pm_tui.py:790 luet_pm_tui.py:824 luet_pm_core.py:486 luet_pm_core.py:1042
+msgid "Error"
+msgstr "Fout"
+
+#: luet_pm_gui.py:475 luet_pm_gui.py:756 luet_pm_gui.py:943 luet_pm_tui.py:603
+msgid "Update in progress"
+msgstr "Bezig met bijwerken"
+
+#: luet_pm_gui.py:475 luet_pm_gui.py:756 luet_pm_gui.py:943 luet_pm_tui.py:603
+msgid "Updating repositories"
+msgstr "Pakketbronnen bijwerken"
+
+#: luet_pm_gui.py:521 luet_pm_gui.py:906 luet_pm_tui.py:86 luet_pm_tui.py:171
+msgid "Repositories"
+msgstr "Pakketbronnen"
+
+#: luet_pm_gui.py:526 luet_pm_tui.py:192
+msgid "Update"
+msgstr "Bijwerken"
+
+#: luet_pm_gui.py:529 luet_pm_tui.py:194
+msgid "Auto-Update"
+msgstr "Automatisch bijwerken"
+
+#: luet_pm_gui.py:532 luet_pm_tui.py:196
+msgid "Source"
+msgstr "Bron"
+
+#: luet_pm_gui.py:536 luet_pm_tui.py:201
+msgid "Status"
+msgstr "Status"
+
+#: luet_pm_gui.py:560 luet_pm_gui.py:606
+msgid "Error running update:"
+msgstr "Fout bij het uitvoeren van update:"
+
+#: luet_pm_gui.py:569
+msgid "Error opening documentation:"
+msgstr "Fout bij het openen van documentatie:"
+
+#: luet_pm_gui.py:575
+msgid "Error opening website:"
+msgstr "Fout bij het openen van website:"
+
+#: luet_pm_gui.py:581
+msgid "Error opening GitHub:"
+msgstr "Fout bij het openen van GitHub:"
+
+#: luet_pm_gui.py:598 luet_pm_tui.py:612
+msgid "Cleaning cache"
+msgstr "Cache opschonen"
+
+#: luet_pm_gui.py:614
+msgid "Error running cache clear:"
+msgstr "Fout bij het uitvoeren van cache wissen:"
+
+#: luet_pm_gui.py:623
+msgid "Error running check system:"
+msgstr "Fout bij het uitvoeren van systeem controle:"
+
+#: luet_pm_gui.py:633 luet_pm_gui.py:657 luet_pm_gui.py:673 luet_pm_gui.py:726 luet_pm_gui.py:741 luet_pm_gui.py:837 luet_pm_gui.py:850 luet_pm_gui.py:981 luet_pm_gui.py:994
+#: luet_pm_tui.py:255 luet_pm_tui.py:270 luet_pm_tui.py:748 luet_pm_tui.py:759
+msgid "Log"
+msgstr "Log"
+
+#: luet_pm_gui.py:639
+msgid "Select a package to see details."
+msgstr "Selecteer een pakket om details te zien."
+
+#: luet_pm_gui.py:643 luet_pm_gui.py:840 luet_pm_tui.py:261
+msgid "Status: Ready"
+msgstr "Status: Klaar"
+
+#: luet_pm_gui.py:651
+msgid "Error listing packages:"
+msgstr "Fout bij het weergeven van pakketten:"
+
+#: luet_pm_gui.py:665
+msgid "Error listing installed packages:"
+msgstr "Fout bij het weergeven van geïnstalleerde pakketten:"
+
+#: luet_pm_gui.py:681
+msgid "Error listing repositories:"
+msgstr "Fout bij het weergeven van pakketbronnen:"
+
+#: luet_pm_gui.py:687 luet_pm_gui.py:882 luet_pm_tui.py:169
+msgid "Installed Packages"
+msgstr "Geïnstalleerde pakketten"
+
+#: luet_pm_gui.py:690 luet_pm_tui.py:74
+msgid "Package Name"
+msgstr "Pakketnaam"
+
+#: luet_pm_gui.py:694 luet_pm_tui.py:74
+msgid "Description"
+msgstr "Omschrijving"
+
+#: luet_pm_gui.py:706 luet_pm_gui.py:892 luet_pm_tui.py:170
+msgid "Available Packages"
+msgstr "Beschikbare pakketten"
+
+#: luet_pm_gui.py:716 luet_pm_gui.py:734 luet_pm_gui.py:749 luet_pm_gui.py:827 luet_pm_gui.py:970 luet_pm_tui.py:648 luet_pm_tui.py:776
+msgid "Error starting command"
+msgstr "Fout bij het starten van commando"
+
+#: luet_pm_gui.py:781
+msgid "This will remove the package and its dependencies not required by other packages."
+msgstr "Dit verwijdert het pakket en de afhankelijkheden die niet door andere pakketten worden vereist."
+
+#: luet_pm_gui.py:797
+msgid "Uninstall"
+msgstr "Verwijderen"
+
+#: luet_pm_gui.py:827 luet_pm_gui.py:970 luet_pm_tui.py:648 luet_pm_tui.py:776
+msgid "Command failed"
+msgstr "Commando mislukt"
+
+#: luet_pm_gui.py:888
+msgid "Error listing available packages:"
+msgstr "Fout bij het weergeven van beschikbare pakketten:"
+
+#: luet_pm_gui.py:936 luet_pm_tui.py:645
+msgid "Upgrade in progress"
+msgstr "Upgrade bezig"
+
+#: luet_pm_gui.py:973
+msgid "This will update all repositories and then upgrade all installed packages. This action may take some time and requires an internet connection."
+msgstr "Dit werkt alle pakketbronnen bij en voert vervolgens een upgrade uit van alle geïnstalleerde pakketten. Deze actie kan enige tijd duren en vereist een internetverbinding."
+
+#: luet_pm_gui.py:989
+msgid "Upgrade"
+msgstr "Upgrade"
+
+#: luet_pm_tui.py:133
+msgid "Search"
+msgstr "Zoeken"
+
+#: luet_pm_tui.py:185 luet_pm_tui.py:672
+msgid "Info"
+msgstr "Info"
+
+#: luet_pm_tui.py:185
+msgid "Opening luet documentation (URL TBD)"
+msgstr "Luet documentatie openen (URL NOG TE BEPALEN)"
+
+#: luet_pm_tui.py:201
+msgid "Not Synced"
+msgstr "Verouderd"
+
+#: luet_pm_tui.py:273
+msgid "Terminal too small! Min 20x80."
+msgstr "Terminal te klein! Minimaal 20x80."
+
+#: luet_pm_tui.py:465
+msgid "{} ({} PgUp/PgDn to navigate)"
+msgstr "{} ({} PgUp/PgDn om te navigeren)"
+
+#: luet_pm_tui.py:495
+msgid "Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | PgUp/PgDn=log scroll | q=quit"
+msgstr "Toetsen: F9=menu | s=zoeken | Enter=details | i=installeren/verwijderen | l=log wisselen | PgUp/PgDn=log scrollen | q=afsluiten"
+
+#: luet_pm_tui.py:497
+msgid "SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit | q=quit"
+msgstr "ZOEKEN: Enter=bevestigen | Esc/Pijl Omlaag/Tab=terug naar lijst | Backspace/Del/Pijlen=bewerken | q=afsluiten"
+
+#: luet_pm_tui.py:553
+msgid "Press 'y' to confirm, any other key to cancel."
+msgstr "Druk op 'j' om te bevestigen, elke andere toets om te annuleren."
+
+#: luet_pm_tui.py:575
+msgid "Press any key to continue"
+msgstr "Druk op een willekeurige toets om door te gaan"
+
+#: luet_pm_tui.py:639
+msgid "Upgrade initiation failed: {}"
+msgstr "Start upgrade mislukt: {}"
+
+#: luet_pm_tui.py:640
+msgid "Upgrade failed to start"
+msgstr "Upgrade kon niet starten"
+
+#: luet_pm_tui.py:672
+msgid "No cache to clear"
+msgstr "Geen cache om te wissen"
+
+#: luet_pm_tui.py:678
+msgid "--- Running 'luet cleanup' ---"
+msgstr "--- Bezig met 'luet cleanup' ---"
+
+#: luet_pm_tui.py:683
+msgid "Luet cache cleanup finished successfully."
+msgstr "Luet cache opschonen succesvol voltooid."
+
+#: luet_pm_tui.py:687
+msgid "Luet cache cleanup finished with errors."
+msgstr "Luet cache opschonen voltooid met fouten."
+
+#: luet_pm_tui.py:779
+msgid "Install {} initiated."
+msgstr "Installatie van {} gestart."
+
+#: luet_pm_tui.py:808
+msgid "Details for {}/{} (Logic TBD in core)"
+msgstr "Details voor {}/{} (Logica NOG TE BEPALEN in core)"
+
+#: luet_pm_tui.py:930
+msgid "An error occurred outside of curses: {}"
+msgstr "Er is een fout opgetreden buiten curses: {}"
+
+#: luet_pm_core.py:129 luet_pm_core.py:685
+msgid ""
+"Luet Package Manager TUI (ncurses)\n"
+"Version: {}\n"
+"Website: {}\n"
+"Authors: {}\n"
+"(Uses luet_pm_core.py)"
+msgstr ""
+"Luet Package Manager TUI (ncurses)\n"
+"Versie: {}\n"
+"Website: {}\n"
+"Auteurs: {}\n"
+"(Gebruikt luet_pm_core.py)"
+
+#: luet_pm_core.py:211 luet_pm_core.py:767
+msgid ""
+"\n"
+"Error executing command: {}\n"
+msgstr ""
+"\n"
+"Fout bij het uitvoeren van commando: {}\n"
+
+#: luet_pm_core.py:471 luet_pm_core.py:1027
+msgid "System check failed due to exception"
+msgstr "Systeemcontrole mislukt door uitzondering"
+
+#: luet_pm_core.py:535 luet_pm_core.py:1091
+msgid ""
+"\n"
+"--- Repositories updated, continuing with package upgrade... ---\n"
+"\n"
+msgstr ""
+"\n"
+"--- Pakketbronnen bijgewerkt, bezig met pakketupgrade... ---\n"
+"\n"
+
+#: luet_pm_core.py:536 luet_pm_core.py:1092
+msgid "Continuing with package upgrade..."
+msgstr "Verder gaan met pakketupgrade..."
+
+#: luet_pm_core.py:549 luet_pm_core.py:1105
+msgid "Error starting second upgrade step"
+msgstr "Fout bij het starten van de tweede upgradestap"
+
+#: luet_pm_core.py:1211 luet_pm_core.py:1229 luet_pm_core.py:1312 luet_pm_core.py:1330
+msgid "Error executing the search command"
+msgstr "Fout bij het uitvoeren van het zoekcommando"
+
+#: luet_pm_core.py:1226 luet_pm_core.py:1327
+msgid "Invalid JSON output"
+msgstr "Ongeldige JSON-uitvoer"
+
+#: luet_pm_core.py:1228 luet_pm_core.py:1329
+msgid "Error running search:"
+msgstr "Fout bij het uitvoeren van de zoekopdracht:"
+
+#: luet_pm_core.py:1253 luet_pm_core.py:1354
+#, python-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "%d dag geleden"
+msgstr[1] "%d dagen geleden"
+
+#: luet_pm_core.py:1256 luet_pm_core.py:1357
+#, python-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] "%d uur geleden"
+msgstr[1] "%d uur geleden"
+
+#: luet_pm_core.py:1259 luet_pm_core.py:1360
+#, python-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] "%d minuut geleden"
+msgstr[1] "%d minuten geleden"
+
+#: luet_pm_core.py:1262 luet_pm_core.py:1363
+msgid "just now"
+msgstr "zojuist"
+
+#: luet_pm_core.py:1290 luet_pm_core.py:1382
+msgid "Error during initial upgrade step"
+msgstr "Fout tijdens de initiële upgradestap"
+
+#: luet_pm_core.py:1301 luet_pm_core.py:1393
+msgid "Error starting upgrade process"
+msgstr "Fout bij het starten van het upgrade proces"
+
+#: luet_pm_core.py:1416
+msgid "Failed reinstalling {}"
+msgstr "Herinstallatie van {} mislukt"

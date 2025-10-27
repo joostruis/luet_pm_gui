@@ -20,8 +20,8 @@ import locale
 try:
     locale.setlocale(locale.LC_ALL, '')
     localedir = '/usr/share/locale'
-    gettext.bindtextdomain('luet_pm_gui', localedir)
-    gettext.textdomain('luet_pm_gui')
+    gettext.bindtextdomain('luet_pm_ui', localedir)
+    gettext.textdomain('luet_pm_ui')
     _ = gettext.gettext
     ngettext = gettext.ngettext
 except Exception:
