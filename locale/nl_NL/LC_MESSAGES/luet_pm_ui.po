@@ -5,11 +5,11 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-10-27 12:38+0100\n"
-"PO-Revision-Date: 2025-10-27 12:46+0100\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2025-10-27 16:18+0100\n"
+"Last-Translator: \n"
 "Language-Team: Dutch <vertaling@vrijschrift.org>\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -273,11 +273,10 @@ msgstr "Wilt u {} verwijderen?"
 
 #: luet_pm_gui.py:781
 msgid ""
-"This will remove the package and its dependencies not required by other "
-"packages."
+"This will remove the package and its dependencies not required by other packages."
 msgstr ""
-"Dit verwijdert het pakket en de afhankelijkheden die niet door andere "
-"pakketten worden vereist."
+"Dit verwijdert het pakket en de afhankelijkheden die niet door andere pakketten "
+"worden vereist."
 
 #: luet_pm_gui.py:793 luet_pm_gui.py:794 luet_pm_tui.py:757
 msgid "Uninstalling {}..."
@@ -321,12 +320,12 @@ msgstr "Een volledige systeemupgrade uitvoeren?"
 
 #: luet_pm_gui.py:973
 msgid ""
-"This will update all repositories and then upgrade all installed packages. "
-"This action may take some time and requires an internet connection."
+"This will update all repositories and then upgrade all installed packages. This "
+"action may take some time and requires an internet connection."
 msgstr ""
-"Dit werkt alle pakketbronnen bij en voert vervolgens een upgrade uit van "
-"alle geïnstalleerde pakketten. Deze actie kan enige tijd duren en vereist "
-"een internetverbinding."
+"Dit werkt alle pakketbronnen bij en voert vervolgens een upgrade uit van alle "
+"geïnstalleerde pakketten. Deze actie kan enige tijd duren en vereist een "
+"internetverbinding."
 
 #: luet_pm_gui.py:980
 msgid "Performing full system upgrade"
@@ -400,23 +399,23 @@ msgstr "{} ({} PgUp/PgDn om te navigeren)"
 
 #: luet_pm_tui.py:495
 msgid ""
-"Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle "
-"log | PgUp/PgDn=log scroll | q=quit"
+"Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle log | "
+"PgUp/PgDn=log scroll | q=quit"
 msgstr ""
-"Toetsen: F9=menu | s=zoeken | Enter=details | i=installeren/verwijderen | "
-"l=log wisselen | PgUp/PgDn=log scrollen | q=afsluiten"
+"Toetsen: F9=menu | s=zoeken | Enter=details | i=installeren/verwijderen | l=log "
+"wisselen | PgUp/PgDn=log scrollen | q=afsluiten"
 
 #: luet_pm_tui.py:497
 msgid ""
-"SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit "
-"| q=quit"
+"SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit | "
+"q=quit"
 msgstr ""
-"ZOEKEN: Enter=bevestigen | Esc/Pijl Omlaag/Tab=terug naar lijst | Backspace/"
-"Del/Pijlen=bewerken | q=afsluiten"
+"ZOEKEN: Enter=bevestigen | Esc/Pijl Omlaag/Tab=terug naar lijst | Backspace/Del/"
+"Pijlen=bewerken | q=afsluiten"
 
 #: luet_pm_tui.py:553
 msgid "Press 'y' to confirm, any other key to cancel."
-msgstr "Druk op 'j' om te bevestigen, elke andere toets om te annuleren."
+msgstr "Druk op 'y' om te bevestigen, elke andere toets om te annuleren."
 
 #: luet_pm_tui.py:575
 msgid "Press any key to continue"
