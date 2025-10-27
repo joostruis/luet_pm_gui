@@ -63,15 +63,19 @@ class Spinner:
         return self.FRAMES[self._frame_index]
 
     def advance(self):
-        """
-        Advance the spinner to the next frame in the sequence.
-        (Fixes the AttributeError for 'advance' in app.run())
-        """
-        self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
+            """
+            Advance the spinner to the next frame in the sequence AND return it.
+            """
+            self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
+            return self.get_current_frame()
         
-    # Alias 'next_frame' to 'advance' to maintain compatibility 
-    # with the show_package_files function.
+    # --- Compatibility Aliases ---
+    # Alias 'next_frame' to 'advance' (Used by TUI's show_package_files)
     next_frame = advance
+
+    # Alias 'get_next_frame' to 'advance' 
+    # (Fixes the AttributeError in luet_pm_gui.py)
+    get_next_frame = advance
 
 # -------------------------
 # Application Metadata/About Info
