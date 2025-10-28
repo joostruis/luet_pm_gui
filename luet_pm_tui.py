@@ -584,24 +584,43 @@ class LuetTUI:
             self.draw()
             
     def run_update_repositories(self):
-        self.set_status(_("Updating repositories..."))
-        self.draw()
-        def on_log(line): self.append_to_log(line)
-        def on_success(): self.set_status(_("Repositories updated"))
-        def on_error(): self.set_status(_("Error updating repositories"), error=True)
-        def on_finish(cookie): self.set_status(_("Ready"))
-        threading.Thread(
-            target=lambda: RepositoryUpdater.run_repo_update(
-                self.command_runner.run_realtime,
-                lambda state, reason: 0,
-                lambda l: self.scheduler.schedule(on_log, l),
-                lambda: self.scheduler.schedule(on_success),
-                lambda: self.scheduler.schedule(on_error),
-                lambda c: self.scheduler.schedule(on_finish, c),
-                self.scheduler.schedule,
-            ),
-            daemon=True
-        ).start()
+            # 1. Start the operation: Set status and activate spinner
+            self.set_status(_("Updating repositories..."))
+            self.running_op = True
+            self.draw()
+            
+            def on_log(line): self.append_to_log(line)
+            
+            # 2. On Success: Set final informational status and refresh data
+            def on_success(): 
+                self.set_status(_("Repositories updated"))
+                self.init_app() # This updates self.sync_info
+                
+            # 3. On Error: Set error status
+            def on_error(): 
+                self.set_status(_("Error updating repositories"), error=True)
+
+            # 4. On Finish: STOP the spinner and set final status to 'Ready'
+            def on_finish(cookie):
+                self.running_op = False # <-- Stops the spinner
+                
+                # Use scheduler to set status in the *next* cycle
+                # This ensures the user sees the on_success/on_error message first.
+                self.scheduler.schedule(self.set_status, _("Ready"))
+                
+            # 5. Start the thread
+            threading.Thread(
+                target=lambda: RepositoryUpdater.run_repo_update(
+                    self.command_runner.run_realtime,
+                    lambda state, reason: 0,
+                    lambda l: self.scheduler.schedule(on_log, l),
+                    lambda: self.scheduler.schedule(on_success),
+                    lambda: self.scheduler.schedule(on_error),
+                    lambda c: self.scheduler.schedule(on_finish, c),
+                    self.scheduler.schedule,
+                ),
+                daemon=True
+            ).start()
 
     def run_full_upgrade(self):
         if not self.confirm_yes_no(_("Perform a full system upgrade?")): return
