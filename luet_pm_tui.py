@@ -756,65 +756,67 @@ class LuetTUI:
 
 
     def do_install_uninstall_selected(self):
-        if not (0 <= self.selected_index < len(self.results)): return
-        pkg = self.results[self.selected_index]
-        full_name = f"{pkg['category']}/{pkg['name']}"
-        installed = pkg.get("installed", False)
-        protected = pkg.get("protected", False)
-        
-        if protected:
-            msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
-            if msg is None:
-                full_name = f"{pkg['category']}/{pkg['name']}"
-                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
-            self.show_message(_("Protected"), msg)
-            return
-        
-        if installed:
-            if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): return
-            if pkg['category'] == 'apps':
-                cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
+            if not (0 <= self.selected_index < len(self.results)): return
+            pkg = self.results[self.selected_index]
+            full_name = f"{pkg['category']}/{pkg['name']}"
+            installed = pkg.get("installed", False)
+            protected = pkg.get("protected", False)
+            
+            if protected:
+                msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
+                if msg is None:
+                    full_name = f"{pkg['category']}/{pkg['name']}"
+                    msg = _("This package ({}) is protected and can't be removed.").format(full_name)
+                self.show_message(_("Protected"), msg)
+                return
+            
+            if installed:
+                if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): return
+                if pkg['category'] == 'apps':
+                    cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
+                else:
+                    cmd = ["luet", "uninstall", "-y", full_name]
+                self.set_status(_("Uninstalling {}...").format(full_name))
+                self.append_to_log(_("Uninstall {} initiated.").format(full_name))
+                self.draw()
+                def on_log(line): self.append_to_log(line)
+                def on_done(returncode):
+                    if returncode == 0:
+                        self.append_to_log(_("Uninstall completed successfully."))
+                        PackageOperations._run_kbuildsycoca6()
+                        self.set_status(_("Ready"))
+                        if self.search_query: self.run_search(self.search_query)
+                    else:
+                        self.append_to_log(_("Uninstall failed."))
+                        self.set_status(_("Error uninstalling package"), error=True)
+                PackageOperations.run_uninstallation(
+                    self.command_runner.run_realtime,
+                    lambda ln: self.scheduler.schedule(on_log, ln),
+                    lambda rc: self.scheduler.schedule(on_done, rc),
+                    cmd
+                )
             else:
-                cmd = ["luet", "uninstall", "-y", full_name]
-            self.set_status(_("Uninstalling {}...").format(full_name))
-            self.append_to_log(_("Uninstall {} initiated.").format(full_name))
-            self.draw()
-            def on_log(line): self.append_to_log(line)
-            def on_done(returncode):
-                if returncode == 0:
-                    self.append_to_log(_("Uninstall completed successfully."))
-                    self.set_status(_("Ready"))
-                    if self.search_query: self.run_search(self.search_query)
-                else:
-                    self.append_to_log(_("Uninstall failed."))
-                    self.set_status(_("Error uninstalling package"), error=True)
-            PackageOperations.run_uninstallation(
-                self.command_runner.run_realtime,
-                lambda ln: self.scheduler.schedule(on_log, ln),
-                lambda rc: self.scheduler.schedule(on_done, rc),
-                cmd
-            )
-        else:
-            if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
-            cmd = ["luet", "install", "-y", full_name]
-            self.set_status(_("Installing {}...").format(full_name))
-            self.append_to_log(_("Install {} initiated.").format(full_name))
-            self.draw()
-            def on_log(line): self.append_to_log(line)
-            def on_done(returncode):
-                if returncode == 0:
-                    self.append_to_log(_("Install completed successfully."))
-                    self.set_status(_("Ready"))
-                    if self.search_query: self.run_search(self.search_query)
-                else:
-                    self.append_to_log(_("Install failed."))
-                    self.set_status(_("Error installing package"), error=True)
-            PackageOperations.run_installation(
-                self.command_runner.run_realtime,
-                lambda ln: self.scheduler.schedule(on_log, ln),
-                lambda rc: self.scheduler.schedule(on_done, rc),
-                cmd
-            )
+                if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
+                cmd = ["luet", "install", "-y", full_name]
+                self.set_status(_("Installing {}...").format(full_name))
+                self.append_to_log(_("Install {} initiated.").format(full_name))
+                self.draw()
+                def on_log(line): self.append_to_log(line)
+                def on_done(returncode):
+                    if returncode == 0:
+                        self.append_to_log(_("Install completed successfully."))
+                        PackageOperations._run_kbuildsycoca6()
+                        self.set_status(_("Ready"))
+                        if self.search_query: self.run_search(self.search_query)
+                    else:
+                        self.append_to_log(_("Install failed."))
+                        self.set_status(_("Error installing package"), error=True)
+                PackageOperations.run_installation(
+                    self.command_runner.run_realtime,
+                    lambda ln: self.scheduler.schedule(on_log, ln),
+                    lambda rc: self.scheduler.schedule(on_done, rc),
+                    cmd
+                )
 
     def show_details(self):
             if not (0 <= self.selected_index < len(self.results)): return
