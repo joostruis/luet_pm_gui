@@ -621,6 +621,7 @@ class LuetTUI:
                 self.set_status(final_msg, error=True)
 
         def on_post_action():
+            PackageOperations._run_kbuildsycoca6()
             self.init_app()
             self.set_status(_("Ready"))
 
