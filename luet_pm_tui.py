@@ -17,6 +17,7 @@ import traceback
 import shutil
 import os
 import sys
+import re # <-- NEW: Import re for escaping regex special characters
 
 # Import core backend
 try:
@@ -587,7 +588,7 @@ class LuetTUI:
         self.draw()
         def on_log(line): self.append_to_log(line)
         def on_success(): self.set_status(_("Repositories updated"))
-        def on_error(): self.set_status(_("Error updating repositories"))
+        def on_error(): self.set_status(_("Error updating repositories"), error=True)
         def on_finish(cookie): self.set_status(_("Ready"))
         threading.Thread(
             target=lambda: RepositoryUpdater.run_repo_update(
@@ -686,7 +687,7 @@ class LuetTUI:
                 self.update_cache_menu()
             else:
                 self.append_to_log(_("Luet cache cleanup finished with errors."))
-                self.set_status(_("Error clearing Luet cache"))
+                self.set_status(_("Error clearing Luet cache"), error=True)
         CacheCleaner.run_cleanup_core(
             self.command_runner.run_realtime,
             lambda ln: self.scheduler.schedule(on_log, ln),
@@ -696,43 +697,63 @@ class LuetTUI:
     def run_search(self, query):
         self.set_status(_("Searching for {}...").format(query))
         self.draw()
+        
+        # FIX: Escape regex special characters to prevent Go's regexp parser (used by luet) 
+        # from crashing on input like "light\".
+        escaped_query = re.escape(query) 
+
         def worker():
             try:
-                search_cmd = ["luet", "search", "-o", "json", "-q", query]
+                # Use the escaped query for the command
+                search_cmd = ["luet", "search", "-o", "json", "-q", escaped_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
-                self.scheduler.schedule(self.append_to_log, _("Search error: {}").format(e))
-                self.scheduler.schedule(self.set_status, _("Error executing search command"))
+                self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))
+                # Set status message as requested by the user
+                self.scheduler.schedule(self.set_status, _("Error executing the search command"), error=True)
                 self.scheduler.schedule(self.set_status, _("Ready"))
         threading.Thread(target=worker, daemon=True).start()
 
     def on_search_finished(self, result):
-        if "error" in result:
-            self.set_status(result["error"])
+        # Wrapped content in try/except to catch main-thread processing errors
+        try:
+            if "error" in result:
+                self.set_status(result["error"], error=True)
+                self.set_status(_("Ready"))
+                return
+            
+            self.results = []
+            for pkg in result.get("packages", []):
+                category = pkg.get("category", "")
+                name = pkg.get("name", "")
+                if PackageFilter.is_package_hidden(category, name):
+                    continue
+                is_protected = PackageFilter.is_package_protected(category, name)
+                self.results.append({
+                    "category": category,
+                    "name": name,
+                    "version": pkg.get("version", ""),
+                    "repository": pkg.get("repository", ""),
+                    "installed": pkg.get("installed", False),
+                    "protected": is_protected
+                })
+            self.selected_index = 0
+            self.results_scroll_offset = 0
+            
+            self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
             self.set_status(_("Ready"))
-            return
         
-        self.results = []
-        for pkg in result.get("packages", []):
-            category = pkg.get("category", "")
-            name = pkg.get("name", "")
-            if PackageFilter.is_package_hidden(category, name):
-                continue
-            is_protected = PackageFilter.is_package_protected(category, name)
-            self.results.append({
-                "category": category,
-                "name": name,
-                "version": pkg.get("version", ""),
-                "repository": pkg.get("repository", ""),
-                "installed": pkg.get("installed", False),
-                "protected": is_protected
-            })
-        self.selected_index = 0
-        self.results_scroll_offset = 0
-        
-        self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
-        self.set_status(_("Ready"))
+        except Exception as e:
+            # Handle main-thread processing failure
+            self.results = []
+            self.selected_index = 0
+            self.results_scroll_offset = 0
+            self.append_to_log(_("Search result processing failed: {}").format(e))
+            # Set the requested status message
+            self.set_status(_("Error executing the search command"), error=True)
+            self.set_status(_("Ready"))
+
 
     def do_install_uninstall_selected(self):
         if not (0 <= self.selected_index < len(self.results)): return
@@ -766,7 +787,7 @@ class LuetTUI:
                     if self.search_query: self.run_search(self.search_query)
                 else:
                     self.append_to_log(_("Uninstall failed."))
-                    self.set_status(_("Error uninstalling package"))
+                    self.set_status(_("Error uninstalling package"), error=True)
             PackageOperations.run_uninstallation(
                 self.command_runner.run_realtime,
                 lambda ln: self.scheduler.schedule(on_log, ln),
@@ -787,7 +808,7 @@ class LuetTUI:
                     if self.search_query: self.run_search(self.search_query)
                 else:
                     self.append_to_log(_("Install failed."))
-                    self.set_status(_("Error installing package"))
+                    self.set_status(_("Error installing package"), error=True)
             PackageOperations.run_installation(
                 self.command_runner.run_realtime,
                 lambda ln: self.scheduler.schedule(on_log, ln),
