@@ -216,6 +216,7 @@ class PackageFilter:
         """
         return {
             "apps/grub": "This package is protected and can't be removed",
+            "system/kernel-updater": "This package is protected and can't be removed",
             "system/luet": "This package is protected and can't be removed",
             "layers/system-x": "This layer is protected and can't be removed",
             "layers/sys-fs": "This layer is protected and can't be removed",
