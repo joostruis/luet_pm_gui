@@ -200,6 +200,7 @@ class LuetTUI:
         self.lock = threading.Lock()
 
         self.status_message = _("Ready")
+        self.is_error_status = False # <-- MODIFIED: Add error flag
         self.sync_info = _("Not Synced")
         
         self.spinner = Spinner()
@@ -226,7 +227,7 @@ class LuetTUI:
         self.stdscr.keypad(True)
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK) # Error color
 
         elevation_cmd = self._get_elevation_cmd()
         self.command_runner = CommandRunner(elevation_cmd, self.scheduler.schedule)
@@ -263,7 +264,8 @@ class LuetTUI:
     def set_status(self, msg, error=False):
         with self.lock:
             self.status_message = str(msg)
-            
+            self.is_error_status = error # <-- MODIFIED: Set error flag
+
     def draw(self):
         curses.curs_set(0)
         
@@ -279,8 +281,11 @@ class LuetTUI:
             
         is_ready = self.status_message == _("Ready")
         
-        dim_attr = curses.A_DIM if not is_ready else curses.A_NORMAL
-        header_attr = curses.A_DIM if not is_ready else curses.A_BOLD
+        # MODIFIED: Check self.is_error_status
+        is_busy = not is_ready and not self.is_error_status
+        
+        dim_attr = curses.A_DIM if is_busy else curses.A_NORMAL
+        header_attr = curses.A_DIM if is_busy else curses.A_BOLD
 
         try:
             x_pos = 0
@@ -289,7 +294,7 @@ class LuetTUI:
                 
                 attr = curses.A_REVERSE
                 
-                if not is_ready:
+                if is_busy: # Use modified busy check
                     attr |= curses.A_DIM
                 elif self.menu.is_open and index == self.menu.active_menu:
                     attr |= curses.A_NORMAL
@@ -307,15 +312,24 @@ class LuetTUI:
             self.stdscr.clrtoeol()
             
             status_prefix = ""
-            if not is_ready:
+            # MODIFIED: Show spinner only if busy (not ready AND not error)
+            if is_busy:
                 status_prefix = self.spinner.get_current_frame() + " "
                 
             status_text = status_prefix + self.status_message
             status_x = max(0, (w - len(status_text)) // 2)
             
-            status_attr = curses.A_NORMAL if is_ready else curses.A_DIM
+            # MODIFIED: Set error color attribute
+            status_attr = curses.A_NORMAL
+            if self.is_error_status:
+                status_attr = curses.color_pair(2)
+            elif is_busy:
+                status_attr = curses.A_DIM
             
-            self.stdscr.addstr(2, status_x, status_text[:w - 1 - status_x], status_attr)
+            try:
+                self.stdscr.addstr(2, status_x, status_text[:w - 1 - status_x], status_attr)
+            except curses.error:
+                pass # Ignore if color fails
             
             sync_text = _("Last sync: {}").format(self.sync_info)
             if len(sync_text) < w:
@@ -356,7 +370,7 @@ class LuetTUI:
 
             self.search_win.erase()
             
-            base_attr = curses.A_DIM if not is_ready else curses.A_BOLD
+            base_attr = curses.A_DIM if is_busy else curses.A_BOLD # Use modified busy check
             
             self.search_win.attrset(base_attr)
             self.search_win.border()
@@ -389,7 +403,7 @@ class LuetTUI:
                 
                 cursor_pos_in_win = self.search_cursor_pos - scroll_offset
                 
-            if self.focus == 'search' and is_ready:
+            if self.focus == 'search' and not is_busy: # Use modified busy check
                 cursor_y = input_y
                 cursor_x = input_x + min(cursor_pos_in_win, max_input_len)
                 
@@ -397,7 +411,7 @@ class LuetTUI:
                 self.search_win.move(cursor_y, cursor_x)
             else:
                 curses.curs_set(0)
-                if not is_ready:
+                if is_busy: # Use modified busy check
                     self.focus = 'list'
 
         except curses.error: pass
@@ -442,7 +456,7 @@ class LuetTUI:
                 line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:16]:16} {pkg.get('repository','')[:22]:22} {action:8}"
                 
                 attr = dim_attr
-                if is_ready and self.focus == 'list' and row_idx == self.selected_index:
+                if not is_busy and self.focus == 'list' and row_idx == self.selected_index: # Use modified busy check
                     attr = curses.A_REVERSE
                 
                 self.results_win.addstr(y_in_win, 1, line[:win_w-2], attr)
@@ -586,7 +600,7 @@ class LuetTUI:
     def run_update_repositories(self):
             # 1. Start the operation: Set status and activate spinner
             self.set_status(_("Updating repositories..."))
-            self.running_op = True
+            # self.running_op = True # This flag is not used by draw(), set_status is enough
             self.draw()
             
             def on_log(line): self.append_to_log(line)
@@ -602,11 +616,12 @@ class LuetTUI:
 
             # 4. On Finish: STOP the spinner and set final status to 'Ready'
             def on_finish(cookie):
-                self.running_op = False # <-- Stops the spinner
+                # self.running_op = False # This flag is not used by draw()
                 
                 # Use scheduler to set status in the *next* cycle
                 # This ensures the user sees the on_success/on_error message first.
-                self.scheduler.schedule(self.set_status, _("Ready"))
+                if not self.is_error_status:
+                    self.scheduler.schedule(self.set_status, _("Ready"))
                 
             # 5. Start the thread
             threading.Thread(
@@ -642,7 +657,9 @@ class LuetTUI:
         def on_post_action():
             PackageOperations._run_kbuildsycoca6()
             self.init_app()
-            self.set_status(_("Ready"))
+            # Only set to Ready if no error occurred
+            if not self.is_error_status:
+                self.set_status(_("Ready"))
 
         def start_worker():
             try:
@@ -669,8 +686,11 @@ class LuetTUI:
         def on_log(line):
             self.scheduler.schedule(self.append_to_log, line)
         def on_exit_status(msg):
+            # This is the final status callback from the thread
             self.scheduler.schedule(self.set_status, msg)
-            self.scheduler.schedule(self.set_status, _("Ready"))
+            if msg != _("Ready"):
+                # If an error occurred, schedule "Ready" for the next cycle
+                self.scheduler.schedule(self.set_status, _("Ready"))
         def on_reinstall_start():
             self.scheduler.schedule(self.append_to_log, _("\n--- Missing packages found. Starting repair sequence. ---"))
         def on_reinstall_status(status):
@@ -678,6 +698,8 @@ class LuetTUI:
         def on_reinstall_finish(success):
             msg = _("System repair finished successfully.") if success else _("Could not repair some packages")
             self.scheduler.schedule(self.append_to_log, msg)
+            if not success:
+                 self.scheduler.schedule(self.set_status, msg, error=True)
         SystemChecker.run_check_system(
             self.command_runner.run_sync,
             on_log,
@@ -732,7 +754,8 @@ class LuetTUI:
                 self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))
                 # Set status message as requested by the user
                 self.scheduler.schedule(self.set_status, _("Error executing the search command"), error=True)
-                self.scheduler.schedule(self.set_status, _("Ready"))
+                # DO NOT schedule "Ready" here, let the error persist
+                # self.scheduler.schedule(self.set_status, _("Ready"))
         threading.Thread(target=worker, daemon=True).start()
 
     def on_search_finished(self, result):
@@ -740,7 +763,8 @@ class LuetTUI:
         try:
             if "error" in result:
                 self.set_status(result["error"], error=True)
-                self.set_status(_("Ready"))
+                # DO NOT set to "Ready"
+                # self.set_status(_("Ready"))
                 return
             
             self.results = []
@@ -762,7 +786,8 @@ class LuetTUI:
             self.results_scroll_offset = 0
             
             self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
-            self.set_status(_("Ready"))
+            # Schedule Ready for the next cycle so the "Found" message is seen
+            self.scheduler.schedule(self.set_status, _("Ready"))
         
         except Exception as e:
             # Handle main-thread processing failure
@@ -772,7 +797,8 @@ class LuetTUI:
             self.append_to_log(_("Search result processing failed: {}").format(e))
             # Set the requested status message
             self.set_status(_("Error executing the search command"), error=True)
-            self.set_status(_("Ready"))
+            # DO NOT set to "Ready"
+            # self.set_status(_("Ready"))
 
 
     def do_install_uninstall_selected(self):
@@ -807,8 +833,11 @@ class LuetTUI:
                         self.set_status(_("Ready"))
                         if self.search_query: self.run_search(self.search_query)
                     else:
-                        self.append_to_log(_("Uninstall failed."))
-                        self.set_status(_("Error uninstalling package"), error=True)
+                        # --- MODIFIED: Set specific error message ---
+                        self.append_to_log(_("Uninstall failed for {}.").format(full_name))
+                        error_msg = _("Error uninstalling: '{}'").format(full_name)
+                        self.set_status(error_msg, error=True)
+                        # --- END MODIFICATION ---
                 PackageOperations.run_uninstallation(
                     self.command_runner.run_realtime,
                     lambda ln: self.scheduler.schedule(on_log, ln),
@@ -830,7 +859,9 @@ class LuetTUI:
                         if self.search_query: self.run_search(self.search_query)
                     else:
                         self.append_to_log(_("Install failed."))
-                        self.set_status(_("Error installing package"), error=True)
+                        # MODIFIED: Set specific error message for install
+                        error_msg = _("Error installing: '{}'").format(full_name)
+                        self.set_status(error_msg, error=True)
                 PackageOperations.run_installation(
                     self.command_runner.run_realtime,
                     lambda ln: self.scheduler.schedule(on_log, ln),
@@ -1201,7 +1232,9 @@ class LuetTUI:
             ch = self.stdscr.getch()
             h, w = self.stdscr.getmaxyx()
             
+            # MODIFIED: Check is_error_status
             is_ready = self.status_message == _("Ready")
+            is_busy = not is_ready and not self.is_error_status
 
             if ch != -1:
                 if ch in (ord('q'), ord('Q')):
@@ -1223,13 +1256,20 @@ class LuetTUI:
                         log_height_lines = self.visible_log_height_lines
                         self.log_scroll = max(0, self.log_scroll - log_height_lines)
 
-                if not is_ready:
+                if is_busy: # Use modified busy check
                     if self.menu.is_open and ch in (27, curses.KEY_F9):
                          self.menu.is_open = False
                     
                     self.draw()
                     time.sleep(0.03)
                     continue
+
+                # If we are NOT busy (i.e., Ready or in Error state), process input
+                
+                # If an error is displayed, any key press should clear it and return to Ready
+                if self.is_error_status and ch not in (curses.KEY_F9, 27, ord('q'), ord('Q')):
+                    self.set_status(_("Ready"))
+                    # We continue to process the key press normally
 
                 if self.menu.is_open:
                     self.menu.handle_input(ch)
