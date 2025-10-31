@@ -265,6 +265,11 @@ class LuetTUI:
         with self.lock:
             self.status_message = str(msg)
             self.is_error_status = error
+            # --- MODIFIED: Automatically open the log on error ---
+            if error and not self.log_visible:
+                self.log_visible = True
+                self.log_scroll = 0 # Ensure we are at the bottom of the log
+            # --- END MODIFICATION ---
 
     def draw(self):
         curses.curs_set(0)
@@ -841,7 +846,7 @@ class LuetTUI:
                     cmd
                 )
             else:
-                if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
+                if not self.confirm_yes_no(_("DoF you want to install {}?").format(full_name)): return
                 cmd = ["luet", "install", "-y", full_name]
                 self.set_status(_("Installing {}...").format(full_name))
                 self.append_to_log(_("Install {} initiated.").format(full_name))
