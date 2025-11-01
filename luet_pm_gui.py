@@ -345,7 +345,7 @@ class PackageDetailsPopup(Gtk.Window):
 # -------------------------
 class SearchApp(Gtk.Window):
     def __init__(self, app):
-        super().__init__(title=_("Vajo"), application=app)
+        super().__init__(title=_("Luet Package Search"), application=app)
         self.set_default_size(1000, 600)
         self.set_icon_name("vajo")
 
