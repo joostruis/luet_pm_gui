@@ -13,8 +13,8 @@ install -Dm755 luet_pm_gui.py /usr/bin/luet_pm_gui.py
 install -Dm755 luet_pm_gui.sh /usr/bin/luet_pm_gui.sh
 
 # Create convenient symlinks for easier launching
-ln -sf /usr/bin/luet_pm_gui.py /usr/bin/luet-pm-gui
-ln -sf /usr/bin/luet_pm_tui.py /usr/bin/luet-pm-tui
+ln -sf /usr/bin/luet_pm_gui.py /usr/bin/vajo-gui
+ln -sf /usr/bin/luet_pm_tui.py /usr/bin/vajo-tui
 
 # Install polkit policy + rules
 install -Dm644 org.mocaccino.luet.pm.gui.policy /usr/share/polkit-1/actions/org.mocaccino.luet.pm.gui.policy
