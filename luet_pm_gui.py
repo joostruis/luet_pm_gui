@@ -345,9 +345,9 @@ class PackageDetailsPopup(Gtk.Window):
 # -------------------------
 class SearchApp(Gtk.Window):
     def __init__(self, app):
-        super().__init__(title=_("Luet Package Search"), application=app)
+        super().__init__(title=_("Vajo"), application=app)
         self.set_default_size(1000, 600)
-        self.set_icon_name("luet_pm_gui")
+        self.set_icon_name("vajo")
 
         self.inhibit_cookie = None
         self.last_search = ""
