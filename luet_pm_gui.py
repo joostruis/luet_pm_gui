@@ -18,7 +18,7 @@ import locale
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 
-GLib.set_prgname('luet_pm_gui')
+GLib.set_prgname('vajo')
 
 # -------------------------
 # Set up locale and translation
