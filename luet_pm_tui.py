@@ -1342,7 +1342,7 @@ def main(stdscr):
 
 if __name__ == "__main__":
     try:
-        print(_("Starting Luet TUI..."))
+        print(_("Starting Vajo: a Luet TUI frontend..."))
         curses.wrapper(main)
     except Exception as e:
         print(_("An error occurred outside of curses: {}").format(e), file=sys.stderr)

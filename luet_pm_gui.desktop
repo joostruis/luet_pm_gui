@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=Luet Package Search
-Exec=/usr/bin/luet_pm_gui.sh
-Icon=luet_pm_gui
-Terminal=false
-Type=Application
-Categories=Utility;

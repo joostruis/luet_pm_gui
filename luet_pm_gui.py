@@ -58,7 +58,7 @@ class AboutDialog(Gtk.AboutDialog):
 
         icon_theme = Gtk.IconTheme.get_default()
         try:
-            icon = icon_theme.load_icon("luet_pm_gui", 64, 0)
+            icon = icon_theme.load_icon("vajo", 64, 0)
             self.set_logo(icon)
         except Exception:
             pass

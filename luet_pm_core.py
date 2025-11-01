@@ -86,7 +86,7 @@ class AboutInfo:
     """
     @staticmethod
     def get_program_name():
-        return _("Luet Package Manager Frontend")
+        return _("Vajo: a Luet Package Manager Frontend")
         
     @staticmethod
     def get_version():
@@ -111,7 +111,7 @@ class AboutInfo:
     @staticmethod
     def get_ncurses_about_text():
         """Returns a consolidated, translated string for the ncurses TUI about box."""
-        return _("Luet Package Manager TUI (ncurses)\nVersion: {}\nWebsite: {}\nAuthors: {}\n(Uses luet_pm_core.py)").format(
+        return _("Vajo: a Luet Package Manager TUI (ncurses)\nVersion: {}\nWebsite: {}\nAuthors: {}\n(Uses luet_pm_core.py)").format(
             AboutInfo.get_version(),
             AboutInfo.get_website(),
             ", ".join(AboutInfo.get_authors())

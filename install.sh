@@ -2,7 +2,7 @@
 set -e
 
 # Install icon
-install -Dm644 luet_pm_gui.png /usr/share/pixmaps/luet_pm_gui.png
+install -Dm644 luet_pm_gui.png /usr/share/pixmaps/vajo.png
 
 # Install desktop entry
 install -Dm644 luet_pm_gui.desktop /usr/share/applications/luet_pm_gui.desktop
@@ -10,14 +10,14 @@ install -Dm644 luet_pm_gui.desktop /usr/share/applications/luet_pm_gui.desktop
 # Install executables
 install -Dm755 luet_pm_tui.py /usr/bin/luet_pm_tui.py
 install -Dm755 luet_pm_gui.py /usr/bin/luet_pm_gui.py
-install -Dm755 luet_pm_gui.sh /usr/bin/luet_pm_gui.sh
+install -Dm755 luet_pm_gui.sh /usr/bin/vajo.sh
 
 # Create convenient symlinks for easier launching
 ln -sf /usr/bin/luet_pm_gui.py /usr/bin/vajo-gui
 ln -sf /usr/bin/luet_pm_tui.py /usr/bin/vajo-tui
 
 # Install polkit policy + rules
-install -Dm644 org.mocaccino.luet.pm.gui.policy /usr/share/polkit-1/actions/org.mocaccino.luet.pm.gui.policy
+install -Dm644 org.mocaccino.luet.pm.gui.policy /usr/share/polkit-1/actions/org.mocaccino.vajo.policy
 install -Dm644 99-luet.rules /etc/polkit-1/rules.d/99-luet.rules
 chown root:root /etc/polkit-1/rules.d/99-luet.rules
 
