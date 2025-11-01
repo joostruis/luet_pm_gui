@@ -17,7 +17,7 @@ ln -sf /usr/bin/luet_pm_gui.py /usr/bin/vajo-gui
 ln -sf /usr/bin/luet_pm_tui.py /usr/bin/vajo-tui
 
 # Install polkit policy + rules
-install -Dm644 org.mocaccino.luet.pm.gui.policy /usr/share/polkit-1/actions/org.mocaccino.vajo.policy
+install -Dm644 org.mocaccino.vajo.policy /usr/share/polkit-1/actions/org.mocaccino.vajo.policy
 install -Dm644 99-luet.rules /etc/polkit-1/rules.d/99-luet.rules
 chown root:root /etc/polkit-1/rules.d/99-luet.rules
 
