@@ -448,6 +448,7 @@ class SearchApp(Gtk.Window):
         self.menu_bar = Gtk.MenuBar()
         self.create_menu(self.menu_bar)
 
+        # --- Top Bar with Status + Sync Info ---
         top_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         top_bar.pack_start(self.menu_bar, False, False, 0)
         self.status_label = Gtk.Label(label=_("Ready"))
@@ -460,95 +461,130 @@ class SearchApp(Gtk.Window):
         style_context.add_class("dimmed")
         top_bar.pack_end(self.sync_info_label, False, False, 0)
 
+        # --- Search Bar ---
         search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.search_entry = Gtk.Entry()
         self.search_entry.set_placeholder_text(_("Enter package name"))
         self.search_entry.connect("activate", self.on_search_clicked)
+
         self.advanced_search_checkbox = Gtk.CheckButton(label=_("Advanced"))
-        self.advanced_search_checkbox.set_tooltip_text(_("Check this box to also search inside filenames and labels"))
+        self.advanced_search_checkbox.set_tooltip_text(
+            _("Check this box to also search inside filenames and labels")
+        )
+
         self.search_button = Gtk.Button(label=_("Search"))
         self.search_button.connect("clicked", self.on_search_clicked)
+
         search_box.pack_start(self.search_entry, True, True, 0)
         search_box.pack_start(self.advanced_search_checkbox, False, False, 0)
         search_box.pack_start(self.search_button, False, False, 0)
 
+        # --- TreeView (Results Table) ---
         self.treeview = Gtk.TreeView()
-        
-        # FIX 1.2: Expanded ListStore to hold 8 fields:
-        # 0:str(Category), 1:str(Name), 2:str(Version), 3:str(Repository)
-        # 4:int(Action ID), 5:str(Action Display Text), 6:str(Details), 7:str(Highlight Color)
+
+        # ListStore fields:
+        # 0: Category | 1: Name | 2: Version | 3: Repository |
+        # 4: Action ID | 5: Action Text | 6: Details | 7: Highlight Color
         self.liststore = Gtk.ListStore(str, str, str, str, int, str, str, str)
         self.treeview.set_model(self.liststore)
-        
-        # FIX 1.3: Update column definitions to point to correct data indices
-        for i, (title, data_index) in enumerate([
-            (_("Category"), 0), 
-            (_("Name"), 1), 
-            (_("Version"), 2), 
-            (_("Repository"), 3), 
-            (_("Action"), 5), # Action Display Text
-            (_("Details"), 6) # Details Text
-        ]):
+
+        # --- Columns ---
+        columns = [
+            (_("Category"), 0),
+            (_("Name"), 1),
+            (_("Version"), 2),
+            (_("Repository"), 3),
+            (_("Action"), 5),
+            (_("Details"), 6)
+        ]
+
+        for title, data_index in columns:
             renderer = Gtk.CellRendererText()
             col = Gtk.TreeViewColumn(title, renderer, text=data_index)
-            if data_index == 1: col.set_expand(True)
-            if data_index < 4: 
+
+            # Let Name column expand horizontally
+            if data_index == 1:
+                col.set_expand(True)
+
+            # Enable sorting for everything except "Details"
+            if data_index != 6:
                 col.set_sort_column_id(data_index)
                 col.set_resizable(True)
                 col.set_clickable(True)
-            col.add_attribute(renderer, "cell-background", 7) # Highlight color is at index 7
+
+            # Highlight color (index 7)
+            col.add_attribute(renderer, "cell-background", 7)
             self.treeview.append_column(col)
-        
+
+        # Mouse events for clickable cells
         self.treeview.connect("button-press-event", self.on_treeview_button_clicked)
         self.treeview.connect("motion-notify-event", self.on_treeview_motion)
         self.treeview.connect("leave-notify-event", self.on_treeview_leave)
-        self.treeview.set_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK | Gdk.EventMask.BUTTON_PRESS_MASK)
-        
+        self.treeview.set_events(
+            Gdk.EventMask.POINTER_MOTION_MASK |
+            Gdk.EventMask.LEAVE_NOTIFY_MASK |
+            Gdk.EventMask.BUTTON_PRESS_MASK
+        )
+
+        # --- ScrolledWindow for Results ---
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         scrolled.add(self.treeview)
 
+        # --- Output Log (Expander) ---
         self.output_expander = Gtk.Expander(label=_("Toggle output log"))
         self.output_expander.connect("enter-notify-event", self.on_expander_hover)
         self.output_expander.connect("leave-notify-event", self.on_expander_leave)
+
         output_sw = Gtk.ScrolledWindow()
         output_sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         output_sw.set_min_content_height(150)
         self.output_textview = Gtk.TextView()
         self.output_textview.set_editable(False)
         self.output_textview.set_name("output_log")
-        
-        # Set fixed-width tabs
+
         tab_array = Pango.TabArray.new(1, False)
         tab_array.set_tab(0, Pango.TabAlign.LEFT, 80 * Pango.SCALE)
         self.output_textview.set_tabs(tab_array)
-        
+
         output_sw.add(self.output_textview)
         self.output_expander.add(output_sw)
 
+        # --- CSS Styling ---
         css_provider = Gtk.CssProvider()
-        css_provider.load_from_data(b"#output_log text { font-family: monospace; } .dimmed { color: rgba(128, 128, 128, 0.8); } .error { color: darkorange; }")
-        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
-        
+        css_provider.load_from_data(b"""
+            #output_log text { font-family: monospace; }
+            .dimmed { color: rgba(128, 128, 128, 0.8); }
+            .error { color: darkorange; }
+        """)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+        )
+
+        # --- Layout Assembly ---
         main_vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        main_vbox.set_margin_start(10); main_vbox.set_margin_end(10); main_vbox.set_margin_top(10); main_vbox.set_margin_bottom(10)
+        main_vbox.set_margin_start(10)
+        main_vbox.set_margin_end(10)
+        main_vbox.set_margin_top(10)
+        main_vbox.set_margin_bottom(10)
+
         main_vbox.pack_start(top_bar, False, False, 0)
-        
-        # FIX: Split spacer creation to prevent TypeError
         spacer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=False)
         spacer.set_size_request(-1, 10)
-        main_vbox.pack_start(spacer, False, False, 0) # Spacer
-        
+        main_vbox.pack_start(spacer, False, False, 0)
         main_vbox.pack_start(search_box, False, False, 0)
         main_vbox.pack_start(scrolled, True, True, 0)
         main_vbox.pack_start(self.output_expander, False, False, 0)
+
         self.output_expander.hide()
         self.add(main_vbox)
 
+        # --- Timers + UI Refresh ---
         GLib.idle_add(self.update_sync_info_label)
         GLib.timeout_add_seconds(60, self.periodic_sync_check)
         GLib.idle_add(self._update_cache_menu_item)
         GLib.timeout_add_seconds(60, lambda: self._update_cache_menu_item() or True)
+
 
     # ---------------------------------
     # GUI State & Event Handlers
