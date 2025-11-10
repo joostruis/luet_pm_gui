@@ -1159,7 +1159,7 @@ class SearchApp(Gtk.Window):
         human_str = CacheCleaner.get_cache_size_human(size_bytes)
         if human_str:
             self.clear_cache_item.set_sensitive(True)
-            self.clear_cache_item.set_label(_("Clear LuT cache ({})").format(human_str))
+            self.clear_cache_item.set_label(_("Clear Luet cache ({})").format(human_str))
         else:
             self.clear_cache_item.set_sensitive(False)
             self.clear_cache_item.set_label(_("Clear Luet cache"))
