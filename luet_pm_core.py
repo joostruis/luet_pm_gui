@@ -112,7 +112,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.7.8"
+        return "0.7.9"
 
     @staticmethod
     def get_copyright():
