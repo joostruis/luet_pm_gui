@@ -680,6 +680,60 @@ class PackageSearcher:
             print(_("Error running search:"), e)
             return {"error": _("Error executing the search command")}
 
+# -------------------------
+# SearchProcessor - unified search result processing
+# -------------------------
+class SearchProcessor:
+    """Unified search result processing for both GUI and TUI"""
+    
+    @staticmethod
+    def process_search_results(search_result, installed_packages_dict):
+        """Process and enrich search results with installation status and upgrade info"""
+        if "error" in search_result:
+            return search_result
+        
+        processed_packages = []
+        for pkg in search_result.get("packages", []):
+            pkg = SearchProcessor._enrich_package_info(pkg, installed_packages_dict)
+            if not PackageFilter.is_package_hidden(pkg.get("category", ""), pkg.get("name", "")):
+                processed_packages.append(pkg)
+        
+        search_result["packages"] = processed_packages
+        return search_result
+    
+    @staticmethod
+    def _enrich_package_info(pkg, installed_packages_dict):
+        """Add installation status and upgrade information to package"""
+        category, name = pkg.get("category", ""), pkg.get("name", "")
+        key = f"{category}/{name}"
+        
+        pkg['upgrade_symbol'] = ""
+        pkg['is_actually_installed'] = False
+        pkg['installed_version'] = ""
+        pkg['available_version'] = pkg.get("version", "")
+        pkg['protected'] = PackageFilter.is_package_protected(category, name)
+        
+        if key in installed_packages_dict:
+            pkg['is_actually_installed'] = True
+            installed_version = installed_packages_dict[key]
+            pkg['installed_version'] = installed_version
+            
+            # Check if packaging module is available for version comparison
+            try:
+                from packaging import version as pkg_version
+                available_version = pkg.get("version")
+                if installed_version and available_version:
+                    try:
+                        if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
+                            pkg['upgrade_symbol'] = "↑"
+                    except (pkg_version.InvalidVersion, TypeError):
+                        pass
+            except ImportError:
+                # packaging library not available, skip upgrade detection
+                pass
+        
+        return pkg
+        
 class SyncInfo:
     @staticmethod
     def parse_timestamp(ts):

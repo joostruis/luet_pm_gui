@@ -35,6 +35,7 @@ try:
         Spinner,
         PackageDetails,
         PackageState,
+        SearchProcessor,
         _,
         ngettext,
     )
@@ -770,38 +771,8 @@ class LuetTUI:
                 search_cmd = ["luet", "search", "-o", "json", "-q", escaped_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
                 
-                # Process results with upgrade detection
-                if "error" not in result:
-                    processed_packages = []
-                    for pkg in result.get("packages", []):
-                        category, name = pkg.get("category", ""), pkg.get("name", "")
-                        key = f"{category}/{name}"
-                        
-                        # Add upgrade detection fields
-                        pkg['upgrade_symbol'] = ""
-                        pkg['is_actually_installed'] = False
-                        pkg['installed_version'] = ""
-                        pkg['available_version'] = pkg.get("version", "")  # Store available version
-                        
-                        if key in installed_packages_dict:
-                            # Mark that a version of this is installed
-                            pkg['is_actually_installed'] = True
-                            installed_version = installed_packages_dict.get(key)
-                            pkg['installed_version'] = installed_version
-                            
-                            # Check if upgrade is available
-                            if pkg_version:
-                                available_version = pkg.get("version")
-                                if installed_version and available_version:
-                                    try:
-                                        if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
-                                            pkg['upgrade_symbol'] = "↑"
-                                    except (pkg_version.InvalidVersion, TypeError):
-                                        pass
-                        
-                        processed_packages.append(pkg)
-                    
-                    result['packages'] = processed_packages
+                # Process results using centralized logic
+                result = SearchProcessor.process_search_results(result, installed_packages_dict)
                 
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
@@ -820,26 +791,15 @@ class LuetTUI:
             
             self.results = []
             for pkg in result.get("packages", []):
-                category = pkg.get("category", "")
-                name = pkg.get("name", "")
-                if PackageFilter.is_package_hidden(category, name):
-                    continue
-                
-                is_protected = PackageFilter.is_package_protected(category, name)
-                
-                # CHANGED: Always show the available version in search results
-                # This matches what we have in the repository and will work for details
-                version_to_display = pkg.get('available_version', '') or pkg.get('version', '')
-                
                 self.results.append({
-                    "category": category,
-                    "name": name,
-                    "version": version_to_display,  # Now shows available version
-                    "available_version": pkg.get('available_version', ''),  # Store available version for details
+                    "category": pkg.get("category", ""),
+                    "name": pkg.get("name", ""),
+                    "version": pkg.get('available_version', '') or pkg.get('version', ''),
+                    "available_version": pkg.get('available_version', ''),
                     "repository": pkg.get("repository", ""),
                     "installed": pkg.get('is_actually_installed', False),
-                    "protected": is_protected,
-                    "upgrade_symbol": pkg.get('upgrade_symbol', '')  # Add upgrade symbol
+                    "protected": pkg.get('protected', False),
+                    "upgrade_symbol": pkg.get('upgrade_symbol', '')
                 })
             self.selected_index = 0
             self.results_scroll_offset = 0

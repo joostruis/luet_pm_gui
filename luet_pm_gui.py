@@ -44,7 +44,7 @@ ngettext = gettext.ngettext
 try:
     # Attempt to import the actual core logic modules
     # MODIFIED: Added PackageState
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, SearchProcessor
 except ImportError:
     print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
     sys.exit(1)
@@ -649,7 +649,6 @@ class SearchApp(Gtk.Window):
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
         self.search_thread.start()
 
-    # MODIFIED: Worker thread now adds 'is_actually_installed' boolean and 'installed_version'
     def run_search(self, search_command):
         """ Worker thread: Calls core logic """
         
@@ -663,44 +662,11 @@ class SearchApp(Gtk.Window):
         # 2. Run the search
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)
         
-        # 3. Process/combine results if search was successful
-        if "error" not in result_data:
-            processed_packages = []
-            for pkg in result_data.get("packages", []):
-                category, name = pkg.get("category", ""), pkg.get("name", "")
-                key = f"{category}/{name}"
-                
-                pkg['upgrade_symbol'] = "" # Add new key for the symbol
-                pkg['is_actually_installed'] = False # Add new key for system state
-                pkg['installed_version'] = "" # ADDED: key for installed version
-                
-                if key in installed_packages_dict:
-                    # Mark that a version of this is installed, regardless of version
-                    pkg['is_actually_installed'] = True
-                    
-                    installed_version = installed_packages_dict.get(key) # Get the installed version
-                    pkg['installed_version'] = installed_version # Store the installed version
-                    
-                    # Now check if it's upgrade-able (requires 'packaging' lib)
-                    if pkg_version:
-                        available_version = pkg.get("version")
-                        
-                        if installed_version and available_version:
-                            try:
-                                # Compare versions
-                                if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
-                                    pkg['upgrade_symbol'] = "↑" # Set the symbol
-                            except (pkg_version.InvalidVersion, TypeError):
-                                pass # Keep "" if versions are invalid or None
-                
-                processed_packages.append(pkg)
-            
-            # Replace original 'packages' with our processed list
-            result_data['packages'] = processed_packages
+        # 3. Process results using centralized logic
+        result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
 
         # 4. Pass processed data to GUI thread
         GLib.idle_add(self.on_search_finished, result_data)
-
 
     def on_search_finished(self, result):
         """ GUI callback: Updates liststore """
