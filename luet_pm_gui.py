@@ -15,6 +15,13 @@ import datetime
 import gettext
 import locale
 
+try:
+    from packaging import version as pkg_version
+except ImportError:
+    print("WARNING: 'packaging' library not found. Upgrade check will not be available.")
+    print("Please run 'pip install packaging'")
+    pkg_version = None # Create a fallback
+
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 
@@ -36,7 +43,8 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails
+    # MODIFIED: Added PackageState
+    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState
 except ImportError:
     print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
     sys.exit(1)
@@ -150,7 +158,13 @@ class PackageDetailsPopup(Gtk.Window):
                 uri_label = Gtk.Label()
                 escaped_uri = GLib.markup_escape_text(uri)
                 uri_label.set_markup('<a href="{}">{}</a>'.format(escaped_uri, escaped_uri))
+                #
+                # --- START: CORRECTED LINE ---
+                #
                 uri_label.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+                #
+                # --- END: CORRECTED LINE ---
+                #
                 uri_label.connect("button-press-event", lambda w, e: webbrowser.open(uri))
                 uri_label.connect("enter-notify-event", self.on_hover_cursor)
                 uri_label.connect("leave-notify-event", self.on_leave_cursor)
@@ -482,38 +496,47 @@ class SearchApp(Gtk.Window):
         # --- TreeView (Results Table) ---
         self.treeview = Gtk.TreeView()
 
-        # ListStore fields:
-        # 0: Category | 1: Name | 2: Version | 3: Repository |
-        # 4: Action ID | 5: Action Text | 6: Details | 7: Highlight Color
-        self.liststore = Gtk.ListStore(str, str, str, str, int, str, str, str)
+        # MODIFIED: ListStore fields (9 total):
+        # 0: Category | 1: Name | 2: Upgrade Symbol | 3: Version | 4: Repository |
+        # 5: Action ID | 6: Action Text | 7: Details | 8: Highlight Color
+        self.liststore = Gtk.ListStore(str, str, str, str, str, int, str, str, str)
         self.treeview.set_model(self.liststore)
 
         # --- Columns ---
+        # MODIFIED: Added new column for Upgrade Symbol (index 2)
         columns = [
             (_("Category"), 0),
             (_("Name"), 1),
-            (_("Version"), 2),
-            (_("Repository"), 3),
-            (_("Action"), 5),
-            (_("Details"), 6)
+            ("", 2),           # New Upgrade column
+            (_("Version"), 3),
+            (_("Repository"), 4),
+            (_("Action"), 6),
+            (_("Details"), 7)
         ]
 
+        # MODIFIED: Updated loop to handle new column and highlight index
         for title, data_index in columns:
             renderer = Gtk.CellRendererText()
             col = Gtk.TreeViewColumn(title, renderer, text=data_index)
 
-            # Let Name column expand horizontally
-            if data_index == 1:
-                col.set_expand(True)
+            # New column logic for Upgrade Symbol
+            if data_index == 2:
+                col.set_expand(False)
+                col.set_resizable(False)
+                col.set_clickable(False)
+            else:
+                # Let Name column expand horizontally
+                if data_index == 1:
+                    col.set_expand(True)
 
-            # Enable sorting for everything except "Details"
-            if data_index != 6:
-                col.set_sort_column_id(data_index)
-                col.set_resizable(True)
-                col.set_clickable(True)
+                # Enable sorting for everything except "Details"
+                if data_index != 7: # Details column
+                    col.set_sort_column_id(data_index)
+                    col.set_resizable(True)
+                    col.set_clickable(True)
 
-            # Highlight color (index 7)
-            col.add_attribute(renderer, "cell-background", 7)
+            # Highlight color (now index 8)
+            col.add_attribute(renderer, "cell-background", 8)
             self.treeview.append_column(col)
 
         # Mouse events for clickable cells
@@ -626,10 +649,58 @@ class SearchApp(Gtk.Window):
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
         self.search_thread.start()
 
+    # MODIFIED: Worker thread now adds 'is_actually_installed' boolean and 'installed_version'
     def run_search(self, search_command):
         """ Worker thread: Calls core logic """
+        
+        # 1. Get installed packages dict
+        try:
+            installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+        except Exception as e:
+            print(f"Error getting installed packages: {e}")
+            installed_packages_dict = {}
+
+        # 2. Run the search
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)
+        
+        # 3. Process/combine results if search was successful
+        if "error" not in result_data:
+            processed_packages = []
+            for pkg in result_data.get("packages", []):
+                category, name = pkg.get("category", ""), pkg.get("name", "")
+                key = f"{category}/{name}"
+                
+                pkg['upgrade_symbol'] = "" # Add new key for the symbol
+                pkg['is_actually_installed'] = False # Add new key for system state
+                pkg['installed_version'] = "" # ADDED: key for installed version
+                
+                if key in installed_packages_dict:
+                    # Mark that a version of this is installed, regardless of version
+                    pkg['is_actually_installed'] = True
+                    
+                    installed_version = installed_packages_dict.get(key) # Get the installed version
+                    pkg['installed_version'] = installed_version # Store the installed version
+                    
+                    # Now check if it's upgrade-able (requires 'packaging' lib)
+                    if pkg_version:
+                        available_version = pkg.get("version")
+                        
+                        if installed_version and available_version:
+                            try:
+                                # Compare versions
+                                if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
+                                    pkg['upgrade_symbol'] = "↑" # Set the symbol
+                            except (pkg_version.InvalidVersion, TypeError):
+                                pass # Keep "" if versions are invalid or None
+                
+                processed_packages.append(pkg)
+            
+            # Replace original 'packages' with our processed list
+            result_data['packages'] = processed_packages
+
+        # 4. Pass processed data to GUI thread
         GLib.idle_add(self.on_search_finished, result_data)
+
 
     def on_search_finished(self, result):
         """ GUI callback: Updates liststore """
@@ -641,7 +712,6 @@ class SearchApp(Gtk.Window):
             packages = result.get("packages", [])
             self.liststore.clear()
             
-            # FIX 3: Use PackageFilter from core to filter packages
             for pkg in packages:
                 category, name = pkg.get("category", ""), pkg.get("name", "")
                 
@@ -649,8 +719,10 @@ class SearchApp(Gtk.Window):
                 if PackageFilter.is_package_hidden(category, name):
                     continue
                 
-                # Determine and store the integer ID
-                installed = pkg.get("installed", False)
+                installed = pkg.get("is_actually_installed", False)
+                
+                version_to_display = pkg.get("version", "")  # Available version
+                
                 if PackageFilter.is_package_protected(category, name):
                     action_id = self.ACTION_PROTECTED
                     action_display = _("Protected")
@@ -661,16 +733,20 @@ class SearchApp(Gtk.Window):
                     action_id = self.ACTION_INSTALL
                     action_display = _("Install")
 
-                # New ListStore fields: [Cat, Name, Version, Repo, ACTION_ID, ACTION_DISPLAY, Details, Highlight Color]
+                # Get the symbol processed by the worker thread
+                upgrade_symbol = pkg.get('upgrade_symbol', '') # Default to empty string
+
+                # New ListStore fields: [Cat, Name, UpgradeSymbol, Version, Repo, ACTION_ID, ACTION_DISPLAY, Details, Highlight Color]
                 self.liststore.append([
-                    category, 
-                    name, 
-                    pkg.get("version", ""), 
-                    pkg.get("repository", ""), 
-                    action_id,                 # Index 4 (Internal ID)
-                    action_display,            # Index 5 (Display Text)
-                    _("Details"),              # Index 6
-                    None                       # Index 7 (Highlight Color)
+                    category,                  # 0
+                    name,                      # 1
+                    upgrade_symbol,            # 2 (NEW)
+                    version_to_display,        # 3 (MODIFIED to use available version)
+                    pkg.get("repository", ""), # 4
+                    action_id,                 # 5 (Internal ID)
+                    action_display,            # 6 (Display Text)
+                    _("Details"),              # 7
+                    None                       # 8 (Highlight Color)
                 ])
                 
             n = len(self.liststore)
@@ -686,15 +762,14 @@ class SearchApp(Gtk.Window):
     def on_treeview_button_clicked(self, treeview, event):
         """
         Handles button clicks on the treeview.
-        FIX 4: Compares against the safe integer ID (index 4) instead of the translated string.
         """
         if event.type != Gdk.EventType.BUTTON_PRESS or event.button != Gdk.BUTTON_PRIMARY: return False
         hit = treeview.get_path_at_pos(int(event.x), int(event.y))
         if not hit: return False
         
         path, col, _, _ = hit
-        action_col = self.treeview.get_column(4)
-        details_col = self.treeview.get_column(5)
+        action_col = self.treeview.get_column(5)  # Was 4
+        details_col = self.treeview.get_column(6) # Was 5
         
         try:
             action_area = treeview.get_cell_area(path, action_col)
@@ -703,15 +778,14 @@ class SearchApp(Gtk.Window):
         
         iter_ = self.liststore.get_iter(path)
         
-        # Read the internal integer ID for comparison (data index 4)
-        action_id = self.liststore.get_value(iter_, 4) 
+        # Read the internal integer ID for comparison (data index 5)
+        action_id = self.liststore.get_value(iter_, 5) # Was 4
         
         # --- Handle Action Column Clicks ---
         if action_area and action_area.x <= event.x < (action_area.x + action_area.width):
             
             # Compare against the safe integer constants
             if action_id == self.ACTION_PROTECTED: 
-                # Use the failsafe class method call to prevent any lingering TypeError
                 SearchApp.show_protected_popup(self, path) 
             elif action_id == self.ACTION_INSTALL: 
                 self.confirm_install(iter_)
@@ -721,13 +795,16 @@ class SearchApp(Gtk.Window):
             
         # --- Handle Details Column Clicks ---
         if details_area and details_area.x <= event.x < (details_area.x + details_area.width):
+            # Read the internal integer ID for comparison (data index 5)
+            action_id_for_details = self.liststore.get_value(iter_, 5) # Was 4
+            
             package_info = {
                 "category": self.liststore.get_value(iter_, 0),
                 "name": self.liststore.get_value(iter_, 1),
-                "version": self.liststore.get_value(iter_, 2),
-                "repository": self.liststore.get_value(iter_, 3),
+                "version": self.liststore.get_value(iter_, 3),    # Was 2
+                "repository": self.liststore.get_value(iter_, 4), # Was 3
                 # Determine 'installed' status based on the safe integer ID
-                "installed": action_id in [self.ACTION_REMOVE, self.ACTION_PROTECTED]
+                "installed": action_id_for_details in [self.ACTION_REMOVE, self.ACTION_PROTECTED]
             }
             self.show_package_details_popup(package_info)
             return True
@@ -737,19 +814,20 @@ class SearchApp(Gtk.Window):
     def on_treeview_motion(self, treeview, event):
         hit = treeview.get_path_at_pos(int(event.x), int(event.y))
         if self.highlighted_row_path is not None:
-            try: self.liststore[self.highlighted_row_path][7] = None # Index 7 is Highlight Color
+            try: self.liststore[self.highlighted_row_path][8] = None # Index 8 is Highlight Color
             except ValueError: pass
             self.highlighted_row_path = None
         if hit:
             path, col, _, _ = hit
-            self.liststore[path][7] = self.HIGHLIGHT_COLOR # Index 7 is Highlight Color
+            self.liststore[path][8] = self.HIGHLIGHT_COLOR # Index 8 is Highlight Color
             self.highlighted_row_path = path
-            self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer') if col in (treeview.get_column(4), treeview.get_column(5)) else None)
+            self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer') if col in (treeview.get_column(5), treeview.get_column(6)) else None) # Was 4, 5
         else:
             self.set_cursor(None)
+
     def on_treeview_leave(self, treeview, event):
         if self.highlighted_row_path is not None:
-            try: self.liststore[self.highlighted_row_path][7] = None # Index 7 is Highlight Color
+            try: self.liststore[self.highlighted_row_path][8] = None # Index 8 is Highlight Color
             except ValueError: pass
             self.highlighted_row_path = None
         self.set_cursor(None)
@@ -852,12 +930,13 @@ class SearchApp(Gtk.Window):
     def clear_liststore(self):
         self.liststore.clear()
 
+    # MODIFIED: Updated liststore index
     def show_package_details_popup(self, package_info):
         repository = ""
         iter_ = self.liststore.get_iter_first()
         while iter_:
             if self.liststore.get_value(iter_, 0) == package_info["category"] and self.liststore.get_value(iter_, 1) == package_info["name"]:
-                repository = self.liststore.get_value(iter_, 3)
+                repository = self.liststore.get_value(iter_, 4) # Was 3
                 break
             iter_ = self.liststore.iter_next(iter_)
         package_info["repository"] = repository
@@ -1080,7 +1159,7 @@ class SearchApp(Gtk.Window):
         human_str = CacheCleaner.get_cache_size_human(size_bytes)
         if human_str:
             self.clear_cache_item.set_sensitive(True)
-            self.clear_cache_item.set_label(_("Clear Luet cache ({})").format(human_str))
+            self.clear_cache_item.set_label(_("Clear LuT cache ({})").format(human_str))
         else:
             self.clear_cache_item.set_sensitive(False)
             self.clear_cache_item.set_label(_("Clear Luet cache"))

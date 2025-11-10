@@ -34,6 +34,7 @@ try:
         AboutInfo,
         Spinner,
         PackageDetails,
+        PackageState,
         _,
         ngettext,
     )
@@ -43,6 +44,14 @@ except ImportError as e:
 except Exception as e:
     print("Failed to initialize luet_pm_core: {}".format(e), file=sys.stderr)
     sys.exit(1)
+
+# Import packaging for version comparison
+try:
+    from packaging import version as pkg_version
+except ImportError:
+    print("WARNING: 'packaging' library not found. Upgrade check will not be available.")
+    print("Please run 'pip install packaging'")
+    pkg_version = None
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -434,7 +443,8 @@ class LuetTUI:
             
             self.results_win.addstr(0, 2, " " + _(" Results ") + " ", dim_attr)
             
-            header = f"{_('Category'):18.18} {_('Name'):30.30} {_('Version'):16.16} {_('Repository'):22.22} {_('Action'):8}"
+            # Updated header with upgrade symbol column
+            header = f"{_('Category'):16.16} {_('Name'):28.28} {'':2} {_('Version'):16.16} {_('Repository'):20.20} {_('Action'):8}"
             self.results_win.addstr(1, 1, header[:win_w-2], header_attr)
 
             if self.selected_index < self.results_scroll_offset:
@@ -449,17 +459,21 @@ class LuetTUI:
                     continue
                 
                 pkg = self.results[row_idx]
+                upgrade_symbol = pkg.get("upgrade_symbol", "")
+                
+                # Determine action based on installed and upgradeable status
                 if pkg.get("protected", False):
                     action = _("Protected")
-                elif pkg.get("installed", False):
+                elif pkg.get("installed", False) or upgrade_symbol == "↑":
                     action = _("Remove")
                 else:
                     action = _("Install")
                 
-                line = f"{pkg.get('category','')[:18]:18} {pkg.get('name','')[:30]:30} {pkg.get('version','')[:16]:16} {pkg.get('repository','')[:22]:22} {action:8}"
+                # Updated line format with upgrade symbol
+                line = f"{pkg.get('category','')[:16]:16} {pkg.get('name','')[:28]:28} {upgrade_symbol:2} {pkg.get('version','')[:16]:16} {pkg.get('repository','')[:20]:20} {action:8}"
                 
                 attr = dim_attr
-                if not is_busy and self.focus == 'list' and row_idx == self.selected_index: # Use modified busy check
+                if not is_busy and self.focus == 'list' and row_idx == self.selected_index:
                     attr = curses.A_REVERSE
                 
                 self.results_win.addstr(y_in_win, 1, line[:win_w-2], attr)
@@ -749,9 +763,46 @@ class LuetTUI:
 
         def worker():
             try:
+                # Get installed packages first for upgrade detection
+                installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+                
                 # Use the escaped query for the command
                 search_cmd = ["luet", "search", "-o", "json", "-q", escaped_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
+                
+                # Process results with upgrade detection
+                if "error" not in result:
+                    processed_packages = []
+                    for pkg in result.get("packages", []):
+                        category, name = pkg.get("category", ""), pkg.get("name", "")
+                        key = f"{category}/{name}"
+                        
+                        # Add upgrade detection fields
+                        pkg['upgrade_symbol'] = ""
+                        pkg['is_actually_installed'] = False
+                        pkg['installed_version'] = ""
+                        pkg['available_version'] = pkg.get("version", "")  # Store available version
+                        
+                        if key in installed_packages_dict:
+                            # Mark that a version of this is installed
+                            pkg['is_actually_installed'] = True
+                            installed_version = installed_packages_dict.get(key)
+                            pkg['installed_version'] = installed_version
+                            
+                            # Check if upgrade is available
+                            if pkg_version:
+                                available_version = pkg.get("version")
+                                if installed_version and available_version:
+                                    try:
+                                        if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
+                                            pkg['upgrade_symbol'] = "↑"
+                                    except (pkg_version.InvalidVersion, TypeError):
+                                        pass
+                        
+                        processed_packages.append(pkg)
+                    
+                    result['packages'] = processed_packages
+                
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
                 self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))
@@ -762,12 +813,9 @@ class LuetTUI:
         threading.Thread(target=worker, daemon=True).start()
 
     def on_search_finished(self, result):
-        # Wrapped content in try/except to catch main-thread processing errors
         try:
             if "error" in result:
                 self.set_status(result["error"], error=True)
-                # DO NOT set to "Ready"
-                # self.set_status(_("Ready"))
                 return
             
             self.results = []
@@ -776,123 +824,142 @@ class LuetTUI:
                 name = pkg.get("name", "")
                 if PackageFilter.is_package_hidden(category, name):
                     continue
+                
                 is_protected = PackageFilter.is_package_protected(category, name)
+                
+                # CHANGED: Always show the available version in search results
+                # This matches what we have in the repository and will work for details
+                version_to_display = pkg.get('available_version', '') or pkg.get('version', '')
+                
                 self.results.append({
                     "category": category,
                     "name": name,
-                    "version": pkg.get("version", ""),
+                    "version": version_to_display,  # Now shows available version
+                    "available_version": pkg.get('available_version', ''),  # Store available version for details
                     "repository": pkg.get("repository", ""),
-                    "installed": pkg.get("installed", False),
-                    "protected": is_protected
+                    "installed": pkg.get('is_actually_installed', False),
+                    "protected": is_protected,
+                    "upgrade_symbol": pkg.get('upgrade_symbol', '')  # Add upgrade symbol
                 })
             self.selected_index = 0
             self.results_scroll_offset = 0
             
             self.set_status(_("Found {} results matching '{}'").format(len(self.results), self.search_query))
-            # Schedule Ready for the next cycle so the "Found" message is seen
             self.scheduler.schedule(self.set_status, _("Ready"))
         
         except Exception as e:
-            # Handle main-thread processing failure
             self.results = []
             self.selected_index = 0
             self.results_scroll_offset = 0
             self.append_to_log(_("Search result processing failed: {}").format(e))
-            # Set the requested status message
             self.set_status(_("Error executing the search command"), error=True)
-            # DO NOT set to "Ready"
-            # self.set_status(_("Ready"))
-
 
     def do_install_uninstall_selected(self):
-            if not (0 <= self.selected_index < len(self.results)): return
-            pkg = self.results[self.selected_index]
-            full_name = f"{pkg['category']}/{pkg['name']}"
-            installed = pkg.get("installed", False)
-            protected = pkg.get("protected", False)
-            
-            if protected:
-                msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
-                if msg is None:
-                    full_name = f"{pkg['category']}/{pkg['name']}"
-                    msg = _("This package ({}) is protected and can't be removed.").format(full_name)
-                self.show_message(_("Protected"), msg)
-                return
-            
-            if installed:
-                if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): return
-                if pkg['category'] == 'apps':
-                    cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
-                else:
-                    cmd = ["luet", "uninstall", "-y", full_name]
-                self.set_status(_("Uninstalling {}...").format(full_name))
-                self.append_to_log(_("Uninstall {} initiated.").format(full_name))
-                self.draw()
-                def on_log(line): self.append_to_log(line)
-                def on_done(returncode):
-                    if returncode == 0:
-                        self.append_to_log(_("Uninstall completed successfully."))
-                        PackageOperations._run_kbuildsycoca6()
-                        self.set_status(_("Ready"))
-                        if self.search_query: self.run_search(self.search_query)
-                    else:
-                        self.append_to_log(_("Uninstall failed for {}.").format(full_name))
-                        error_msg = _("Error uninstalling: '{}'").format(full_name)
-                        self.set_status(error_msg, error=True)
-                PackageOperations.run_uninstallation(
-                    self.command_runner.run_realtime,
-                    lambda ln: self.scheduler.schedule(on_log, ln),
-                    lambda rc: self.scheduler.schedule(on_done, rc),
-                    cmd
-                )
+        if not (0 <= self.selected_index < len(self.results)): return
+        pkg = self.results[self.selected_index]
+        full_name = f"{pkg['category']}/{pkg['name']}"
+        installed = pkg.get("installed", False)
+        protected = pkg.get("protected", False)
+        upgradeable = pkg.get("upgrade_symbol") == "↑"
+        
+        if protected:
+            msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
+            if msg is None:
+                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
+            self.show_message(_("Protected"), msg)
+            return
+        
+        if installed or upgradeable:
+            if upgradeable:
+                action_text = _("upgrade")
             else:
-                if not self.confirm_yes_no(_("DoF you want to install {}?").format(full_name)): return
-                cmd = ["luet", "install", "-y", full_name]
-                self.set_status(_("Installing {}...").format(full_name))
-                self.append_to_log(_("Install {} initiated.").format(full_name))
-                self.draw()
-                def on_log(line): self.append_to_log(line)
-                def on_done(returncode):
-                    if returncode == 0:
-                        self.append_to_log(_("Install completed successfully."))
-                        PackageOperations._run_kbuildsycoca6()
-                        self.set_status(_("Ready"))
-                        if self.search_query: self.run_search(self.search_query)
-                    else:
-                        self.append_to_log(_("Install failed."))
-                        error_msg = _("Error installing: '{}'").format(full_name)
-                        self.set_status(error_msg, error=True)
-                PackageOperations.run_installation(
-                    self.command_runner.run_realtime,
-                    lambda ln: self.scheduler.schedule(on_log, ln),
-                    lambda rc: self.scheduler.schedule(on_done, rc),
-                    cmd
-                )
+                action_text = _("uninstall")
+                
+            if not self.confirm_yes_no(_("Do you want to {} {}?").format(action_text, full_name)): 
+                return
+                
+            if pkg['category'] == 'apps':
+                cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
+            else:
+                cmd = ["luet", "uninstall", "-y", full_name]
+                
+            self.set_status(_("{} {}...").format(action_text.capitalize(), full_name))
+            self.append_to_log(_("{} {} initiated.").format(action_text.capitalize(), full_name))
+            self.draw()
+            
+            def on_log(line): self.append_to_log(line)
+            def on_done(returncode):
+                if returncode == 0:
+                    self.append_to_log(_("{} completed successfully.").format(action_text.capitalize()))
+                    PackageOperations._run_kbuildsycoca6()
+                    self.set_status(_("Ready"))
+                    if self.search_query: self.run_search(self.search_query)
+                else:
+                    self.append_to_log(_("{} failed for {}.").format(action_text.capitalize(), full_name))
+                    error_msg = _("Error {}: '{}'").format(action_text, full_name)
+                    self.set_status(error_msg, error=True)
+                    
+            PackageOperations.run_uninstallation(
+                self.command_runner.run_realtime,
+                lambda ln: self.scheduler.schedule(on_log, ln),
+                lambda rc: self.scheduler.schedule(on_done, rc),
+                cmd
+            )
+        else:
+            if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
+            cmd = ["luet", "install", "-y", full_name]
+            self.set_status(_("Installing {}...").format(full_name))
+            self.append_to_log(_("Install {} initiated.").format(full_name))
+            self.draw()
+            
+            def on_log(line): self.append_to_log(line)
+            def on_done(returncode):
+                if returncode == 0:
+                    self.append_to_log(_("Install completed successfully."))
+                    PackageOperations._run_kbuildsycoca6()
+                    self.set_status(_("Ready"))
+                    if self.search_query: self.run_search(self.search_query)
+                else:
+                    self.append_to_log(_("Install failed."))
+                    error_msg = _("Error installing: '{}'").format(full_name)
+                    self.set_status(error_msg, error=True)
+                    
+            PackageOperations.run_installation(
+                self.command_runner.run_realtime,
+                lambda ln: self.scheduler.schedule(on_log, ln),
+                lambda rc: self.scheduler.schedule(on_done, rc),
+                cmd
+            )
 
     def show_details(self):
-            if not (0 <= self.selected_index < len(self.results)): return
-            pkg = self.results[self.selected_index]
+        if not (0 <= self.selected_index < len(self.results)): return
+        pkg = self.results[self.selected_index]
 
-            if pkg.get("protected", False):
-                msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
-                if msg is None:
-                    full_name = f"{pkg['category']}/{pkg['name']}"
-                    msg = _("This package ({}) is protected and can't be removed.").format(full_name)
-                self.show_message(_("Protected"), msg)
-                return
+        if pkg.get("protected", False):
+            msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
+            if msg is None:
+                full_name = f"{pkg['category']}/{pkg['name']}"
+                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
+            self.show_message(_("Protected"), msg)
+            return
 
-            category = pkg['category']
-            name = pkg['name']
-            version = pkg.get('version', '')
-            repository = pkg.get('repository', '')
-            installed = pkg.get('installed', False) 
+        category = pkg['category']
+        name = pkg['name']
+        repository = pkg.get('repository', '')
+        installed = pkg.get('installed', False)
+        
+        # Use available version for fetching details (it's more likely to exist in repos)
+        # For installed packages that are not upgradeable, use the installed version
+        version_to_use = pkg.get('available_version', '') or pkg.get('version', '')
 
-            details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version)
-            
-            text = PackageDetails.format_for_tui(details, None, None, repository, version, installed)
-            title = _("Details for {}/{}").format(category, name)
-            
-            self.show_package_details_interactive(title, text, category, name, installed)
+        details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version_to_use)
+        
+        # For display, show the available version in details to indicate what would be installed
+        display_version = pkg.get('available_version', '') or pkg.get('version', '')
+        text = PackageDetails.format_for_tui(details, None, None, repository, display_version, installed)
+        title = _("Details for {}/{}").format(category, name)
+        
+        self.show_package_details_interactive(title, text, category, name, installed)
     
     def show_package_details_interactive(self, title, message, category, name, installed):
         """Show package details with option to view files ('f') or revdeps ('r')."""

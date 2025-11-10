@@ -30,6 +30,28 @@ except Exception:
     ngettext = lambda s, p, n: s if n == 1 else p
 
 # -------------------------
+# PackageState Class
+# -------------------------
+
+class PackageState:
+    @staticmethod
+    def get_installed_packages(command_runner_sync):
+        """Return a dict of installed packages and their versions."""
+        try:
+            res = command_runner_sync(["luet", "search", "--installed", "-o", "json"], require_root=True)
+            if res.returncode != 0:
+                return {}
+            data = json.loads(res.stdout or "{}")
+            pkgs = {}
+            for pkg in data.get("packages", []):
+                key = f"{pkg.get('category')}/{pkg.get('name')}"
+                pkgs[key] = pkg.get("version")
+            return pkgs
+        except Exception as e:
+            print("Error fetching installed package list:", e)
+            return {}
+
+# -------------------------
 # Spinner Class
 # -------------------------
 class Spinner:
