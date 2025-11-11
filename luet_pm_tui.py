@@ -820,7 +820,11 @@ class LuetTUI:
         full_name = f"{pkg['category']}/{pkg['name']}"
         installed = pkg.get("installed", False)
         protected = pkg.get("protected", False)
-        upgradeable = pkg.get("upgrade_symbol") == "↑"
+        
+        # FIX: Determine action based on what's displayed, NOT upgrade status
+        # If it shows "Remove" in the Action column, then uninstall
+        # If it shows "Install" in the Action column, then install
+        # The upgrade symbol "↑" is just informational
         
         if protected:
             msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
@@ -829,13 +833,9 @@ class LuetTUI:
             self.show_message(_("Protected"), msg)
             return
         
-        if installed or upgradeable:
-            if upgradeable:
-                action_text = _("upgrade")
-            else:
-                action_text = _("uninstall")
-                
-            if not self.confirm_yes_no(_("Do you want to {} {}?").format(action_text, full_name)): 
+        if installed:
+            # Package shows "Remove" in Action column - so uninstall it
+            if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): 
                 return
                 
             if pkg['category'] == 'apps':
@@ -843,20 +843,20 @@ class LuetTUI:
             else:
                 cmd = ["luet", "uninstall", "-y", full_name]
                 
-            self.set_status(_("{} {}...").format(action_text.capitalize(), full_name))
-            self.append_to_log(_("{} {} initiated.").format(action_text.capitalize(), full_name))
+            self.set_status(_("Uninstalling {}...").format(full_name))
+            self.append_to_log(_("Uninstall {} initiated.").format(full_name))
             self.draw()
             
             def on_log(line): self.append_to_log(line)
             def on_done(returncode):
                 if returncode == 0:
-                    self.append_to_log(_("{} completed successfully.").format(action_text.capitalize()))
+                    self.append_to_log(_("Uninstall completed successfully."))
                     PackageOperations._run_kbuildsycoca6()
                     self.set_status(_("Ready"))
                     if self.search_query: self.run_search(self.search_query)
                 else:
-                    self.append_to_log(_("{} failed for {}.").format(action_text.capitalize(), full_name))
-                    error_msg = _("Error {}: '{}'").format(action_text, full_name)
+                    self.append_to_log(_("Uninstall failed for {}.").format(full_name))
+                    error_msg = _("Error uninstalling: '{}'").format(full_name)
                     self.set_status(error_msg, error=True)
                     
             PackageOperations.run_uninstallation(
@@ -866,6 +866,7 @@ class LuetTUI:
                 cmd
             )
         else:
+            # Package shows "Install" in Action column - so install it
             if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
             cmd = ["luet", "install", "-y", full_name]
             self.set_status(_("Installing {}...").format(full_name))
