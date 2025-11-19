@@ -636,6 +636,27 @@ class PackageOperations:
                 pass
 
     @staticmethod
+    def build_install_command(full_package_name):
+        """
+        Constructs the standard install command.
+        """
+        return ["luet", "install", "-y", full_package_name]
+
+    @staticmethod
+    def build_uninstall_command(category, full_package_name):
+        """
+        Constructs the uninstall command, handling category-specific flags
+        (e.g. extra flags for 'apps' category).
+        """
+        cmd = ["luet", "uninstall", "-y", full_package_name]
+        
+        # Centralized logic for specific categories
+        if category == "apps":
+            cmd.extend(["--solver-concurrent", "--full"])
+            
+        return cmd
+
+    @staticmethod
     def run_installation(command_runner_realtime, log_callback, on_finish_callback, install_cmd_list):
         command_runner_realtime(
             install_cmd_list,

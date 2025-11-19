@@ -881,10 +881,7 @@ class LuetTUI:
             if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): 
                 return
                 
-            if pkg['category'] == 'apps':
-                cmd = ["luet", "uninstall", "-y", "--solver-concurrent", "--full", full_name]
-            else:
-                cmd = ["luet", "uninstall", "-y", full_name]
+            cmd = PackageOperations.build_uninstall_command(pkg['category'], full_name)
                 
             self.set_status(_("Uninstalling {}...").format(full_name))
             self.append_to_log(_("Uninstall {} initiated.").format(full_name))
@@ -913,7 +910,7 @@ class LuetTUI:
         else:
             # Package shows "Install" in Action column - so install it
             if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
-            cmd = ["luet", "install", "-y", full_name]
+            cmd = PackageOperations.build_install_command(full_name)
             self.set_status(_("Installing {}...").format(full_name))
             self.append_to_log(_("Install {} initiated.").format(full_name))
             self.draw()

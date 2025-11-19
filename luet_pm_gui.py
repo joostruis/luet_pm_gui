@@ -845,7 +845,10 @@ class SearchApp(Gtk.Window):
         dlg.destroy()
         
         advanced = self.advanced_search_checkbox.get_active()
-        install_cmd = ["luet", "install", "-y", "{}/{}".format(category, name)]
+
+        pkg_fullname = "{}/{}".format(category, name)
+        install_cmd = PackageOperations.build_install_command(pkg_fullname)
+
         self.disable_gui()
         self.start_spinner(_("Installing {}...").format(name))
         self.set_status_message(_("Installing {}...").format(name))
@@ -886,10 +889,9 @@ class SearchApp(Gtk.Window):
         dlg.destroy()
 
         advanced = self.advanced_search_checkbox.get_active()
-        uninstall_cmd = ["luet", "uninstall", "-y", pkg_fullname]
-        if category == "apps":
-             uninstall_cmd.extend(["--solver-concurrent", "--full"])
-        
+
+        uninstall_cmd = PackageOperations.build_uninstall_command(category, pkg_fullname) 
+               
         self.disable_gui()
         self.start_spinner(_("Uninstalling {}...").format(name))
         self.set_status_message(_("Uninstalling {}...").format(pkg_fullname))
