@@ -38,17 +38,62 @@ class PackageState:
     def get_installed_packages(command_runner_sync):
         """Return a dict of installed packages and their versions."""
         try:
-            res = command_runner_sync(["luet", "search", "--installed", "-o", "json"], require_root=True)
-            if res.returncode != 0:
+            res = command_runner_sync(["luet", "database", "get-all-installed"], require_root=True)
+            
+            if res.returncode != 0 and not res.stdout.strip():
+                print(f"luet database get-all-installed failed with return code {res.returncode}. Stderr: {res.stderr}")
                 return {}
-            data = json.loads(res.stdout or "{}")
+            
+            # --- START FIX: Aggressive Root-Level Filtering ---
+            valid_yaml_lines = []
+            
+            for line in res.stdout.splitlines():
+                # Strip leading whitespace from the line
+                stripped_line = line.lstrip()
+                
+                # If the line is empty or is a list item starting at the root level (column 1/2)
+                # It must start with a '-' followed by a space or another character.
+                if not stripped_line:
+                    continue # Skip blank lines
+                
+                # If the line starts with '- ', it's a package list item.
+                # If it starts with a space and then a '-', it might be indented YAML. 
+                # Keep all lines that look like YAML structure, but filter out non-YAML garbage.
+                
+                # A common problem with `luet database get-all-installed` is that
+                # it might output the packages with leading spaces. We will only 
+                # keep lines that have valid YAML syntax markers or are clearly 
+                # key/value pairs (indented).
+                
+                # Simple heuristic: filter out lines that start at column 1/2 that 
+                # aren't the list marker, as these are often unexpected logs.
+                
+                if line.startswith(' ') or line.startswith('\t') or line.startswith('-'):
+                    valid_yaml_lines.append(line)
+                
+            clean_output = "\n".join(valid_yaml_lines)
+            
+            if not clean_output.strip():
+                 return {}
+            
+            # Use yaml.safe_load on the cleaned output
+            data = yaml.safe_load(clean_output)
+            # --- END FIX ---
+            
             pkgs = {}
-            for pkg in data.get("packages", []):
-                key = f"{pkg.get('category')}/{pkg.get('name')}"
-                pkgs[key] = pkg.get("version")
+            for pkg in data or []: 
+                category = pkg.get('category')
+                name = pkg.get('name')
+                version = pkg.get('version')
+                
+                if category and name and version:
+                    key = f"{category}/{name}"
+                    pkgs[key] = version
+            
             return pkgs
         except Exception as e:
-            print("Error fetching installed package list:", e)
+            # Final updated error message
+            print("Error fetching installed package list using luet database get-all-installed (YAML parsing failed, check luet logs):", e)
             return {}
 
 # -------------------------
