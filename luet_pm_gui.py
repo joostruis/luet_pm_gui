@@ -43,7 +43,6 @@ ngettext = gettext.ngettext
 # -------------------------
 try:
     # Attempt to import the actual core logic modules
-    # MODIFIED: Added PackageState
     from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, SearchProcessor
 except ImportError:
     print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
@@ -56,7 +55,6 @@ except ImportError:
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self, parent):
         super().__init__(transient_for=parent, modal=True, destroy_with_parent=True)
-        # Use AboutInfo for all centralized metadata (MODIFIED)
         self.set_program_name(AboutInfo.get_program_name())
         self.set_version(AboutInfo.get_version())
         self.set_website(AboutInfo.get_website())
@@ -158,13 +156,7 @@ class PackageDetailsPopup(Gtk.Window):
                 uri_label = Gtk.Label()
                 escaped_uri = GLib.markup_escape_text(uri)
                 uri_label.set_markup('<a href="{}">{}</a>'.format(escaped_uri, escaped_uri))
-                #
-                # --- START: CORRECTED LINE ---
-                #
                 uri_label.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
-                #
-                # --- END: CORRECTED LINE ---
-                #
                 uri_label.connect("button-press-event", lambda w, e: webbrowser.open(uri))
                 uri_label.connect("enter-notify-event", self.on_hover_cursor)
                 uri_label.connect("leave-notify-event", self.on_leave_cursor)
@@ -284,6 +276,7 @@ class PackageDetailsPopup(Gtk.Window):
             GLib.idle_add(self.update_textview, self.required_by_textview, "\n".join(sorted_required_by))
         else:
             GLib.idle_add(self.update_textview, self.required_by_textview, _("There are no packages installed that require this package."))
+
     def load_package_files_info(self, *args):
         category = self.package_info.get("category", "")
         name = self.package_info.get("name", "")
@@ -298,6 +291,7 @@ class PackageDetailsPopup(Gtk.Window):
         files = self.get_package_files_info(category, name)
         self.loaded_package_files[(category, name)] = files if files is not None else []
         GLib.idle_add(self.update_package_files_list, files)
+
     def update_package_files_list(self, files_info):
         self.files_liststore.clear()
         if files_info is None:
@@ -311,17 +305,21 @@ class PackageDetailsPopup(Gtk.Window):
             self.apply_files_filter("")
     def on_files_search_changed(self, entry):
         self.apply_files_filter(entry.get_text().lower())
+
     def apply_files_filter(self, filter_text):
         self.files_liststore.clear()
         for f in self.all_files:
             if filter_text in f.lower():
                 self.files_liststore.append([f])
+
     def update_expander_label(self, expander, count):
         label_text = _(expander.get_label().split(' (')[0]) + " ({})".format(count)
         expander.set_label(label_text)
+
     def update_textview(self, textview, text):
         buf = textview.get_buffer()
         buf.set_text(text)
+
     def get_required_by_info(self, category, name):
         try:
             cmd = ["luet", "search", "--revdeps", "{}/{}".format(category, name), "-q", "--installed", "-o", "json"]
@@ -338,6 +336,7 @@ class PackageDetailsPopup(Gtk.Window):
         except Exception as e:
             print(_("Error retrieving required by info:"), e)
             return None
+
     def get_package_files_info(self, category, name):
         try:
             cmd = ["luet", "search", "{}/{}".format(category, name), "-o", "json"]
@@ -371,7 +370,6 @@ class SearchApp(Gtk.Window):
         self.highlighted_row_path = None
         self.HIGHLIGHT_COLOR = self.get_theme_highlight_color()
 
-        # FIX 1.1: Internal Action Constants (Integers) to decouple logic from translation strings
         self.ACTION_INSTALL = 0
         self.ACTION_REMOVE = 1
         self.ACTION_PROTECTED = 2
@@ -390,16 +388,46 @@ class SearchApp(Gtk.Window):
         # ---------------------------------
         self.command_runner = CommandRunner(self.elevation_cmd, GLib.idle_add)
         
-        # ADDED: Centralized Spinner instance
         self.spinner = Spinner()
         self.spinner_timeout_id = None
-        # ---------------------------------
+        
+        self.installed_packages_cache = {}
+        self.cache_initialized = False
 
         self.init_search_ui()
 
         if self.elevation_cmd is None and os.getuid() != 0:
             GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found - admin actions will fail"))
+        
+        # Start async cache population
+        self.refresh_installed_packages_cache_async()
     
+    def refresh_installed_packages_cache_async(self):
+        """Refresh the cached list of installed packages asynchronously"""
+        def worker():
+            try:
+                new_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+                GLib.idle_add(self._on_cache_updated, new_cache)
+            except Exception as e:
+                print(f"Error refreshing installed packages cache: {e}")
+                GLib.idle_add(self._on_cache_updated, {})
+        
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_cache_updated(self, new_cache):
+        """Callback when cache update completes"""
+        self.installed_packages_cache = new_cache
+        self.cache_initialized = True
+
+    def refresh_installed_packages_cache(self):
+        """Refresh the cached list of installed packages"""
+        try:
+            self.installed_packages_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+            self.cache_initialized = True
+        except Exception as e:
+            print(f"Error refreshing installed packages cache: {e}")
+            self.installed_packages_cache = {}
+
     # Mocking for local development without luet_pm_core.py
     def get_last_sync_time(self):
          return SyncInfo.get_last_sync_time()
@@ -496,14 +524,13 @@ class SearchApp(Gtk.Window):
         # --- TreeView (Results Table) ---
         self.treeview = Gtk.TreeView()
 
-        # MODIFIED: ListStore fields (9 total):
+        # ListStore fields (9 total):
         # 0: Category | 1: Name | 2: Upgrade Symbol | 3: Version | 4: Repository |
         # 5: Action ID | 6: Action Text | 7: Details | 8: Highlight Color
         self.liststore = Gtk.ListStore(str, str, str, str, str, int, str, str, str)
         self.treeview.set_model(self.liststore)
 
         # --- Columns ---
-        # MODIFIED: Added new column for Upgrade Symbol (index 2)
         columns = [
             (_("Category"), 0),
             (_("Name"), 1),
@@ -514,12 +541,10 @@ class SearchApp(Gtk.Window):
             (_("Details"), 7)
         ]
 
-        # MODIFIED: Updated loop to handle new column and highlight index
         for title, data_index in columns:
             renderer = Gtk.CellRendererText()
             col = Gtk.TreeViewColumn(title, renderer, text=data_index)
 
-            # New column logic for Upgrade Symbol
             if data_index == 2:
                 col.set_expand(False)
                 col.set_resizable(False)
@@ -652,20 +677,19 @@ class SearchApp(Gtk.Window):
     def run_search(self, search_command):
         """ Worker thread: Calls core logic """
         
-        # 1. Get installed packages dict
-        try:
+        # Use cached installed packages, but if cache isn't initialized yet, fetch it now
+        if not self.cache_initialized:
             installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
-        except Exception as e:
-            print(f"Error getting installed packages: {e}")
-            installed_packages_dict = {}
+        else:
+            installed_packages_dict = self.installed_packages_cache
 
-        # 2. Run the search
+        # Run the search
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)
         
-        # 3. Process results using centralized logic
+        # Process results using centralized logic
         result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
 
-        # 4. Pass processed data to GUI thread
+        # Pass processed data to GUI thread
         GLib.idle_add(self.on_search_finished, result_data)
 
     def on_search_finished(self, result):
@@ -706,13 +730,13 @@ class SearchApp(Gtk.Window):
                 self.liststore.append([
                     category,                  # 0
                     name,                      # 1
-                    upgrade_symbol,            # 2 (NEW)
-                    version_to_display,        # 3 (MODIFIED to use available version)
+                    upgrade_symbol,            # 2
+                    version_to_display,        # 3
                     pkg.get("repository", ""), # 4
-                    action_id,                 # 5 (Internal ID)
-                    action_display,            # 6 (Display Text)
+                    action_id,                 # 5
+                    action_display,            # 6
                     _("Details"),              # 7
-                    None                       # 8 (Highlight Color)
+                    None                       # 8
                 ])
                 
             n = len(self.liststore)
@@ -734,8 +758,8 @@ class SearchApp(Gtk.Window):
         if not hit: return False
         
         path, col, _, _ = hit
-        action_col = self.treeview.get_column(5)  # Was 4
-        details_col = self.treeview.get_column(6) # Was 5
+        action_col = self.treeview.get_column(5)
+        details_col = self.treeview.get_column(6)
         
         try:
             action_area = treeview.get_cell_area(path, action_col)
@@ -745,7 +769,7 @@ class SearchApp(Gtk.Window):
         iter_ = self.liststore.get_iter(path)
         
         # Read the internal integer ID for comparison (data index 5)
-        action_id = self.liststore.get_value(iter_, 5) # Was 4
+        action_id = self.liststore.get_value(iter_, 5)
         
         # --- Handle Action Column Clicks ---
         if action_area and action_area.x <= event.x < (action_area.x + action_area.width):
@@ -762,13 +786,13 @@ class SearchApp(Gtk.Window):
         # --- Handle Details Column Clicks ---
         if details_area and details_area.x <= event.x < (details_area.x + details_area.width):
             # Read the internal integer ID for comparison (data index 5)
-            action_id_for_details = self.liststore.get_value(iter_, 5) # Was 4
+            action_id_for_details = self.liststore.get_value(iter_, 5)
             
             package_info = {
                 "category": self.liststore.get_value(iter_, 0),
                 "name": self.liststore.get_value(iter_, 1),
-                "version": self.liststore.get_value(iter_, 3),    # Was 2
-                "repository": self.liststore.get_value(iter_, 4), # Was 3
+                "version": self.liststore.get_value(iter_, 3),
+                "repository": self.liststore.get_value(iter_, 4),
                 # Determine 'installed' status based on the safe integer ID
                 "installed": action_id_for_details in [self.ACTION_REMOVE, self.ACTION_PROTECTED]
             }
@@ -832,6 +856,7 @@ class SearchApp(Gtk.Window):
         def on_install_done(returncode):
             self.stop_spinner()
             if returncode == 0:
+                self.refresh_installed_packages_cache()
                 PackageOperations._run_kbuildsycoca6()
                 if self.last_search:
                     search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
@@ -875,6 +900,7 @@ class SearchApp(Gtk.Window):
         def on_uninstall_done(returncode):
             self.stop_spinner()
             if returncode == 0:
+                self.refresh_installed_packages_cache()
                 PackageOperations._run_kbuildsycoca6()
                 if self.last_search:
                     search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
@@ -896,7 +922,6 @@ class SearchApp(Gtk.Window):
     def clear_liststore(self):
         self.liststore.clear()
 
-    # MODIFIED: Updated liststore index
     def show_package_details_popup(self, package_info):
         repository = ""
         iter_ = self.liststore.get_iter_first()
@@ -925,18 +950,21 @@ class SearchApp(Gtk.Window):
     def start_spinner(self, message):
         if self.spinner_timeout_id: GLib.source_remove(self.spinner_timeout_id)
         self.spinner_timeout_id = GLib.timeout_add(80, self._spinner_tick, message)
+
     def stop_spinner(self, keep_message=False):
         if self.spinner_timeout_id:
             GLib.source_remove(self.spinner_timeout_id)
             self.spinner_timeout_id = None
             if not keep_message: self.set_status_message(_("Ready"))
+
     def _spinner_tick(self, message):
-        # ADDED: Use centralized Spinner class
         frame = self.spinner.get_next_frame()
         self.set_status_message("{} {}".format(frame, message))
         return True
+
     def set_status_message(self, message):
         GLib.idle_add(self._set_status_message, message)
+
     def _set_status_message(self, message):
         with self.status_message_lock:
             self.status_label.set_text(message)
@@ -1067,6 +1095,7 @@ class SearchApp(Gtk.Window):
                 self.inhibit_cookie = None
             self.stop_spinner()
             if returncode == 0:
+                self.refresh_installed_packages_cache()
                 self.set_status_message(message)
                 self.update_sync_info_label()
             else:

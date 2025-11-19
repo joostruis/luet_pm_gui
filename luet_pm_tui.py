@@ -242,7 +242,14 @@ class LuetTUI:
         elevation_cmd = self._get_elevation_cmd()
         self.command_runner = CommandRunner(elevation_cmd, self.scheduler.schedule)
         
+        # FIX: Initialize cache as empty and populate asynchronously
+        self.installed_packages_cache = {}
+        self.cache_initialized = False  # Track cache initialization status
+        
         self.init_app()
+        
+        # Start async cache population
+        self.refresh_installed_packages_cache_async()
         
     def _get_elevation_cmd(self):
         if os.getuid() == 0:
@@ -252,6 +259,33 @@ class LuetTUI:
         elif shutil.which("sudo"):
             return ["sudo", "-n"]
         return None
+
+    # ADDED: Async method to refresh cache
+    def refresh_installed_packages_cache_async(self):
+        """Refresh the cached list of installed packages asynchronously"""
+        def worker():
+            try:
+                new_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+                self.scheduler.schedule(self._on_cache_updated, new_cache)
+            except Exception as e:
+                print(f"Error refreshing installed packages cache: {e}")
+                self.scheduler.schedule(self._on_cache_updated, {})
+        
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_cache_updated(self, new_cache):
+        """Callback when cache update completes"""
+        self.installed_packages_cache = new_cache
+        self.cache_initialized = True
+
+    def refresh_installed_packages_cache(self):
+        """Refresh the cached list of installed packages"""
+        try:
+            self.installed_packages_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+            self.cache_initialized = True
+        except Exception as e:
+            print(f"Error refreshing installed packages cache: {e}")
+            self.installed_packages_cache = {}
 
     def init_app(self):
         si = SyncInfo.get_last_sync_time()
@@ -470,8 +504,11 @@ class LuetTUI:
                 else:
                     action = _("Install")
                 
+                # FIXED: Use the correct version field from processed data
+                version_to_display = pkg.get("version", "")
+                
                 # Updated line format with upgrade symbol
-                line = f"{pkg.get('category','')[:16]:16} {pkg.get('name','')[:28]:28} {upgrade_symbol:2} {pkg.get('version','')[:16]:16} {pkg.get('repository','')[:20]:20} {action:8}"
+                line = f"{pkg.get('category','')[:16]:16} {pkg.get('name','')[:28]:28} {upgrade_symbol:2} {version_to_display[:16]:16} {pkg.get('repository','')[:20]:20} {action:8}"
                 
                 attr = dim_attr
                 if not is_busy and self.focus == 'list' and row_idx == self.selected_index:
@@ -667,6 +704,8 @@ class LuetTUI:
         
         def on_finish(returncode, message):
             if returncode == 0:
+                # ADD: Refresh installed packages cache after full upgrade
+                self.refresh_installed_packages_cache()
                 self.set_status(_("System upgrade completed successfully"))
             else:
                 final_msg = message if returncode != 0 else _("Error during system upgrade")
@@ -764,14 +803,17 @@ class LuetTUI:
 
         def worker():
             try:
-                # Get installed packages first for upgrade detection
-                installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+                # Use cached installed packages, but if cache isn't initialized yet, fetch it now
+                if not self.cache_initialized:
+                    installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+                else:
+                    installed_packages_dict = self.installed_packages_cache
                 
                 # Use the escaped query for the command
                 search_cmd = ["luet", "search", "-o", "json", "-q", escaped_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
                 
-                # Process results using centralized logic
+                # FIX: Use centralized SearchProcessor like the GUI does
                 result = SearchProcessor.process_search_results(result, installed_packages_dict)
                 
                 self.scheduler.schedule(self.on_search_finished, result)
@@ -779,8 +821,6 @@ class LuetTUI:
                 self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))
                 # Set status message as requested by the user
                 self.scheduler.schedule(self.set_status, _("Error executing the search command"), error=True)
-                # DO NOT schedule "Ready" here, let the error persist
-                # self.scheduler.schedule(self.set_status, _("Ready"))
         threading.Thread(target=worker, daemon=True).start()
 
     def on_search_finished(self, result):
@@ -791,15 +831,17 @@ class LuetTUI:
             
             self.results = []
             for pkg in result.get("packages", []):
+                # FIX: Use the processed package data from SearchProcessor
+                # This includes the upgrade_symbol field
                 self.results.append({
                     "category": pkg.get("category", ""),
                     "name": pkg.get("name", ""),
-                    "version": pkg.get('available_version', '') or pkg.get('version', ''),
-                    "available_version": pkg.get('available_version', ''),
+                    "version": pkg.get("version", ""),  # Use the version field from processed data
+                    "available_version": pkg.get("version", ""),  # Available version is the same
                     "repository": pkg.get("repository", ""),
                     "installed": pkg.get('is_actually_installed', False),
                     "protected": pkg.get('protected', False),
-                    "upgrade_symbol": pkg.get('upgrade_symbol', '')
+                    "upgrade_symbol": pkg.get('upgrade_symbol', '')  # This should now contain "↑"
                 })
             self.selected_index = 0
             self.results_scroll_offset = 0
@@ -813,6 +855,7 @@ class LuetTUI:
             self.results_scroll_offset = 0
             self.append_to_log(_("Search result processing failed: {}").format(e))
             self.set_status(_("Error executing the search command"), error=True)
+
 
     def do_install_uninstall_selected(self):
         if not (0 <= self.selected_index < len(self.results)): return
@@ -850,6 +893,8 @@ class LuetTUI:
             def on_log(line): self.append_to_log(line)
             def on_done(returncode):
                 if returncode == 0:
+                    # ADD: Refresh installed packages cache
+                    self.refresh_installed_packages_cache()
                     self.append_to_log(_("Uninstall completed successfully."))
                     PackageOperations._run_kbuildsycoca6()
                     self.set_status(_("Ready"))
@@ -876,6 +921,7 @@ class LuetTUI:
             def on_log(line): self.append_to_log(line)
             def on_done(returncode):
                 if returncode == 0:
+                    self.refresh_installed_packages_cache()
                     self.append_to_log(_("Install completed successfully."))
                     PackageOperations._run_kbuildsycoca6()
                     self.set_status(_("Ready"))
@@ -891,6 +937,7 @@ class LuetTUI:
                 lambda rc: self.scheduler.schedule(on_done, rc),
                 cmd
             )
+
 
     def show_details(self):
         if not (0 <= self.selected_index < len(self.results)): return
