@@ -856,18 +856,12 @@ class LuetTUI:
             self.append_to_log(_("Search result processing failed: {}").format(e))
             self.set_status(_("Error executing the search command"), error=True)
 
-
     def do_install_uninstall_selected(self):
         if not (0 <= self.selected_index < len(self.results)): return
         pkg = self.results[self.selected_index]
         full_name = f"{pkg['category']}/{pkg['name']}"
         installed = pkg.get("installed", False)
         protected = pkg.get("protected", False)
-        
-        # FIX: Determine action based on what's displayed, NOT upgrade status
-        # If it shows "Remove" in the Action column, then uninstall
-        # If it shows "Install" in the Action column, then install
-        # The upgrade symbol "↑" is just informational
         
         if protected:
             msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
@@ -876,11 +870,24 @@ class LuetTUI:
             self.show_message(_("Protected"), msg)
             return
         
+        # Define the callback that runs on the main thread after cache refresh
+        def on_refresh_complete(new_cache):
+            self.installed_packages_cache = new_cache
+            self.cache_initialized = True
+            
+            # Determine if we just finished an install or uninstall for the log message
+            action_name = _("Uninstall") if installed else _("Install")
+            self.append_to_log(_("{} completed successfully.").format(action_name))
+            
+            self.set_status(_("Ready"))
+            if self.search_query: 
+                self.run_search(self.search_query)
+
         if installed:
             # Package shows "Remove" in Action column - so uninstall it
             if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): 
                 return
-                
+            
             cmd = PackageOperations.build_uninstall_command(pkg['category'], full_name)
                 
             self.set_status(_("Uninstalling {}...").format(full_name))
@@ -888,14 +895,15 @@ class LuetTUI:
             self.draw()
             
             def on_log(line): self.append_to_log(line)
+            
             def on_done(returncode):
                 if returncode == 0:
-                    # ADD: Refresh installed packages cache
-                    self.refresh_installed_packages_cache()
-                    self.append_to_log(_("Uninstall completed successfully."))
-                    PackageOperations._run_kbuildsycoca6()
-                    self.set_status(_("Ready"))
-                    if self.search_query: self.run_search(self.search_query)
+                    self.set_status(_("Finalizing: Updating package cache..."))
+                    PackageOperations.run_post_transaction_refresh(
+                        self.command_runner.run_sync,
+                        self.scheduler.schedule,
+                        on_refresh_complete
+                    )
                 else:
                     self.append_to_log(_("Uninstall failed for {}.").format(full_name))
                     error_msg = _("Error uninstalling: '{}'").format(full_name)
@@ -910,19 +918,23 @@ class LuetTUI:
         else:
             # Package shows "Install" in Action column - so install it
             if not self.confirm_yes_no(_("Do you want to install {}?").format(full_name)): return
+            
             cmd = PackageOperations.build_install_command(full_name)
+
             self.set_status(_("Installing {}...").format(full_name))
             self.append_to_log(_("Install {} initiated.").format(full_name))
             self.draw()
             
             def on_log(line): self.append_to_log(line)
+            
             def on_done(returncode):
                 if returncode == 0:
-                    self.refresh_installed_packages_cache()
-                    self.append_to_log(_("Install completed successfully."))
-                    PackageOperations._run_kbuildsycoca6()
-                    self.set_status(_("Ready"))
-                    if self.search_query: self.run_search(self.search_query)
+                    self.set_status(_("Finalizing: Updating package cache..."))
+                    PackageOperations.run_post_transaction_refresh(
+                        self.command_runner.run_sync,
+                        self.scheduler.schedule,
+                        on_refresh_complete
+                    )
                 else:
                     self.append_to_log(_("Install failed."))
                     error_msg = _("Error installing: '{}'").format(full_name)
@@ -934,7 +946,6 @@ class LuetTUI:
                 lambda rc: self.scheduler.schedule(on_done, rc),
                 cmd
             )
-
 
     def show_details(self):
         if not (0 <= self.selected_index < len(self.results)): return

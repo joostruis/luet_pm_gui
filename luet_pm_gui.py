@@ -356,6 +356,7 @@ class PackageDetailsPopup(Gtk.Window):
 # -------------------------
 # Main application window (GUI class)
 # -------------------------
+
 class SearchApp(Gtk.Window):
     def __init__(self, app):
         super().__init__(title=_("Luet Package Search"), application=app)
@@ -836,6 +837,22 @@ class SearchApp(Gtk.Window):
         dlg.run()
         dlg.destroy()
 
+    def _on_refresh_complete(self, new_cache):
+        """Helper called by Core on main thread after post-install refresh"""
+        self.installed_packages_cache = new_cache
+        self.cache_initialized = True
+        self.stop_spinner()
+        
+        if self.last_search:
+            advanced = self.advanced_search_checkbox.get_active()
+            search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
+            self.clear_liststore()
+            self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
+            self.start_search_thread(search_cmd)
+        else:
+            self.set_status_message(_("Ready"))
+            self.enable_gui()
+
     def confirm_install(self, iter_):
         category, name = self.liststore.get_value(iter_, 0), self.liststore.get_value(iter_, 1)
         dlg = Gtk.MessageDialog(parent=self, modal=True, message_type=Gtk.MessageType.QUESTION, buttons=Gtk.ButtonsType.YES_NO, text=_("Do you want to install {}?").format(name))
@@ -844,8 +861,7 @@ class SearchApp(Gtk.Window):
             return
         dlg.destroy()
         
-        advanced = self.advanced_search_checkbox.get_active()
-
+        # Refactor 1: Use Core to build install command
         pkg_fullname = "{}/{}".format(category, name)
         install_cmd = PackageOperations.build_install_command(pkg_fullname)
 
@@ -857,20 +873,18 @@ class SearchApp(Gtk.Window):
         self.output_expander.set_expanded(True)
 
         def on_install_done(returncode):
-            self.stop_spinner()
             if returncode == 0:
-                self.refresh_installed_packages_cache()
-                PackageOperations._run_kbuildsycoca6()
-                if self.last_search:
-                    search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
-                    self.clear_liststore()
-                    self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
-                    self.start_search_thread(search_cmd)
-                else:
-                    self.set_status_message(_("Ready"))
+                # Refactor 2: Use Core to run post-transaction refresh without freezing UI
+                self.set_status_message(_("Finalizing: Updating package cache..."))
+                PackageOperations.run_post_transaction_refresh(
+                    self.command_runner.run_sync,
+                    GLib.idle_add,
+                    self._on_refresh_complete
+                )
             else:
+                self.stop_spinner()
                 self.set_status_message(_("Error installing package"))
-            self.enable_gui()
+                self.enable_gui()
 
         try:
             PackageOperations.run_installation(self.command_runner.run_realtime, self.append_to_log, on_install_done, install_cmd)
@@ -888,10 +902,9 @@ class SearchApp(Gtk.Window):
             return
         dlg.destroy()
 
-        advanced = self.advanced_search_checkbox.get_active()
-
-        uninstall_cmd = PackageOperations.build_uninstall_command(category, pkg_fullname) 
-               
+        # Refactor 1: Use Core to build uninstall command
+        uninstall_cmd = PackageOperations.build_uninstall_command(category, pkg_fullname)
+        
         self.disable_gui()
         self.start_spinner(_("Uninstalling {}...").format(name))
         self.set_status_message(_("Uninstalling {}...").format(pkg_fullname))
@@ -900,20 +913,18 @@ class SearchApp(Gtk.Window):
         self.output_expander.set_expanded(True)
         
         def on_uninstall_done(returncode):
-            self.stop_spinner()
             if returncode == 0:
-                self.refresh_installed_packages_cache()
-                PackageOperations._run_kbuildsycoca6()
-                if self.last_search:
-                    search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
-                    self.clear_liststore()
-                    self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
-                    self.start_search_thread(search_cmd)
-                else:
-                    self.set_status_message(_("Ready"))
+                # Refactor 2: Use Core to run post-transaction refresh without freezing UI
+                self.set_status_message(_("Finalizing: Updating package cache..."))
+                PackageOperations.run_post_transaction_refresh(
+                    self.command_runner.run_sync,
+                    GLib.idle_add,
+                    self._on_refresh_complete
+                )
             else:
+                self.stop_spinner()
                 self.set_status_message(_("Error uninstalling package: '{}'").format(pkg_fullname))
-            self.enable_gui()
+                self.enable_gui()
         
         try:
             PackageOperations.run_uninstallation(self.command_runner.run_realtime, self.append_to_log, on_uninstall_done, uninstall_cmd)

@@ -674,6 +674,32 @@ class PackageOperations:
             on_finished=on_finish_callback
         )
 
+    @staticmethod
+    def run_post_transaction_refresh(run_sync_func, schedule_callback, on_completion_callback):
+        """
+        Runs post-transaction tasks (cache refresh, system checks) in a background thread
+        to prevent UI blocking.
+        
+        :param run_sync_func: Function to run sync commands (CommandRunner.run_sync)
+        :param schedule_callback: Function to schedule work on the main UI thread
+        :param on_completion_callback: Callback to receive (new_cache_data)
+        """
+        def worker():
+            # 1. Refresh the installed packages list (Blocking/Slow)
+            try:
+                new_cache = PackageState.get_installed_packages(run_sync_func)
+            except Exception as e:
+                print(f"Error refreshing cache: {e}")
+                new_cache = {}
+
+            # 2. Run system updates (Blocking)
+            PackageOperations._run_kbuildsycoca6()
+            
+            # 3. Return result on the main thread
+            schedule_callback(on_completion_callback, new_cache)
+
+        threading.Thread(target=worker, daemon=True).start()
+
 class PackageSearcher:
     @staticmethod
     def run_search_core(command_runner_sync, search_command):
