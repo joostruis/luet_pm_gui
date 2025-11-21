@@ -804,15 +804,29 @@ class SearchApp(Gtk.Window):
 
     def on_treeview_motion(self, treeview, event):
         hit = treeview.get_path_at_pos(int(event.x), int(event.y))
-        if self.highlighted_row_path is not None:
-            try: self.liststore[self.highlighted_row_path][8] = None # Index 8 is Highlight Color
-            except ValueError: pass
-            self.highlighted_row_path = None
+        
+        new_path = hit[0] if hit else None
+        
+        if new_path != self.highlighted_row_path:
+            
+            if self.highlighted_row_path is not None:
+                try:
+                    self.liststore[self.highlighted_row_path][8] = None # Index 8 is Highlight Color
+                except ValueError:
+                    pass # Row might have been deleted
+            
+            if new_path:
+                self.liststore[new_path][8] = self.HIGHLIGHT_COLOR
+                
+            self.highlighted_row_path = new_path
+
         if hit:
             path, col, _, _ = hit
-            self.liststore[path][8] = self.HIGHLIGHT_COLOR # Index 8 is Highlight Color
-            self.highlighted_row_path = path
-            self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer') if col in (treeview.get_column(5), treeview.get_column(6)) else None) # Was 4, 5
+            # Check if we are hovering over Action (5) or Details (6) columns
+            if col in (treeview.get_column(5), treeview.get_column(6)):
+                self.set_cursor(Gdk.Cursor.new_from_name(treeview.get_display(), 'pointer'))
+            else:
+                self.set_cursor(None)
         else:
             self.set_cursor(None)
 
