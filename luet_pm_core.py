@@ -275,27 +275,17 @@ class PackageFilter:
     """
     Handles filtering of protected and hidden packages.
     """
-    
-    @staticmethod
-    def get_protected_packages():
-        """
-        Returns a dictionary of protected packages with their protection messages.
-        """
-        return {
-            "apps/grub": "This package is protected and can't be removed",
-            "system/kernel-updater": "This package is protected and can't be removed",
-            "system/luet": "This package is protected and can't be removed",
-            "layers/system-x": "This layer is protected and can't be removed",
-            "layers/sys-fs": "This layer is protected and can't be removed",
-            "layers/X": "This layer is protected and can't be removed",
-        }
-    
-    @staticmethod
-    def get_hidden_packages():
-        """
-        Returns a dictionary of hidden packages with their hiding reasons.
-        """
-        return {
+    # Define dictionaries ONCE as class constants
+    _PROTECTED_PKGS = {
+        "apps/grub": "This package is protected and can't be removed",
+        "system/kernel-updater": "This package is protected and can't be removed",
+        "system/luet": "This package is protected and can't be removed",
+        "layers/system-x": "This layer is protected and can't be removed",
+        "layers/sys-fs": "This layer is protected and can't be removed",
+        "layers/X": "This layer is protected and can't be removed",
+    }
+
+    _HIDDEN_PKGS = {
             # Devel repositories we hide
             "repository/mocaccino-desktop": "Devel repository",
             "repository/mocaccino-os-commons": "Devel repository",
@@ -324,7 +314,16 @@ class PackageFilter:
             "repo-updater/mocaccino-desktop-stable": "Hide desktop repo-updater",
             "repo-updater/mocaccino-community-stable": "Hide desktop repo-updater",
             "kernel-5.9/debian-full": "Old repository, not in use anymore",
-        }
+    }
+
+
+    @staticmethod
+    def get_protected_packages():
+        return PackageFilter._PROTECTED_PKGS
+    
+    @staticmethod
+    def get_hidden_packages():
+        return PackageFilter._HIDDEN_PKGS
     
     @staticmethod
     def is_package_hidden(category, name):
