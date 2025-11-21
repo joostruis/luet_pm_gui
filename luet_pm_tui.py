@@ -704,8 +704,13 @@ class LuetTUI:
         
         def on_finish(returncode, message):
             if returncode == 0:
-                # ADD: Refresh installed packages cache after full upgrade
+                # 1. Refresh installed packages cache
                 self.refresh_installed_packages_cache()
+                
+                # 2. FIX: If we have an active search, re-run it to update symbols
+                if self.search_query:
+                    self.run_search(self.search_query)
+
                 self.set_status(_("System upgrade completed successfully"))
             else:
                 final_msg = message if returncode != 0 else _("Error during system upgrade")

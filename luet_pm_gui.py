@@ -1106,11 +1106,27 @@ class SearchApp(Gtk.Window):
             if self.inhibit_cookie:
                 self.get_application().uninhibit(self.inhibit_cookie)
                 self.inhibit_cookie = None
+
             self.stop_spinner()
+            
             if returncode == 0:
+                # 1. Refresh cache
                 self.refresh_installed_packages_cache()
                 self.set_status_message(message)
                 self.update_sync_info_label()
+                
+                # 2. FIX: Re-run search to update the list with new cache data
+                if self.last_search:
+                    advanced = self.advanced_search_checkbox.get_active()
+                    search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
+                    
+                    self.clear_liststore()
+
+                    self.start_spinner(_("Searching for {}...").format(self.last_search))
+
+                    self.start_search_thread(search_cmd)
+                else:
+                    self.enable_gui()
             else:
                 self.set_status_message(_("Error during system upgrade") if message.startswith("System") else message)
             self.enable_gui()
