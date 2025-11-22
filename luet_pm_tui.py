@@ -1320,7 +1320,7 @@ class LuetTUI:
             is_busy = not is_ready and not self.is_error_status
 
             if ch != -1:
-                if ch in (ord('q'), ord('Q')):
+                if ch in (ord('q'), ord('Q')) and self.focus != 'search':
                     self.running = False
                     break
                 
