@@ -666,11 +666,29 @@ class SearchApp(Gtk.Window):
 
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text().strip()
-        if not package_name: return
+        if not package_name: 
+            return
+        
+        # FIX: Add validation
+        # Remove null bytes and control characters
+        sanitized_name = package_name.replace('\0', '').replace('\n', '').replace('\r', '')
+        
+        # Limit length
+        if len(sanitized_name) > 256:
+            sanitized_name = sanitized_name[:256]
+            self.search_entry.set_text(sanitized_name)
+        
+        if not sanitized_name:
+            self.set_status_message(_("Invalid search query"))
+            return
+        
         advanced = self.advanced_search_checkbox.get_active()
-        search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", package_name]
-        self.last_search = package_name
-        self.start_spinner(_("Searching for {}...").format(package_name))
+        search_cmd = ["luet", "search", "-o", "json", 
+                    "--by-label-regex" if advanced else "-q", 
+                    sanitized_name]
+        
+        self.last_search = sanitized_name
+        self.start_spinner(_("Searching for {}...").format(sanitized_name))
         self.disable_gui()
         self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
         self.search_thread.start()

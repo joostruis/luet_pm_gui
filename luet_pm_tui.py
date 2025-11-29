@@ -802,29 +802,35 @@ class LuetTUI:
         self.set_status(_("Searching for {}...").format(query))
         self.draw()
         
-        # FIX: Escape regex special characters to prevent Go's regexp parser (used by luet) 
-        # from crashing on input like "light\".
-        escaped_query = re.escape(query) 
+        # FIX: Validate input instead of escaping
+        # Remove any null bytes and control characters that could cause issues
+        sanitized_query = query.replace('\0', '').replace('\n', '').replace('\r', '')
+        
+        # Optional: limit length to prevent abuse
+        if len(sanitized_query) > 256:
+            sanitized_query = sanitized_query[:256]
+        
+        if not sanitized_query.strip():
+            self.scheduler.schedule(self.set_status, _("Invalid search query"), True)
+            return
 
         def worker():
             try:
-                # Use cached installed packages, but if cache isn't initialized yet, fetch it now
+                # Use cached installed packages
                 if not self.cache_initialized:
                     installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
                 else:
                     installed_packages_dict = self.installed_packages_cache
                 
-                # Use the escaped query for the command
-                search_cmd = ["luet", "search", "-o", "json", "-q", escaped_query]
+                # Pass the sanitized query directly - subprocess with list args is safe
+                search_cmd = ["luet", "search", "-o", "json", "-q", sanitized_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
                 
-                # FIX: Use centralized SearchProcessor like the GUI does
                 result = SearchProcessor.process_search_results(result, installed_packages_dict)
                 
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
                 self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))
-                # Set status message as requested by the user
                 self.scheduler.schedule(self.set_status, _("Error executing the search command"), error=True)
         threading.Thread(target=worker, daemon=True).start()
 
