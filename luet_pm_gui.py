@@ -368,6 +368,7 @@ class SearchApp(Gtk.Window):
         self.search_thread = None
         self.lock = threading.Lock()
         self.status_message_lock = threading.Lock()
+        self.cache_lock = threading.Lock()
         self.highlighted_row_path = None
         self.HIGHLIGHT_COLOR = self.get_theme_highlight_color()
 
@@ -417,17 +418,21 @@ class SearchApp(Gtk.Window):
 
     def _on_cache_updated(self, new_cache):
         """Callback when cache update completes"""
-        self.installed_packages_cache = new_cache
-        self.cache_initialized = True
+        with self.cache_lock:
+            self.installed_packages_cache = new_cache
+            self.cache_initialized = True
 
     def refresh_installed_packages_cache(self):
         """Refresh the cached list of installed packages"""
         try:
-            self.installed_packages_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
-            self.cache_initialized = True
+            new_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+            with self.cache_lock:
+                self.installed_packages_cache = new_cache
+                self.cache_initialized = True
         except Exception as e:
             print(f"Error refreshing installed packages cache: {e}")
-            self.installed_packages_cache = {}
+            with self.cache_lock:
+                self.installed_packages_cache = {}
 
     # Mocking for local development without luet_pm_core.py
     def get_last_sync_time(self):
@@ -695,12 +700,13 @@ class SearchApp(Gtk.Window):
 
     def run_search(self, search_command):
         """ Worker thread: Calls core logic """
-        
+
         # Use cached installed packages, but if cache isn't initialized yet, fetch it now
-        if not self.cache_initialized:
-            installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
-        else:
-            installed_packages_dict = self.installed_packages_cache
+        with self.cache_lock:
+            if not self.cache_initialized:
+                installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+            else:
+                installed_packages_dict = self.installed_packages_cache
 
         # Run the search
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)

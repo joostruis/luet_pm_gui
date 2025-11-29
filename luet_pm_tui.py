@@ -208,6 +208,7 @@ class LuetTUI:
         self.scheduler = Scheduler()
         self.menu = Menu(self)
         self.lock = threading.Lock()
+        self.cache_lock = threading.Lock()
 
         self.status_message = _("Ready")
         self.is_error_status = False
@@ -275,17 +276,21 @@ class LuetTUI:
 
     def _on_cache_updated(self, new_cache):
         """Callback when cache update completes"""
-        self.installed_packages_cache = new_cache
-        self.cache_initialized = True
+        with self.cache_lock:
+            self.installed_packages_cache = new_cache
+            self.cache_initialized = True
 
     def refresh_installed_packages_cache(self):
         """Refresh the cached list of installed packages"""
         try:
-            self.installed_packages_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
-            self.cache_initialized = True
+            new_cache = PackageState.get_installed_packages(self.command_runner.run_sync)
+            with self.cache_lock:
+                self.installed_packages_cache = new_cache
+                self.cache_initialized = True
         except Exception as e:
             print(f"Error refreshing installed packages cache: {e}")
-            self.installed_packages_cache = {}
+            with self.cache_lock:
+                self.installed_packages_cache = {}
 
     def init_app(self):
         si = SyncInfo.get_last_sync_time()
@@ -817,10 +822,11 @@ class LuetTUI:
         def worker():
             try:
                 # Use cached installed packages
-                if not self.cache_initialized:
-                    installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
-                else:
-                    installed_packages_dict = self.installed_packages_cache
+                with self.cache_lock:
+                    if not self.cache_initialized:
+                        installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
+                    else:
+                        installed_packages_dict = self.installed_packages_cache
                 
                 # Pass the sanitized query directly - subprocess with list args is safe
                 search_cmd = ["luet", "search", "-o", "json", "-q", sanitized_query]
