@@ -18,6 +18,7 @@ import shutil
 import os
 import sys
 import re
+import signal
 
 # Import core backend
 try:
@@ -55,6 +56,29 @@ except ImportError:
     pkg_version = None
 
 locale.setlocale(locale.LC_ALL, '')
+
+# -------------------------
+# Signal handling for graceful shutdown
+# -------------------------
+_tui_app_instance = None
+
+def setup_signal_handlers():
+    """Set up signal handlers for graceful TUI shutdown"""
+    def signal_handler(signum, frame):
+        global _tui_app_instance
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
+        if _tui_app_instance:
+            _tui_app_instance.running = False
+        else:
+            # Restore terminal and exit
+            try:
+                curses.endwin()
+            except:
+                pass
+            sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 # --- Scheduler for Thread-Safe UI Updates ---
 class Scheduler:
@@ -203,6 +227,8 @@ class Menu:
 class LuetTUI:
     
     def __init__(self, stdscr):
+        global _tui_app_instance
+        _tui_app_instance = self  # Register for signal handler
         self.stdscr = stdscr
         self.running = True
         self.scheduler = Scheduler()
@@ -251,7 +277,26 @@ class LuetTUI:
         
         # Start async cache population
         self.refresh_installed_packages_cache_async()
-        
+
+    def cleanup(self):
+        """Clean up resources before exit"""
+        try:
+            # Clear windows
+            if self.search_win:
+                self.search_win.clear()
+                self.search_win = None
+            if self.log_win:
+                self.log_win.clear()
+                self.log_win = None
+            if self.results_win:
+                self.results_win.clear()
+                self.results_win = None
+            
+            # Restore cursor
+            curses.curs_set(1)
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+
     def _get_elevation_cmd(self):
         if os.getuid() == 0:
             return None
@@ -1320,119 +1365,128 @@ class LuetTUI:
             self.draw()
 
     def run(self):
-        while self.running:
-            self.scheduler.drain()
-            
-            self.spinner.advance()
-            
-            ch = self.stdscr.getch()
-            h, w = self.stdscr.getmaxyx()
-            
-            is_ready = self.status_message == _("Ready")
-            is_busy = not is_ready and not self.is_error_status
-
-            if ch != -1:
-                if ch in (ord('q'), ord('Q')) and self.focus != 'search':
-                    self.running = False
-                    break
-                
-                if ch in (ord('l'), ord('L')) and self.focus != 'search':
-                    self.log_visible = not self.log_visible
-                    self.log_scroll = 0
-                
-                elif ch == curses.KEY_PPAGE:
-                    if self.log_visible and self.visible_log_height_lines > 0:
-                        log_height_lines = self.visible_log_height_lines
-                        max_scroll = max(0, len(self.log_lines) - log_height_lines)
-                        self.log_scroll = min(max_scroll, self.log_scroll + log_height_lines)
-                
-                elif ch == curses.KEY_NPAGE:
-                    if self.log_visible and self.visible_log_height_lines > 0:
-                        log_height_lines = self.visible_log_height_lines
-                        self.log_scroll = max(0, self.log_scroll - log_height_lines)
-
-                if is_busy:
-                    if self.menu.is_open and ch in (27, curses.KEY_F9):
-                         self.menu.is_open = False
+            try:
+                while self.running:
+                    self.scheduler.drain()
                     
+                    self.spinner.advance()
+                    
+                    ch = self.stdscr.getch()
+                    h, w = self.stdscr.getmaxyx()
+                    
+                    is_ready = self.status_message == _("Ready")
+                    is_busy = not is_ready and not self.is_error_status
+
+                    if ch != -1:
+                        if ch in (ord('q'), ord('Q')) and self.focus != 'search':
+                            self.running = False
+                            break
+                        
+                        if ch in (ord('l'), ord('L')) and self.focus != 'search':
+                            self.log_visible = not self.log_visible
+                            self.log_scroll = 0
+                        
+                        elif ch == curses.KEY_PPAGE:
+                            if self.log_visible and self.visible_log_height_lines > 0:
+                                log_height_lines = self.visible_log_height_lines
+                                max_scroll = max(0, len(self.log_lines) - log_height_lines)
+                                self.log_scroll = min(max_scroll, self.log_scroll + log_height_lines)
+                        
+                        elif ch == curses.KEY_NPAGE:
+                            if self.log_visible and self.visible_log_height_lines > 0:
+                                log_height_lines = self.visible_log_height_lines
+                                self.log_scroll = max(0, self.log_scroll - log_height_lines)
+
+                        if is_busy:
+                            if self.menu.is_open and ch in (27, curses.KEY_F9):
+                                self.menu.is_open = False
+                            
+                            self.draw()
+                            time.sleep(0.03)
+                            continue
+                    
+                        # If an error is displayed, any key press should clear it and return to Ready
+                        if self.is_error_status and ch not in (curses.KEY_F9, 27, ord('q'), ord('Q')):
+                            self.set_status(_("Ready"))
+                            # We continue to process the key press normally
+
+                        if self.menu.is_open:
+                            self.menu.handle_input(ch)
+                        
+                        elif self.focus == 'search':
+                            if ch in (curses.KEY_ENTER, 10, 13):
+                                if self.search_query:
+                                    self.run_search(self.search_query)
+                                self.focus = 'list'
+                            
+                            elif ch in (curses.KEY_DOWN, 9, 27):
+                                self.focus = 'list'
+                            
+                            elif ch == curses.KEY_F9:
+                                self.focus = 'list'
+                                self.menu.is_open = True
+
+                            elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                                if self.search_cursor_pos > 0:
+                                    self.search_query = self.search_query[:self.search_cursor_pos - 1] + self.search_query[self.search_cursor_pos:]
+                                    self.search_cursor_pos -= 1
+                            elif ch == curses.KEY_DC:
+                                self.search_query = self.search_query[:self.search_cursor_pos] + self.search_query[self.search_cursor_pos + 1:]
+                            elif ch == curses.KEY_LEFT:
+                                self.search_cursor_pos = max(0, self.search_cursor_pos - 1)
+                            elif ch == curses.KEY_RIGHT:
+                                self.search_cursor_pos = min(len(self.search_query), self.search_cursor_pos + 1)
+                            elif ch == curses.KEY_HOME:
+                                self.search_cursor_pos = 0
+                            elif ch == curses.KEY_END:
+                                self.search_cursor_pos = len(self.search_query)
+                            elif curses.ascii.isprint(ch):
+                                try:
+                                    s = chr(ch)
+                                    self.search_query = self.search_query[:self.search_cursor_pos] + s + self.search_query[self.search_cursor_pos:]
+                                    self.search_cursor_pos += 1
+                                except:
+                                    pass
+                        
+                        elif self.focus == 'list':
+                            if ch in (curses.KEY_F9,):
+                                self.menu.is_open = True
+                            elif ch in (ord('s'), ord('S')):
+                                self.focus = 'search'
+                                self.search_cursor_pos = len(self.search_query)
+                            
+                            elif ch == curses.KEY_DOWN:
+                                if self.selected_index < len(self.results) - 1:
+                                    self.selected_index += 1
+                            elif ch == curses.KEY_UP:
+                                if self.selected_index > 0:
+                                    self.selected_index -= 1
+                                else:
+                                    self.focus = 'search'
+                                    self.search_cursor_pos = len(self.search_query)
+                            elif ch in (10, 13):
+                                self.show_details()
+                            elif ch in (ord('i'), ord('I'), ord(' ')):
+                                self.do_install_uninstall_selected()
+                                
                     self.draw()
                     time.sleep(0.03)
-                    continue
-             
-                # If an error is displayed, any key press should clear it and return to Ready
-                if self.is_error_status and ch not in (curses.KEY_F9, 27, ord('q'), ord('Q')):
-                    self.set_status(_("Ready"))
-                    # We continue to process the key press normally
-
-                if self.menu.is_open:
-                    self.menu.handle_input(ch)
-                
-                elif self.focus == 'search':
-                    if ch in (curses.KEY_ENTER, 10, 13):
-                        if self.search_query:
-                            self.run_search(self.search_query)
-                        self.focus = 'list'
-                    
-                    elif ch in (curses.KEY_DOWN, 9, 27):
-                        self.focus = 'list'
-                    
-                    elif ch == curses.KEY_F9:
-                        self.focus = 'list'
-                        self.menu.is_open = True
-
-                    elif ch in (curses.KEY_BACKSPACE, 127, 8):
-                        if self.search_cursor_pos > 0:
-                            self.search_query = self.search_query[:self.search_cursor_pos - 1] + self.search_query[self.search_cursor_pos:]
-                            self.search_cursor_pos -= 1
-                    elif ch == curses.KEY_DC:
-                        self.search_query = self.search_query[:self.search_cursor_pos] + self.search_query[self.search_cursor_pos + 1:]
-                    elif ch == curses.KEY_LEFT:
-                        self.search_cursor_pos = max(0, self.search_cursor_pos - 1)
-                    elif ch == curses.KEY_RIGHT:
-                        self.search_cursor_pos = min(len(self.search_query), self.search_cursor_pos + 1)
-                    elif ch == curses.KEY_HOME:
-                        self.search_cursor_pos = 0
-                    elif ch == curses.KEY_END:
-                        self.search_cursor_pos = len(self.search_query)
-                    elif curses.ascii.isprint(ch):
-                        try:
-                            s = chr(ch)
-                            self.search_query = self.search_query[:self.search_cursor_pos] + s + self.search_query[self.search_cursor_pos:]
-                            self.search_cursor_pos += 1
-                        except:
-                            pass
-                
-                elif self.focus == 'list':
-                    if ch in (curses.KEY_F9,):
-                        self.menu.is_open = True
-                    elif ch in (ord('s'), ord('S')):
-                        self.focus = 'search'
-                        self.search_cursor_pos = len(self.search_query)
-                    
-                    elif ch == curses.KEY_DOWN:
-                        if self.selected_index < len(self.results) - 1:
-                            self.selected_index += 1
-                    elif ch == curses.KEY_UP:
-                        if self.selected_index > 0:
-                            self.selected_index -= 1
-                        else:
-                            self.focus = 'search'
-                            self.search_cursor_pos = len(self.search_query)
-                    elif ch in (10, 13):
-                        self.show_details()
-                    elif ch in (ord('i'), ord('I'), ord(' ')):
-                        self.do_install_uninstall_selected()
-                        
-            self.draw()
-            time.sleep(0.03)
-
-        curses.curs_set(1)
+            finally:
+                # Always cleanup, even on exception or signal
+                self.cleanup()
 
 def main(stdscr):
+    # Set up signal handlers before creating app
+    setup_signal_handlers()
+    
     app = None
     try:
         app = LuetTUI(stdscr)
         app.run()
+    except KeyboardInterrupt:
+        # Handle Ctrl+C gracefully
+        if app:
+            app.cleanup()
     except Exception:
         if app and app.search_win: app.search_win = None
         if app and app.log_win: app.log_win = None
@@ -1444,6 +1498,9 @@ if __name__ == "__main__":
     try:
         print(_("Starting Vajo: a Luet TUI frontend..."))
         curses.wrapper(main)
+    except KeyboardInterrupt:
+        print("\nShutdown complete.")
+        sys.exit(0)
     except Exception as e:
         print(_("An error occurred outside of curses: {}").format(e), file=sys.stderr)
         sys.exit(1)

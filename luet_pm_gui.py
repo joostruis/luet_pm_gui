@@ -14,6 +14,7 @@ import webbrowser
 import datetime
 import gettext
 import locale
+import signal
 
 try:
     from packaging import version as pkg_version
@@ -26,6 +27,21 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk, Pango, Gio
 
 GLib.set_prgname('vajo')
+
+# -------------------------
+# Signal handling for graceful shutdown
+# -------------------------
+def setup_signal_handlers(app):
+    """Set up signal handlers for graceful shutdown"""
+    def signal_handler(signum, frame):
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
+        if app and hasattr(app, 'quit'):
+            GLib.idle_add(app.quit)
+        else:
+            sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 # -------------------------
 # Set up locale and translation
@@ -362,6 +378,9 @@ class SearchApp(Gtk.Window):
         super().__init__(title=_("Luet Package Search"), application=app)
         self.set_default_size(1000, 600)
         self.set_icon_name("vajo")
+
+        # Connect delete-event for cleanup
+        self.connect("delete-event", self.on_window_delete)
 
         self.inhibit_cookie = None
         self.last_search = ""
@@ -1226,12 +1245,31 @@ class SearchApp(Gtk.Window):
             self.clear_cache_item.set_sensitive(False)
             self.clear_cache_item.set_label(_("Clear Luet cache"))
 
+    def on_window_delete(self, widget, event):
+        """Handle window close event with cleanup"""
+        # Release any inhibit cookie
+        if self.inhibit_cookie:
+            try:
+                self.get_application().uninhibit(self.inhibit_cookie)
+                self.inhibit_cookie = None
+            except Exception as e:
+                print(f"Error releasing inhibit cookie: {e}")
+        
+        # Stop spinner
+        if self.spinner_timeout_id:
+            GLib.source_remove(self.spinner_timeout_id)
+            self.spinner_timeout_id = None
+        
+        return False  # Allow window to close
+
 # -------------------------
 # Entrypoint
 # -------------------------
 class LuetApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id="org.mocaccino.LuetSearch", flags=Gio.ApplicationFlags.FLAGS_NONE)
+        setup_signal_handlers(self)
+
     def do_activate(self):
         if hasattr(self, "win") and self.win:
             self.win.present()
