@@ -55,8 +55,6 @@ except ImportError:
     print("Please run 'pip install packaging'")
     pkg_version = None
 
-locale.setlocale(locale.LC_ALL, '')
-
 # -------------------------
 # Signal handling for graceful shutdown
 # -------------------------
