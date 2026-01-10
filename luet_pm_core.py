@@ -157,11 +157,11 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.3.3"
+        return "0.8.3.4"
 
     @staticmethod
     def get_copyright():
-        return _("© 2023 - 2025 MocaccinoOS. All Rights Reserved")
+        return _("© 2023 - 2026 MocaccinoOS. All Rights Reserved")
 
     @staticmethod
     def get_website():
@@ -278,6 +278,7 @@ class PackageFilter:
     # Define dictionaries ONCE as class constants
     _PROTECTED_PKGS = {
         "apps/grub": "This package is protected and can't be removed",
+        "system/gcc-base": "This package is protected and can't be removed",
         "system/kernel-updater": "This package is protected and can't be removed",
         "system/luet": "This package is protected and can't be removed",
         "layers/system-x": "This layer is protected and can't be removed",
