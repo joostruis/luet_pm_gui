@@ -959,9 +959,7 @@ class SearchApp(Gtk.Window):
             return
         dlg.destroy()
 
-        # Refactor 1: Use Core to build uninstall command
-        uninstall_cmd = PackageOperations.build_uninstall_command(category, pkg_fullname)
-        
+        # Use the new fallback-enabled uninstall method
         self.disable_gui()
         self.start_spinner(_("Uninstalling {}...").format(name))
         self.set_status_message(_("Uninstalling {}...").format(pkg_fullname))
@@ -984,7 +982,14 @@ class SearchApp(Gtk.Window):
                 self.enable_gui()
         
         try:
-            PackageOperations.run_uninstallation(self.command_runner.run_realtime, self.append_to_log, on_uninstall_done, uninstall_cmd)
+            # Use the new method with automatic fallback
+            PackageOperations.run_uninstallation_with_fallback(
+                self.command_runner.run_realtime, 
+                self.append_to_log, 
+                on_uninstall_done, 
+                category,
+                pkg_fullname
+            )
         except Exception as e:
             print("Exception launching uninstallation thread:", e)
             self.set_status_message(_("Error uninstalling package")); self.output_expander.hide(); self.enable_gui(); self.stop_spinner()

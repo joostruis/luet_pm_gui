@@ -157,7 +157,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.3.4"
+        return "0.8.3.5"
 
     @staticmethod
     def get_copyright():
@@ -717,6 +717,100 @@ class PackageOperations:
             require_root=True,
             on_line_received=log_callback,
             on_finished=on_finish_callback
+        )
+    
+    @staticmethod
+    def run_uninstallation_with_fallback(command_runner_realtime, log_callback, on_finish_callback, category, full_package_name):
+        """
+        Runs uninstallation with automatic fallback to regular uninstall if needed.
+        For 'apps' category, first tries with --solver-concurrent --full flags.
+        If that produces "Nothing to do", retries with regular uninstall.
+        Shows output from first attempt in real-time, suppresses header on retry.
+        """
+        collected_output = []
+        seen_uninstall_header = False
+        got_nothing_to_do = False
+        
+        def collect_and_log(line):
+            """Collects output lines and forwards to log callback immediately"""
+            nonlocal seen_uninstall_header, got_nothing_to_do
+            collected_output.append(line)
+            
+            # Check if this is the "Nothing to do" line
+            if "Nothing to do" in line:
+                got_nothing_to_do = True
+                # Don't log it yet - we'll suppress it if we retry
+                return
+            
+            # Log the line
+            log_callback(line)
+            
+            # Track if we've seen the ":::> Uninstall" header
+            if ":::>" in line and "Uninstall" in line:
+                seen_uninstall_header = True
+        
+        def collect_retry_output(line):
+            """For retry: skip header/banner lines, only show actual removal actions"""
+            nonlocal seen_uninstall_header
+            
+            # Skip the Luet banner lines
+            if any(skip in line for skip in [
+                "Luet 0.0.0",
+                "Copyright (C)",
+                "This program comes",
+                "This is free software",
+                "For documentation"
+            ]):
+                return
+            
+            # Skip the ":::> Uninstall" header if we already showed it from first attempt
+            if ":::>" in line and "Uninstall" in line:
+                if seen_uninstall_header:
+                    return
+                seen_uninstall_header = True
+            
+            # Forward actual removal/action lines and other content
+            log_callback(line)
+        
+        def on_first_attempt_done(returncode):
+            """Handles the result of the first uninstall attempt"""
+            nonlocal got_nothing_to_do
+            
+            # If uninstall succeeded, we're done (output already shown)
+            if returncode == 0 and not got_nothing_to_do:
+                on_finish_callback(returncode)
+                return
+            
+            # If it's apps category and we got "Nothing to do", try fallback
+            if category == "apps" and got_nothing_to_do:
+                # Build regular uninstall command without extra flags
+                fallback_cmd = ["luet", "uninstall", "-y", full_package_name]
+                
+                # Retry with regular uninstall - filter output to skip duplicate header
+                command_runner_realtime(
+                    fallback_cmd,
+                    require_root=True,
+                    on_line_received=collect_retry_output,
+                    on_finished=on_finish_callback
+                )
+            else:
+                # Not apps category or different error - pass through
+                # If we had "Nothing to do" but it's not apps category, show it now
+                if got_nothing_to_do:
+                    for line in collected_output:
+                        if "Nothing to do" in line:
+                            log_callback(line)
+                on_finish_callback(returncode)
+        
+        # Build initial uninstall command (with category-specific flags)
+        initial_cmd = PackageOperations.build_uninstall_command(category, full_package_name)
+        
+        # Run the first attempt - show output in real-time
+        command_runner_realtime(
+            initial_cmd,
+            require_root=True,
+            on_line_received=collect_and_log,
+            on_finished=on_first_attempt_done
         )
 
     @staticmethod

@@ -935,10 +935,6 @@ class LuetTUI:
             self.installed_packages_cache = new_cache
             self.cache_initialized = True
             
-            # Determine if we just finished an install or uninstall for the log message
-            action_name = _("Uninstall") if installed else _("Install")
-            self.append_to_log(_("{} completed successfully.").format(action_name))
-            
             self.set_status(_("Ready"))
             if self.search_query: 
                 self.run_search(self.search_query)
@@ -947,11 +943,8 @@ class LuetTUI:
             # Package shows "Remove" in Action column - so uninstall it
             if not self.confirm_yes_no(_("Do you want to uninstall {}?").format(full_name)): 
                 return
-            
-            cmd = PackageOperations.build_uninstall_command(pkg['category'], full_name)
                 
             self.set_status(_("Uninstalling {}...").format(full_name))
-            self.append_to_log(_("Uninstall {} initiated.").format(full_name))
             self.draw()
             
             def on_log(line): self.append_to_log(line)
@@ -965,15 +958,16 @@ class LuetTUI:
                         on_refresh_complete
                     )
                 else:
-                    self.append_to_log(_("Uninstall failed for {}.").format(full_name))
                     error_msg = _("Error uninstalling: '{}'").format(full_name)
                     self.set_status(error_msg, error=True)
                     
-            PackageOperations.run_uninstallation(
+            # Use the new method with automatic fallback
+            PackageOperations.run_uninstallation_with_fallback(
                 self.command_runner.run_realtime,
                 lambda ln: self.scheduler.schedule(on_log, ln),
                 lambda rc: self.scheduler.schedule(on_done, rc),
-                cmd
+                pkg['category'],
+                full_name
             )
         else:
             # Package shows "Install" in Action column - so install it
@@ -982,7 +976,6 @@ class LuetTUI:
             cmd = PackageOperations.build_install_command(full_name)
 
             self.set_status(_("Installing {}...").format(full_name))
-            self.append_to_log(_("Install {} initiated.").format(full_name))
             self.draw()
             
             def on_log(line): self.append_to_log(line)
@@ -996,7 +989,6 @@ class LuetTUI:
                         on_refresh_complete
                     )
                 else:
-                    self.append_to_log(_("Install failed."))
                     error_msg = _("Error installing: '{}'").format(full_name)
                     self.set_status(error_msg, error=True)
                     
