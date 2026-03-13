@@ -415,17 +415,18 @@ class SystemChecker:
         candidates = {}
         import re
         pkg_id_pattern = re.compile(r"(\S+/\S+)")
-        
+        version_suffix_pattern = re.compile(r'-\d+(\.\d+)*.*$')
+
         for line in output.split('\n'):
             line = line.strip()
             match = pkg_id_pattern.search(line)
             if match:
-                full_pkg_id = match.group(1).split(':')[0] 
+                full_pkg_id = match.group(1).split(':')[0]
                 parts = full_pkg_id.split('/')
                 if len(parts) >= 2:
                     category = parts[-2]
                     pkg_name_with_version = parts[-1]
-                    pkg_name_only = pkg_name_with_version.split('-')[0]
+                    pkg_name_only = version_suffix_pattern.sub('', pkg_name_with_version)
                     full_name_for_reinstall = f"{category}/{pkg_name_only}"
                     if full_name_for_reinstall:
                         candidates[full_name_for_reinstall] = True
