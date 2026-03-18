@@ -20,6 +20,16 @@ import sys
 import re
 import signal
 
+# -------------------------
+# Version-Agnostic Core Discovery
+# -------------------------
+# Define the shared path where luet_pm_core.py is installed
+SHARED_LIB_PATH = "/usr/share/vajo"
+
+if os.path.exists(SHARED_LIB_PATH):
+    # Insert at the beginning of the path to prioritize this version
+    sys.path.insert(0, SHARED_LIB_PATH)
+
 # Import core backend
 try:
     from luet_pm_core import (
@@ -41,10 +51,10 @@ try:
         ngettext,
     )
 except ImportError as e:
-    print("FATAL: Could not import luet_pm_core.py. Error: {}".format(e), file=sys.stderr)
+    print(f"FATAL: Could not import luet_pm_core.py from {SHARED_LIB_PATH}. Error: {e}", file=sys.stderr)
     sys.exit(1)
 except Exception as e:
-    print("Failed to initialize luet_pm_core: {}".format(e), file=sys.stderr)
+    print(f"Failed to initialize luet_pm_core: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Import packaging for version comparison

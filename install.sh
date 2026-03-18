@@ -29,9 +29,7 @@ for lang in $(ls locale 2>/dev/null); do
     fi
 done
 
-# Install Python core module
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-SITE_PACKAGES_DIR="/usr/lib/python${PYTHON_VERSION}/site-packages"
-
-install -d "$SITE_PACKAGES_DIR"
-install -m644 luet_pm_core.py "$SITE_PACKAGES_DIR/luet_pm_core.py"
+# Install Python core module to a version-independent location
+SHARED_DIR="/usr/share/vajo"
+install -d "$SHARED_DIR"
+install -m644 luet_pm_core.py "$SHARED_DIR/luet_pm_core.py"

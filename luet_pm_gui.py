@@ -55,15 +55,26 @@ _ = gettext.gettext
 ngettext = gettext.ngettext
 
 # -------------------------
-# Core Logic Dependencies (Import or Crash if missing)
+# Core Logic Dependencies
 # -------------------------
-try:
-    # Attempt to import the actual core logic modules
-    from luet_pm_core import CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, SearchProcessor
-except ImportError:
-    print("FATAL: luet_pm_core.py not found. This application is unusable without its core dependency.")
-    sys.exit(1)
+# Define the shared path where luet_pm_core.py now lives
+SHARED_LIB_PATH = "/usr/share/vajo"
 
+if os.path.exists(SHARED_LIB_PATH):
+    sys.path.insert(0, SHARED_LIB_PATH)
+
+try:
+    # Now Python 3.11, 3.13, or any future version will look in /usr/share/vajo first
+    from luet_pm_core import (
+        CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
+        CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
+        PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, 
+        SearchProcessor
+    )
+except ImportError as e:
+    print(f"FATAL: luet_pm_core.py not found in {SHARED_LIB_PATH} or system paths.")
+    print(f"Error: {e}")
+    sys.exit(1)
 
 # -------------------------
 # About dialog
