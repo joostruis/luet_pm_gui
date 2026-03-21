@@ -57,14 +57,18 @@ ngettext = gettext.ngettext
 # -------------------------
 # Core Logic Dependencies
 # -------------------------
-# Define the shared path where luet_pm_core.py now lives
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
 SHARED_LIB_PATH = "/usr/share/vajo"
 
-if os.path.exists(SHARED_LIB_PATH):
-    sys.path.insert(0, SHARED_LIB_PATH)
+# Prefer local development version if present
+if os.path.exists(LOCAL_CORE):
+    sys.path.insert(0, SCRIPT_DIR)
+else:
+    if os.path.exists(SHARED_LIB_PATH):
+        sys.path.insert(0, SHARED_LIB_PATH)
 
 try:
-    # Now Python 3.11, 3.13, or any future version will look in /usr/share/vajo first
     from luet_pm_core import (
         CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
         CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
@@ -72,7 +76,7 @@ try:
         SearchProcessor, RollbackManager
     )
 except ImportError as e:
-    print(f"FATAL: luet_pm_core.py not found in {SHARED_LIB_PATH} or system paths.")
+    print("FATAL: luet_pm_core.py not found in local directory or /usr/share/vajo.")
     print(f"Error: {e}")
     sys.exit(1)
 
