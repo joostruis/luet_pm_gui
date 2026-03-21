@@ -69,7 +69,7 @@ try:
         CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
         CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
         PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, 
-        SearchProcessor
+        SearchProcessor, RollbackManager
     )
 except ImportError as e:
     print(f"FATAL: luet_pm_core.py not found in {SHARED_LIB_PATH} or system paths.")
@@ -484,16 +484,20 @@ class SearchApp(Gtk.Window):
 
     def create_menu(self, menu_bar):
         file_menu = Gtk.Menu()
-        update_repositories_item = Gtk.MenuItem(label=_("Update repositories"))
-        update_repositories_item.connect("activate", self.update_repositories)
-        file_menu.append(update_repositories_item)
+        self.update_repositories_item = Gtk.MenuItem(label=_("Update repositories"))
+        self.update_repositories_item.connect("activate", self.update_repositories)
+        file_menu.append(self.update_repositories_item)
         file_menu.append(Gtk.SeparatorMenuItem())
-        full_upgrade_item = Gtk.MenuItem(label=_("Full system upgrade"))
-        full_upgrade_item.connect("activate", self.on_full_system_upgrade)
-        file_menu.append(full_upgrade_item)
+        self.full_upgrade_item = Gtk.MenuItem(label=_("Full system upgrade"))
+        self.full_upgrade_item.connect("activate", self.on_full_system_upgrade)
+        file_menu.append(self.full_upgrade_item)
         check_system_item = Gtk.MenuItem(label=_("Check system"))
         check_system_item.connect("activate", self.check_system)
         file_menu.append(check_system_item)
+        self.rollback_item = Gtk.MenuItem(label=_("Roll back"))
+        self.rollback_item.connect("activate", self.on_rollback_clicked)
+        self.rollback_item.show()
+        file_menu.append(self.rollback_item)
         self.clear_cache_item = Gtk.MenuItem(label=_("Clear Luet cache"))
         self.clear_cache_item.connect("activate", self.on_clear_cache_clicked)
         file_menu.append(self.clear_cache_item)
@@ -1260,6 +1264,243 @@ class SearchApp(Gtk.Window):
         else:
             self.clear_cache_item.set_sensitive(False)
             self.clear_cache_item.set_label(_("Clear Luet cache"))
+
+        is_stable = RollbackManager.is_stable_system()
+        is_pinned = RollbackManager.is_pinned()
+
+        if is_pinned:
+            # Show current pin info and allow unpin
+            pinned_version = RollbackManager.get_current_desktop_version() or ""
+            self.rollback_item.set_label(_("View pinned state"))
+            self.rollback_item.set_sensitive(True)
+            self.update_repositories_item.set_sensitive(False)
+            self.full_upgrade_item.set_sensitive(False)
+        else:
+            self.rollback_item.set_label(_("Roll back"))
+            self.rollback_item.set_sensitive(is_stable)
+            self.update_repositories_item.set_sensitive(True)
+            self.full_upgrade_item.set_sensitive(True)
+
+    def _show_pinned_state_dialog(self):
+        version = RollbackManager.get_current_desktop_version() or _("unknown")
+        dlg = Gtk.MessageDialog(
+            parent=self, modal=True,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.NONE,
+            text=_("System is pinned to a previous version")
+        )
+        dlg.format_secondary_text(
+            _("Desktop: {}\n\n"
+              "Your system is currently pinned to a rolled-back snapshot.\n"
+              "Updates and rollbacks are disabled while pinned.\n\n"
+              "Click 'Unpin' to remove the pin. You can then roll back\n"
+              "further or do a full upgrade when ready.").format(version)
+        )
+        dlg.add_button(_("Close"), Gtk.ResponseType.CLOSE)
+        unpin_btn = dlg.add_button(_("Unpin"), Gtk.ResponseType.OK)
+        unpin_btn.get_style_context().add_class("suggested-action")
+        response = dlg.run()
+        dlg.destroy()
+        if response == Gtk.ResponseType.OK:
+            self._do_unpin_and_upgrade()
+
+    def _do_unpin_and_upgrade(self):
+        self.disable_gui()
+        self.start_spinner(_("Unpinning..."))
+
+        unpin_cmd = RollbackManager.unpin_references()
+        cmd = ["sh", "-c", unpin_cmd]
+
+        def on_finish(returncode):
+            GLib.idle_add(self._on_unpin_upgrade_finished, returncode)
+
+        self.command_runner.run_realtime(
+            cmd,
+            require_root=True,
+            on_line_received=self.append_to_log,
+            on_finished=on_finish
+        )
+
+    def _on_unpin_upgrade_finished(self, returncode):
+        self.stop_spinner()
+        self.enable_gui()
+        self._update_cache_menu_item()
+        if returncode == 0:
+            self.set_status_message(_("Unpinned. You can now roll back further or upgrade."))
+        else:
+            self.set_status_message(_("Error during unpin"))
+        return False
+
+    def on_rollback_clicked(self, widget):
+        # If pinned, show pinned state dialog instead
+        if RollbackManager.is_pinned():
+            self._show_pinned_state_dialog()
+            return
+
+        self.disable_gui()
+        self.start_spinner(_("Checking rollback availability..."))
+
+        def _prepare():
+            current = RollbackManager.get_current_desktop_version()
+            if not current:
+                GLib.idle_add(_show_error, _("Cannot determine current desktop version."))
+                return
+            candidates = RollbackManager.get_rollback_candidates(current)
+            if not candidates:
+                GLib.idle_add(_show_no_previous)
+                return
+            GLib.idle_add(_confirm, candidates)
+
+        def _show_error(msg):
+            self.stop_spinner()
+            self.enable_gui()
+            dlg = Gtk.MessageDialog(
+                parent=self, modal=True,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.OK,
+                text=msg
+            )
+            dlg.run()
+            dlg.destroy()
+            return False
+
+        def _show_no_previous():
+            self.stop_spinner()
+            self.enable_gui()
+            dlg = Gtk.MessageDialog(
+                parent=self, modal=True,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text=_("No previous version available to roll back to.")
+            )
+            dlg.run()
+            dlg.destroy()
+            return False
+
+        def _confirm(candidates):
+            self.stop_spinner()
+            self.enable_gui()
+
+            # Build selection dialog
+            dlg = Gtk.Dialog(
+                title=_("Select rollback target"),
+                parent=self,
+                modal=True,
+                destroy_with_parent=True
+            )
+            dlg.add_buttons(
+                _("Cancel"), Gtk.ResponseType.CANCEL,
+                _("Roll back"), Gtk.ResponseType.OK
+            )
+            dlg.set_default_size(520, 300)
+
+            box = dlg.get_content_area()
+            box.set_spacing(6)
+            box.set_margin_start(12)
+            box.set_margin_end(12)
+            box.set_margin_top(12)
+            box.set_margin_bottom(12)
+
+            label = Gtk.Label(label=_("Choose a version to roll back to:"))
+            label.set_halign(Gtk.Align.START)
+            box.pack_start(label, False, False, 0)
+
+            liststore = Gtk.ListStore(str, str, str, str)  # label, date, desktop, community
+            for c in candidates:
+                liststore.append([
+                    c.get("label", ""),
+                    c.get("date", ""),
+                    c.get("desktop", ""),
+                    c.get("community", "")
+                ])
+
+            treeview = Gtk.TreeView(model=liststore)
+            treeview.set_headers_visible(True)
+
+            for i, title in enumerate([_("Version"), _("Date"), _("Desktop"), _("Community")]):
+                renderer = Gtk.CellRendererText()
+                col = Gtk.TreeViewColumn(title, renderer, text=i)
+                col.set_resizable(True)
+                treeview.append_column(col)
+
+            # Select first row by default
+            treeview.get_selection().select_path(Gtk.TreePath.new_first())
+
+            scroll = Gtk.ScrolledWindow()
+            scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            scroll.set_min_content_height(180)
+            scroll.add(treeview)
+            box.pack_start(scroll, True, True, 0)
+            box.show_all()
+
+            response = dlg.run()
+            model, treeiter = treeview.get_selection().get_selected()
+            dlg.destroy()
+
+            if response != Gtk.ResponseType.OK or treeiter is None:
+                return False
+
+            selected_idx = liststore.get_path(treeiter).get_indices()[0]
+            previous = candidates[selected_idx]
+
+            # Confirmation dialog
+            confirm_dlg = Gtk.MessageDialog(
+                parent=self, modal=True,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.YES_NO,
+                text=_("Roll back to {}?").format(previous.get("label", ""))
+            )
+            detail = _("This will revert your system to:\n\n"
+                       "  Desktop:   {}\n"
+                       "  Community: {}\n\n"
+                       "A full system downgrade will be performed.\n"
+                       "Are you sure you want to continue?").format(
+                previous.get("desktop", ""),
+                previous.get("community", "")
+            )
+            confirm_dlg.format_secondary_text(detail)
+            confirm_response = confirm_dlg.run()
+            confirm_dlg.destroy()
+
+            if confirm_response != Gtk.ResponseType.YES:
+                return False
+
+            self.disable_gui()
+            self.start_spinner(_("Rolling back..."))
+
+            def on_log(line):
+                GLib.idle_add(self.append_to_log, line)
+
+            def on_finish(returncode, message):
+                GLib.idle_add(self._on_rollback_finished, returncode, message)
+
+            RollbackManager.run_rollback(
+                previous_snapshot=previous,
+                command_runner_realtime=self.command_runner.run_realtime,
+                command_runner_sync=self.command_runner.run_sync,
+                log_callback=on_log,
+                on_finish_callback=on_finish,
+                schedule_callback=GLib.idle_add
+            )
+            return False
+
+        import threading
+        threading.Thread(target=_prepare, daemon=True).start()
+
+    def _on_rollback_finished(self, returncode, message):
+        self.stop_spinner()
+        self.enable_gui()
+        self._update_cache_menu_item()
+        if returncode == 0:
+            self.set_status_message(_("Rollback completed successfully"))
+            PackageOperations.run_post_transaction_refresh(
+                self.command_runner.run_sync,
+                GLib.idle_add,
+                self._on_refresh_complete
+            )
+        else:
+            self.set_status_message(message)
+        return False
 
     def on_window_delete(self, widget, event):
         """Handle window close event with cleanup"""

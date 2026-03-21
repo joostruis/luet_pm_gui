@@ -48,26 +48,18 @@ class PackageState:
             valid_yaml_lines = []
             
             for line in res.stdout.splitlines():
-                # Strip leading whitespace from the line
                 stripped_line = line.lstrip()
-                
-                # If the line is empty or is a list item starting at the root level (column 1/2)
-                # It must start with a '-' followed by a space or another character.
+
                 if not stripped_line:
-                    continue # Skip blank lines
-                
-                # If the line starts with '- ', it's a package list item.
-                # If it starts with a space and then a '-', it might be indented YAML. 
-                # Keep all lines that look like YAML structure, but filter out non-YAML garbage.
-                
-                # A common problem with `luet database get-all-installed` is that
-                # it might output the packages with leading spaces. We will only 
-                # keep lines that have valid YAML syntax markers or are clearly 
-                # key/value pairs (indented).
-                
-                # Simple heuristic: filter out lines that start at column 1/2 that 
-                # aren't the list marker, as these are often unexpected logs.
-                
+                    continue
+
+                # Skip log/warning lines that luet sometimes injects
+                if stripped_line.startswith('WARNING') or \
+                   stripped_line.startswith('ERROR') or \
+                   stripped_line.startswith('INFO') or \
+                   stripped_line.startswith('DEBUG'):
+                    continue
+
                 if line.startswith(' ') or line.startswith('\t') or line.startswith('-'):
                     valid_yaml_lines.append(line)
                 
@@ -79,6 +71,10 @@ class PackageState:
             # Use yaml.safe_load on the cleaned output
             data = yaml.safe_load(clean_output)
             # --- END FIX ---
+
+            if not isinstance(data, list):
+                print(f"luet database get-all-installed returned unexpected type: {type(data)}")
+                return {}
             
             pkgs = {}
             for pkg in data or []: 
@@ -556,7 +552,15 @@ class SystemUpgrader:
 
     def start_upgrade(self):
         try:
-            upgrade_cmd = ["sh", "-c", "luet repo update && luet upgrade -y"]
+            # Unpin any rollback references and remove pin file before upgrading
+            unpin_cmd = RollbackManager.unpin_references()
+            remove_pin = f"rm -f {RollbackManager.PIN_FILE} {RollbackManager.ANCHOR_FILE}"
+            if unpin_cmd:
+                upgrade_cmd = ["sh", "-c",
+                               f"{unpin_cmd} && {remove_pin} && luet repo update && luet upgrade -y"]
+            else:
+                upgrade_cmd = ["sh", "-c",
+                               f"{remove_pin} && luet repo update && luet upgrade -y"]
             self.command_runner(
                 upgrade_cmd,
                 require_root=True,
@@ -565,7 +569,6 @@ class SystemUpgrader:
             )
         except Exception as e:
             print("Exception during system upgrade:", e)
-            # _on_first_run_done will schedule the finalizer
             self._on_first_run_done(-1, self._("Error starting upgrade process"))
             
     def _on_line_first_run(self, line):
@@ -825,17 +828,24 @@ class PackageOperations:
         :param on_completion_callback: Callback to receive (new_cache_data)
         """
         def worker():
-            # 1. Refresh the installed packages list (Blocking/Slow)
+            # 1. If system is pinned, re-apply the reference: to conf files
+            # in case a package install overwrote them
+            if RollbackManager.is_pinned():
+                pinned_version = RollbackManager.get_current_desktop_version()
+                if pinned_version:
+                    RollbackManager._restore_pin(pinned_version, run_sync_func)
+
+            # 2. Refresh the installed packages list (Blocking/Slow)
             try:
                 new_cache = PackageState.get_installed_packages(run_sync_func)
             except Exception as e:
                 print(f"Error refreshing cache: {e}")
                 new_cache = {}
 
-            # 2. Run system updates (Blocking)
+            # 3. Run system updates (Blocking)
             PackageOperations._run_kbuildsycoca6()
-            
-            # 3. Return result on the main thread
+
+            # 4. Return result on the main thread
             schedule_callback(on_completion_callback, new_cache)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -921,6 +931,568 @@ class SearchProcessor:
         
         return pkg
         
+class RollbackManager:
+    """
+    Manages stable repository rollback by reading/writing reference tags
+    in /etc/luet/repos.conf.d/ and resolving the previous snapshot from
+    the repository-index git history.
+    """
+
+    REPOS_CONF_DIR = "/etc/luet/repos.conf.d"
+    DESKTOP_STABLE_FILE = "mocaccino-desktop-stable.yml"
+    COMMUNITY_STABLE_FILE = "mocaccino-community-stable.yml"
+    REPO_INDEX_URL = "https://github.com/mocaccinoOS/repository-index"
+    CLONE_DEPTH = 50
+    PIN_FILE = "/var/luet/mocaccino-rollback-pin"
+    ANCHOR_FILE = "/var/luet/mocaccino-rollback-anchor"
+
+    @staticmethod
+    def _restore_pin(desktop_version, run_sync_func):
+        """
+        Re-writes the reference: fields to the stable conf files after a
+        package operation may have overwritten them.
+        """
+        def _make_content(name, desc, priority, url, ref):
+            return (
+                f'name: "{name}"\n'
+                f'description: "{desc}"\n'
+                f'type: "docker"\n'
+                f'enable: true\n'
+                f'cached: true\n'
+                f'priority: {priority}\n'
+                f'urls:\n'
+                f'  - "{url}"\n'
+                f'reference: "{ref}-repository.yaml"\n'
+            )
+
+        def _escape(s):
+            return s.replace("'", "'\\''")
+
+        # Read community version from pin file if present
+        community_version = None
+        try:
+            with open(RollbackManager.PIN_FILE, "r") as f:
+                lines = f.read().strip().splitlines()
+                if len(lines) >= 2:
+                    community_version = lines[1].strip()
+        except Exception:
+            pass
+
+        desktop_path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR, RollbackManager.DESKTOP_STABLE_FILE)
+        desktop_content = _make_content(
+            "mocaccino-desktop-stable",
+            "MocaccinoOS desktop Repository (stable)",
+            3, "quay.io/mocaccino/desktop", desktop_version
+        )
+        cmd = f"printf '%s' '{_escape(desktop_content)}' > {desktop_path}"
+
+        # Restore community if we have a pinned version
+        if community_version:
+            community_path = os.path.join(
+                RollbackManager.REPOS_CONF_DIR, RollbackManager.COMMUNITY_STABLE_FILE)
+            # Enable community if the repository package is installed in the luet db
+            # (i.e. the user installed repository/mocaccino-community-stable)
+            community_enabled = False
+            try:
+                result = subprocess.run(
+                    ["luet", "search", "--installed",
+                     "repository/mocaccino-community-stable", "-q"],
+                    capture_output=True, text=True, timeout=15
+                )
+                community_enabled = result.returncode == 0 and \
+                    "mocaccino-community-stable" in result.stdout
+            except Exception:
+                # Fall back to reading the current file's enable state
+                if os.path.exists(community_path):
+                    try:
+                        with open(community_path, "r") as f:
+                            data = yaml.safe_load(f)
+                        community_enabled = data.get("enable", False) is True
+                    except Exception:
+                        pass
+            community_content = (
+                f'name: "mocaccino-community-stable"\n'
+                f'description: "MocaccinoOS Community Repository (Stable)"\n'
+                f'type: "docker"\n'
+                f'enable: {"true" if community_enabled else "false"}\n'
+                f'cached: true\n'
+                f'priority: 50\n'
+                f'urls:\n'
+                f'  - "quay.io/mocaccino/mocaccino-community"\n'
+                f'reference: "{community_version}-repository.yaml"\n'
+            )
+            cmd += f" && printf '%s' '{_escape(community_content)}' > {community_path}"
+
+        try:
+            run_sync_func(["sh", "-c", cmd], require_root=True)
+            # Also remove any pending config-protect files luet may have created
+            # that would overwrite our restored references on next mos config-update
+            cleanup = (
+                f"rm -f {RollbackManager.REPOS_CONF_DIR}/._cfg*_mocaccino-desktop-stable.yml "
+                f"{RollbackManager.REPOS_CONF_DIR}/._cfg*_mocaccino-community-stable.yml "
+                f"2>/dev/null || true"
+            )
+            run_sync_func(["sh", "-c", cleanup], require_root=True)
+        except Exception as e:
+            print("RollbackManager._restore_pin error:", e)
+
+    VAJO_BACKUP_DIR = "/var/luet/vajo-backup"
+    VAJO_FILES = [
+        ("/usr/share/vajo/luet_pm_core.py", "luet_pm_core.py"),
+        ("/usr/bin/luet_pm_gui.py", "luet_pm_gui.py"),
+        ("/usr/bin/luet_pm_tui.py", "luet_pm_tui.py"),
+    ]
+
+    @staticmethod
+    def backup_vajo_files(run_sync_func):
+        """
+        Backs up current vajo files to /var/luet/vajo-backup/ before rollback
+        so they can be restored after luet upgrade potentially downgrades them.
+        """
+        cmds = [f"mkdir -p {RollbackManager.VAJO_BACKUP_DIR}"]
+        for src, name in RollbackManager.VAJO_FILES:
+            dst = f"{RollbackManager.VAJO_BACKUP_DIR}/{name}"
+            cmds.append(f"cp -f {src} {dst} 2>/dev/null || true")
+        run_sync_func(["sh", "-c", " && ".join(cmds)], require_root=True)
+
+    @staticmethod
+    def restore_vajo_files(run_sync_func):
+        """
+        Restores backed-up vajo files after rollback to ensure the user
+        always has the current version with rollback functionality intact.
+        """
+        cmds = []
+        for src, name in RollbackManager.VAJO_FILES:
+            backup = f"{RollbackManager.VAJO_BACKUP_DIR}/{name}"
+            cmds.append(f"cp -f {backup} {src} 2>/dev/null || true")
+        if cmds:
+            run_sync_func(["sh", "-c", " && ".join(cmds)], require_root=True)
+
+    @staticmethod
+    def is_pinned():
+        """
+        Returns True if the system is currently pinned to a rolled-back snapshot.
+        Uses the pin file as the authoritative signal — it is exclusively written
+        by the rollback tool and is not affected by luet's autobump mechanism.
+        """
+        return os.path.exists(RollbackManager.PIN_FILE)
+
+    @staticmethod
+    def is_stable_system():
+        """
+        Returns True if the system is running stable repositories,
+        detected by checking whether mocaccino-desktop-stable.yml
+        exists in /etc/luet/repos.conf.d/ and has enable: true.
+        This avoids needing root for the check.
+        """
+        path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR,
+            RollbackManager.DESKTOP_STABLE_FILE
+        )
+        try:
+            if not os.path.exists(path):
+                return False
+            with open(path, "r") as f:
+                data = yaml.safe_load(f)
+            return data.get("enable", False) is True
+        except Exception:
+            return False
+
+    @staticmethod
+    def is_community_enabled():
+        """
+        Returns True if mocaccino-community-stable.yml exists and has enable: true.
+        """
+        path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR,
+            RollbackManager.COMMUNITY_STABLE_FILE
+        )
+        try:
+            if not os.path.exists(path):
+                return False
+            with open(path, "r") as f:
+                data = yaml.safe_load(f)
+            return data.get("enable", False) is True
+        except Exception:
+            return False
+
+    @staticmethod
+    def get_current_desktop_version():
+        """
+        Returns the currently installed desktop-stable version.
+        First checks the pin file (set by rollback, survives package ops),
+        then falls back to the conf file reference:, then to luet search.
+        Returns e.g. '20260314010809', or None if not found.
+        """
+        # First try the pin file (system is actively pinned)
+        try:
+            if os.path.exists(RollbackManager.PIN_FILE):
+                with open(RollbackManager.PIN_FILE, "r") as f:
+                    version = f.readline().strip()
+                if version:
+                    return version
+        except Exception:
+            pass
+
+        # Try the anchor file (unpinned but rolled back, survives unpin)
+        try:
+            if os.path.exists(RollbackManager.ANCHOR_FILE):
+                with open(RollbackManager.ANCHOR_FILE, "r") as f:
+                    version = f.read().strip()
+                if version:
+                    return version
+        except Exception:
+            pass
+
+        # Fall back to conf file reference:
+        path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR,
+            RollbackManager.DESKTOP_STABLE_FILE
+        )
+        try:
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    data = yaml.safe_load(f)
+                ref = data.get("reference", "").replace("-repository.yaml", "").strip()
+                if ref:
+                    return ref
+        except Exception:
+            pass
+
+        # Fall back to luet search --installed
+        prefix = "repository/mocaccino-desktop-stable-"
+        cmd = ["luet", "search", "--installed",
+               "repository/mocaccino-desktop-stable", "-q"]
+        for elevation in [[], ["pkexec"]]:
+            try:
+                result = subprocess.run(
+                    elevation + cmd,
+                    capture_output=True, text=True, timeout=15
+                )
+                line = result.stdout.strip()
+                if result.returncode == 0 and line.startswith(prefix):
+                    return line[len(prefix):]
+            except Exception:
+                continue
+        return None
+
+    REPO_INDEX_URL = "https://github.com/mocaccinoOS/repository-index"
+    CLONE_DEPTHS = [50, 150, 400]
+
+    @staticmethod
+    def _parse_collection_yaml(content):
+        """Extract stable repo versions from collection.yaml content."""
+        versions = {}
+        current_name = None
+        for line in content.split('\n'):
+            nm = re.search(r'name:\s*"([^"]+)"', line)
+            vm = re.search(r'version:\s*"([^"]+)"', line)
+            if nm:
+                current_name = nm.group(1)
+            if vm and current_name:
+                versions[current_name] = vm.group(1)
+                current_name = None
+        return versions
+
+    @staticmethod
+    def _build_snapshots_from_clone(clone_dir):
+        """
+        Walk git log and return list of snapshots where BOTH desktop-stable
+        and community-stable changed together — newest first.
+        These are the meaningful rollback candidates.
+        """
+        log = subprocess.run(
+            ["git", "--git-dir", clone_dir, "log", "HEAD",
+             "--pretty=format:%H|%ad|%s", "--date=short"],
+            capture_output=True, text=True
+        )
+        if log.returncode != 0:
+            return []
+
+        snapshots = []
+        prev_desktop = None
+        prev_community = None
+
+        for line in log.stdout.strip().split('\n'):
+            parts = line.split('|', 2)
+            if len(parts) != 3:
+                continue
+            sha, date, _ = parts
+
+            cat = subprocess.run(
+                ["git", "--git-dir", clone_dir, "show",
+                 f"{sha}:packages/collection.yaml"],
+                capture_output=True, text=True
+            )
+            if cat.returncode != 0:
+                continue
+
+            v = RollbackManager._parse_collection_yaml(cat.stdout)
+            desktop = v.get("mocaccino-desktop-stable", "").replace(
+                "-repository.yaml", "")
+            community = v.get("mocaccino-community-stable", "").replace(
+                "-repository.yaml", "")
+
+            desktop_changed = desktop and desktop != prev_desktop
+            community_changed = community and community != prev_community
+
+            # Only include snapshots where both repos changed together
+            if desktop_changed and community_changed:
+                snapshots.append({
+                    "sha": sha[:10],
+                    "date": date,
+                    "desktop": desktop,
+                    "community": community,
+                })
+
+            if desktop_changed:
+                prev_desktop = desktop
+            if community_changed:
+                prev_community = community
+
+        return snapshots
+
+    @staticmethod
+    def get_rollback_candidates(current_desktop_version):
+        """
+        Clones the repository-index and returns the last 10 dual-bump snapshots
+        older than the current version. Each entry: {label, desktop, community, date, sha}
+        Returns empty list if none found.
+        """
+        clone_dir = "/tmp/mocaccino-repo-index-cache"
+        try:
+            if os.path.exists(clone_dir):
+                subprocess.run(["rm", "-rf", clone_dir], check=True)
+
+            result = subprocess.run(
+                ["git", "clone", "--bare", "--depth", "400",
+                 RollbackManager.REPO_INDEX_URL, clone_dir],
+                capture_output=True, text=True, timeout=120
+            )
+            if result.returncode != 0:
+                print("RollbackManager clone error:", result.stderr)
+                return []
+
+            snapshots = RollbackManager._build_snapshots_from_clone(clone_dir)
+            if not snapshots:
+                return []
+
+            # Find index of current version (or closest before it)
+            current_idx = next(
+                (i for i, s in enumerate(snapshots)
+                 if s["desktop"] <= current_desktop_version),
+                None
+            )
+            if current_idx is None:
+                return []
+
+            # Take up to 10 snapshots older than current
+            older = snapshots[current_idx + 1:current_idx + 11]
+            if not older:
+                return []
+
+            candidates = []
+            for i, snapshot in enumerate(older):
+                label = _("Previous") if i == 0 else _("{} versions back").format(i + 1)
+                candidates.append(dict(snapshot, label=label))
+
+            return candidates
+
+        except Exception as e:
+            print("RollbackManager.get_rollback_candidates error:", e)
+            return []
+        finally:
+            try:
+                subprocess.run(["rm", "-rf", clone_dir], check=False)
+            except Exception:
+                pass
+
+    @staticmethod
+    def unpin_references():
+        """
+        Returns a shell command string that removes reference: fields from
+        the stable repo conf files, or empty string if nothing is pinned.
+        Designed to be prepended to an elevated sh -c command.
+        """
+        def _make_content(name, desc, priority, url):
+            return (
+                f'name: "{name}"\n'
+                f'description: "{desc}"\n'
+                f'type: "docker"\n'
+                f'enable: true\n'
+                f'cached: true\n'
+                f'priority: {priority}\n'
+                f'urls:\n'
+                f'  - "{url}"\n'
+            )
+
+        def _escape(s):
+            return s.replace("'", "'\\''")
+
+        cmds = []
+        files = [
+            (
+                RollbackManager.DESKTOP_STABLE_FILE,
+                "mocaccino-desktop-stable",
+                "MocaccinoOS desktop Repository (stable)",
+                3,
+                "quay.io/mocaccino/desktop",
+            ),
+            (
+                RollbackManager.COMMUNITY_STABLE_FILE,
+                "mocaccino-community-stable",
+                "MocaccinoOS Community Repository (Stable)",
+                50,
+                "quay.io/mocaccino/mocaccino-community",
+            ),
+        ]
+        for filename, name, desc, priority, url in files:
+            path = os.path.join(RollbackManager.REPOS_CONF_DIR, filename)
+            if not os.path.exists(path):
+                continue
+            try:
+                with open(path, "r") as f:
+                    data = yaml.safe_load(f)
+                if "reference" not in data:
+                    continue  # Already unpinned, skip
+                # Preserve the current enable state
+                currently_enabled = data.get("enable", True)
+            except Exception:
+                continue
+            content = (
+                f'name: "{name}"\n'
+                f'description: "{desc}"\n'
+                f'type: "docker"\n'
+                f'enable: {"true" if currently_enabled else "false"}\n'
+                f'cached: true\n'
+                f'priority: {priority}\n'
+                f'urls:\n'
+                f'  - "{url}"\n'
+            )
+            cmds.append(f"printf '%s' '{_escape(content)}' > {path}")
+
+        # Remove the pin file so is_pinned() returns False
+        # get_current_desktop_version() will fall back to luet search --installed
+        cmds.append(f"rm -f {RollbackManager.PIN_FILE}")
+
+        return " && ".join(cmds)
+
+    @staticmethod
+    def run_rollback(
+        previous_snapshot,
+        command_runner_realtime,
+        command_runner_sync,
+        log_callback,
+        on_finish_callback,
+        schedule_callback
+    ):
+        """
+        Rolls back to the previous snapshot by:
+        1. Writing pinned reference: tags to the stable repo conf files
+        2. Writing a pin file to /var/luet/ that survives package operations
+        3. Cleaning up config files that may conflict with older package versions
+        4. Running luet upgrade -y which resolves against the pinned snapshot
+
+        All root operations go through command_runner_realtime/sync so pkexec
+        handles elevation. Community file is only written if already enabled.
+        on_finish_callback(returncode, message) is called when done.
+        """
+        desktop_ref = previous_snapshot.get("desktop", "")
+        community_ref = previous_snapshot.get("community", "")
+        community_enabled = RollbackManager.is_community_enabled()
+
+        def _make_content(name, desc, priority, url, ref, enable=True):
+            return (
+                f'name: "{name}"\n'
+                f'description: "{desc}"\n'
+                f'type: "docker"\n'
+                f'enable: {"true" if enable else "false"}\n'
+                f'cached: true\n'
+                f'priority: {priority}\n'
+                f'urls:\n'
+                f'  - "{url}"\n'
+                f'reference: "{ref}-repository.yaml"\n'
+            )
+
+        def _escape(s):
+            return s.replace("'", "'\\''")
+
+        desktop_content = _make_content(
+            "mocaccino-desktop-stable",
+            "MocaccinoOS desktop Repository (stable)",
+            3, "quay.io/mocaccino/desktop", desktop_ref
+        )
+        desktop_path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR, RollbackManager.DESKTOP_STABLE_FILE)
+        write_desktop = f"printf '%s' '{_escape(desktop_content)}' > {desktop_path}"
+
+        # Always write community conf with the paired reference, but only
+        # enable it if the user currently has community enabled.
+        # This ensures if the user enables community later it aligns with desktop.
+        community_content = _make_content(
+            "mocaccino-community-stable",
+            "MocaccinoOS Community Repository (Stable)",
+            50, "quay.io/mocaccino/mocaccino-community", community_ref,
+            enable=community_enabled
+        )
+        community_path = os.path.join(
+            RollbackManager.REPOS_CONF_DIR, RollbackManager.COMMUNITY_STABLE_FILE)
+        write_community = f" && printf '%s' '{_escape(community_content)}' > {community_path}"
+
+        # Step 1: Write the reference files, pin file and anchor file
+        # Pin file = system is actively pinned (deleted on unpin)
+        # Anchor file = last rolled-back version (deleted only on full upgrade)
+        pin_content = f"{desktop_ref}\n{community_ref}"
+        write_pin = f" && printf '%s' '{pin_content}' > {RollbackManager.PIN_FILE}"
+        write_anchor = f" && printf '%s' '{desktop_ref}' > {RollbackManager.ANCHOR_FILE}"
+        write_cmd = ["sh", "-c", f"{write_desktop}{write_community}{write_pin}{write_anchor}"]
+        res = command_runner_sync(write_cmd, require_root=True)
+        if res.returncode != 0:
+            schedule_callback(
+                on_finish_callback, -1,
+                _("Failed to write repository configuration")
+            )
+            return
+
+        def _do_rollback():
+            RollbackManager.backup_vajo_files(command_runner_sync)
+
+            cleanup_cmd = (
+                "rm -rf /etc/ssh/sshd_config.d && "
+                "rm -f /etc/ssh/sshd_config && "
+                "rm -rf /etc/bash_completion* && "
+                "rm -rf /usr/share/bash-completion && "
+                "rm -f /etc/nsswitch.conf && "
+                "rm -f /etc/pam.d/* && "
+                "rm -f /etc/profile && "
+                "rm -rf /etc/profile.d/* && "
+                "rm -f /etc/shells"
+            )
+            command_runner_sync(["sh", "-c", cleanup_cmd], require_root=True)
+
+            def _on_upgrade_done(rc):
+                if rc == 0:
+                    RollbackManager.restore_vajo_files(command_runner_sync)
+                schedule_callback(
+                    on_finish_callback,
+                    rc,
+                    _("Rollback completed successfully") if rc == 0
+                    else _("Rollback failed during upgrade")
+                )
+                return False
+
+            command_runner_realtime(
+                ["luet", "upgrade", "-y"],
+                require_root=True,
+                on_line_received=log_callback,
+                on_finished=_on_upgrade_done
+            )
+            return False
+
+        schedule_callback(_do_rollback)
+
+
 class SyncInfo:
     @staticmethod
     def parse_timestamp(ts):

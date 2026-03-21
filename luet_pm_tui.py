@@ -47,6 +47,7 @@ try:
         PackageDetails,
         PackageState,
         SearchProcessor,
+        RollbackManager,
         _,
         ngettext,
     )
@@ -118,9 +119,9 @@ class Menu:
     
     @staticmethod
     def get_base_menu_items():
-        """Get base menu items with cache placeholder."""
+        """Get base menu items with placeholders: None=cache, False=rollback."""
         return [
-            [_("Update repositories"), _("Full system upgrade"), _("Check system"), None, _("Quit")],
+            [_("Update repositories"), _("Full system upgrade"), _("Check system"), None, False, _("Quit")],
             [_("Documentation"), _("About")]
         ]
 
@@ -131,22 +132,35 @@ class Menu:
         self.selected_index = 0
         self.cache_menu_label = _("Clear Luet cache")
         self.cache_enabled = False
+        self.rollback_enabled = False
+        self.is_pinned = False
         self.update_cache_menu_item()
-    
+        self.update_rollback_menu_item()
+
     def update_cache_menu_item(self):
         """Update the cache menu item with current cache info."""
         cache_info = CacheCleaner.get_cache_info()
         self.cache_menu_label = cache_info['menu_label']
         self.cache_enabled = cache_info['has_cache']
-    
+
+    def update_rollback_menu_item(self):
+        """Update rollback/pinned state."""
+        self.rollback_enabled = RollbackManager.is_stable_system()
+        self.is_pinned = RollbackManager.is_pinned()
+
     def get_menu_items(self):
-        """Get the current menu items with updated cache label."""
+        """Get the current menu items with updated cache and rollback labels."""
         items = []
         for menu_idx, base_items in enumerate(self.get_base_menu_items()):
             menu = []
             for item in base_items:
                 if item is None:
                     menu.append(self.cache_menu_label)
+                elif item is False:
+                    if self.is_pinned:
+                        menu.append(_("View pinned state"))
+                    else:
+                        menu.append(_("Roll back"))
                 else:
                     menu.append(item)
             items.append(menu)
@@ -159,14 +173,14 @@ class Menu:
 
         h, w = stdscr.getmaxyx()
         items = self.get_menu_items()[self.active_menu]
-        
+
         x = 0
         for i, (title, index) in enumerate(self.get_menu_titles()):
             seg = f"  {title}  "
             if index == self.active_menu:
                 break
             x += len(seg)
-            
+
         width = max(len(it) for it in items) + 4
         height = len(items) + 2
         y = 1
@@ -174,17 +188,26 @@ class Menu:
         try:
             win = curses.newwin(height, width, y, x)
             win.border()
-            attrs = curses.A_REVERSE 
+            attrs = curses.A_REVERSE
 
             for idx, it in enumerate(items):
+                is_update_repos = (self.active_menu == 0 and idx == 0)
+                is_full_upgrade = (self.active_menu == 0 and idx == 1)
                 is_cache_item = (self.active_menu == 0 and idx == 3)
+                is_rollback_item = (self.active_menu == 0 and idx == 4)
                 item_attr = attrs if idx == self.selected_index else curses.A_NORMAL
-                
+
+                if is_update_repos and self.is_pinned:
+                    item_attr |= curses.A_DIM
+                if is_full_upgrade and self.is_pinned:
+                    item_attr |= curses.A_DIM
                 if is_cache_item and not self.cache_enabled:
                     item_attr |= curses.A_DIM
-                
+                if is_rollback_item and not self.rollback_enabled and not self.is_pinned:
+                    item_attr |= curses.A_DIM
+
                 win.addstr(1 + idx, 2, it[:width - 4], item_attr)
-            
+
             win.refresh()
         except curses.error:
             pass
@@ -207,24 +230,31 @@ class Menu:
         elif ch in (10, 13, ord(' ')):
             self.activate_item()
             self.is_open = False
-        
+
         return True
 
     def activate_item(self):
         """Executes the action associated with the selected menu item."""
         item = self.get_menu_items()[self.active_menu][self.selected_index]
-        
+
         if item == _("Quit"):
             self.app.running = False
         elif item == _("Update repositories"):
-            self.app.run_update_repositories()
+            if not self.is_pinned:
+                self.app.run_update_repositories()
         elif item == _("Full system upgrade"):
-            self.app.run_full_upgrade()
+            if not self.is_pinned:
+                self.app.run_full_upgrade()
         elif item == _("Check system"):
             self.app.run_check_system()
         elif item == self.cache_menu_label:
             if self.cache_enabled:
                 self.app.run_clear_cache()
+        elif item == _("Roll back"):
+            if self.rollback_enabled and not self.is_pinned:
+                self.app.run_rollback()
+        elif item == _("View pinned state"):
+            self.app.run_view_pinned_state()
         elif item == _("Documentation"):
             self.app.show_message(_("Info"), _("Opening luet documentation (URL TBD)"))
         elif item == _("About"):
@@ -349,10 +379,72 @@ class LuetTUI:
         si = SyncInfo.get_last_sync_time()
         self.sync_info = si.get("ago", _("repositories not synced"))
         self.update_cache_menu()
-    
+        self.update_rollback_menu()
+
     def update_cache_menu(self):
         """Update the cache menu item with current cache info."""
         self.menu.update_cache_menu_item()
+
+    def update_rollback_menu(self):
+        """Update the rollback/pinned menu item state."""
+        self.menu.update_rollback_menu_item()
+
+    def run_view_pinned_state(self):
+        version = RollbackManager.get_current_desktop_version() or _("unknown")
+        msg = _("System is pinned to a previous version.\n\n"
+                "Desktop: {}\n\n"
+                "Updates and rollbacks are disabled while pinned.").format(version)
+        self.draw()
+        h, w = self.stdscr.getmaxyx()
+        lines = msg.splitlines()
+        ww = min(80, w - 4)
+        hh = min(len(lines) + 4, h - 4)
+        y = max(1, (h - hh) // 2)
+        x = max(1, (w - ww) // 2)
+        win = curses.newwin(hh, ww, y, x)
+        win.border()
+        win.nodelay(False)
+        try:
+            for i, ln in enumerate(lines[:hh - 4]):
+                win.addstr(1 + i, 2, ln[:ww - 4])
+            win.addstr(hh - 2, 2, _("Press 'u' to unpin, any other key to close.")[:ww - 4])
+            win.refresh()
+            ch = win.getch()
+        except Exception:
+            ch = -1
+        finally:
+            self.draw()
+
+        if ch in (ord('u'), ord('U')):
+            self._do_unpin_and_upgrade()
+
+    def _do_unpin_and_upgrade(self):
+        if not self.confirm_yes_no(_("Unpin the system?")):
+            return
+        self.set_status(_("Unpinning..."))
+        self.draw()
+
+        unpin_cmd = RollbackManager.unpin_references()
+        cmd = ["sh", "-c", unpin_cmd]
+
+        def on_log(line):
+            self.scheduler.schedule(self.append_to_log, line)
+
+        def on_finish(returncode):
+            def _cb():
+                if returncode == 0:
+                    self.set_status(_("Ready"))
+                    self.update_rollback_menu()
+                else:
+                    self.set_status(_("Error during unpin"), error=True)
+            self.scheduler.schedule(_cb)
+
+        self.command_runner.run_realtime(
+            cmd,
+            require_root=True,
+            on_line_received=lambda l: self.scheduler.schedule(on_log, l),
+            on_finished=lambda rc: self.scheduler.schedule(on_finish, rc)
+        )
 
     def append_to_log(self, text):
         if text is None: return
@@ -671,22 +763,25 @@ class LuetTUI:
     def confirm_yes_no(self, message):
         self.draw()
         h, w = self.stdscr.getmaxyx()
-        ww = min(80, w - 4); hh = 5
-        y = max(2, (h - hh) // 2); x = max(2, (w - ww) // 2)
+        lines = str(message).splitlines()
+        ww = min(80, w - 4)
+        hh = min(len(lines) + 4, h - 4)
+        y = max(1, (h - hh) // 2)
+        x = max(1, (w - ww) // 2)
         win = curses.newwin(hh, ww, y, x)
         win.border()
-        
         ch = -1
         try:
-            win.addstr(1, 2, message[:ww - 4])
-            win.addstr(3, 2, _("Press 'y' to confirm, any other key to cancel."))
+            for i, ln in enumerate(lines[:hh - 4]):
+                win.addstr(1 + i, 2, ln[:ww - 4])
+            win.addstr(hh - 2, 2, _("Press 'y' to confirm, any other key to cancel.")[:ww - 4])
             win.refresh()
+            win.nodelay(False)
             ch = win.getch()
         except Exception:
-            pass
+            traceback.print_exc()
         finally:
             self.draw()
-            
         return ch in (ord('y'), ord('Y'))
 
     def show_message(self, title, message, pause=True):
@@ -835,7 +930,7 @@ class LuetTUI:
         if not self.menu.cache_enabled:
             self.show_message(_("Info"), _("No cache to clear"))
             return
-            
+
         if not self.confirm_yes_no(_("Clear Luet cache?")):
             return
         self.set_status(_("Clearing Luet cache..."))
@@ -855,6 +950,126 @@ class LuetTUI:
             lambda ln: self.scheduler.schedule(on_log, ln),
             lambda rc: self.scheduler.schedule(on_done, rc)
         )
+
+    def _select_rollback_candidate(self, candidates):
+        """Show a curses selection menu for rollback candidates. Returns selected dict or None."""
+        self.draw()
+        h, w = self.stdscr.getmaxyx()
+        ww = min(80, w - 4)
+        hh = min(len(candidates) + 6, h - 4)
+        y = max(1, (h - hh) // 2)
+        x = max(1, (w - ww) // 2)
+        win = curses.newwin(hh, ww, y, x)
+        win.keypad(True)
+        win.nodelay(False)
+
+        selected = 0
+        while True:
+            win.erase()
+            win.border()
+            try:
+                win.addstr(0, 2, f" {_('Select rollback target')} ")
+                for i, c in enumerate(candidates):
+                    label = f"  {c.get('label',''):<18} {c.get('date','')}  {c.get('desktop','')}"
+                    attr = curses.A_REVERSE if i == selected else curses.A_NORMAL
+                    win.addstr(2 + i, 1, label[:ww - 2], attr)
+                win.addstr(hh - 2, 2, _("↑↓ select   Enter confirm   Esc cancel")[:ww - 4])
+            except Exception:
+                pass
+            win.refresh()
+
+            ch = win.getch()
+            if ch in (curses.KEY_UP,):
+                selected = max(0, selected - 1)
+            elif ch in (curses.KEY_DOWN,):
+                selected = min(len(candidates) - 1, selected + 1)
+            elif ch in (10, 13):
+                self.draw()
+                return candidates[selected]
+            elif ch in (27,):
+                self.draw()
+                return None
+
+    def run_rollback(self):
+        if not self.menu.rollback_enabled:
+            self.show_message(_("Info"), _("Roll back is only available on stable repositories."))
+            return
+
+        self.set_status(_("Checking rollback availability..."))
+        self.draw()
+
+        def _prepare():
+            current = RollbackManager.get_current_desktop_version()
+            if not current:
+                self.scheduler.schedule(self.set_status, _("Ready"))
+                self.scheduler.schedule(
+                    self.show_message,
+                    _("Error"), _("Cannot determine current desktop version.")
+                )
+                return
+
+            candidates = RollbackManager.get_rollback_candidates(current)
+            if not candidates:
+                self.scheduler.schedule(self.set_status, _("Ready"))
+                self.scheduler.schedule(
+                    self.show_message,
+                    _("Info"), _("No previous version available to roll back to.")
+                )
+                return
+
+            self.scheduler.schedule(_do_confirm, candidates)
+
+        def _do_confirm(candidates):
+            # Show selection menu
+            previous = self._select_rollback_candidate(candidates)
+            if not previous:
+                self.set_status(_("Ready"))
+                return
+
+            msg = _("Roll back to {}?\n\n"
+                    "  Desktop:   {}\n"
+                    "  Community: {}\n\n"
+                    "A full system downgrade will be performed.").format(
+                previous.get("label", ""),
+                previous.get("desktop", ""),
+                previous.get("community", "")
+            )
+
+            if not self.confirm_yes_no(msg):
+                self.set_status(_("Ready"))
+                return
+
+            self.set_status(_("Rolling back..."))
+            self.draw()
+
+            def on_log(line):
+                self.scheduler.schedule(self.append_to_log, line)
+
+            def on_finish(returncode, message):
+                def _cb():
+                    if returncode == 0:
+                        self.set_status(_("Rollback completed successfully"))
+                        self.refresh_installed_packages_cache()
+                        if self.search_query:
+                            self.run_search(self.search_query)
+                        self.update_rollback_menu()
+                        if not self.is_error_status:
+                            self.set_status(_("Ready"))
+                    else:
+                        self.set_status(message, error=True)
+                self.scheduler.schedule(_cb)
+
+            RollbackManager.run_rollback(
+                previous_snapshot=previous,
+                command_runner_realtime=self.command_runner.run_realtime,
+                command_runner_sync=self.command_runner.run_sync,
+                log_callback=on_log,
+                on_finish_callback=on_finish,
+                schedule_callback=self.scheduler.schedule
+            )
+
+        import threading
+        threading.Thread(target=_prepare, daemon=True).start()
         
     def run_search(self, query):
         self.set_status(_("Searching for {}...").format(query))
