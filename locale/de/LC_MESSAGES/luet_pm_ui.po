@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 18:23+0000\n"
+"POT-Creation-Date: 2026-03-22 20:10+0100\n"
 "PO-Revision-Date: 2025-09-16 20:56+0200\n"
 "Last-Translator: Joost Ruis \n"
 "Language-Team: German \n"
@@ -16,547 +16,330 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: /home/claude/luet_pm_core.py:152
-#, fuzzy
-msgid "Vajo: a Luet Package Manager Frontend"
-msgstr "Luet Paket-Suche"
-
-#: /home/claude/luet_pm_core.py:160
-#, fuzzy
-msgid "© 2023 - 2026 MocaccinoOS. All Rights Reserved"
-msgstr ""
-"© 2023 - 2025 MocaccinoOS.\n"
-"Alle Rechte vorbehalten"
-
-#: /home/claude/luet_pm_core.py:177
-msgid ""
-"Vajo: a Luet Package Manager TUI (ncurses)\n"
-"Version: {}\n"
-"Website: {}\n"
-"Authors: {}\n"
-"(Uses luet_pm_core.py)"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:209
-msgid "No elevation helper available"
-msgstr "Kein Hilfsprogramm zur Erhöhung der Rechte verfügbar"
-
-#: /home/claude/luet_pm_core.py:259
-msgid ""
-"\n"
-"Error executing command: {}\n"
-msgstr ""
-"\n"
-"Fehler beim Ausführen des Befehls: {}\n"
-
-#: /home/claude/luet_pm_core.py:384
-#, fuzzy
-msgid "Updating repositories"
-msgstr "Repositorien werden aktualisiert..."
-
-#: /home/claude/luet_pm_core.py:484
-msgid "luet oscheck failed with return code {}"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:490
-msgid "Repair sequence started for {} missing packages.\n"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:491
-msgid "Found {} missing packages. Starting repair immediately.\n"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:497
-msgid "Reinstalling {}..."
-msgstr "Neuinstallation von {}..."
-
-#: /home/claude/luet_pm_core.py:510
-msgid "Failed reinstalling {}"
-msgstr "Fehler beim Neuinstallieren von {}"
-
-#: /home/claude/luet_pm_core.py:521
-msgid "System check failed due to exception"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:529 /home/claude/luet_pm_gui.py:536
-#: /home/claude/luet_pm_gui.py:925 /home/claude/luet_pm_gui.py:1048
-#: /home/claude/luet_pm_gui.py:1064 /home/claude/luet_pm_gui.py:1115
-#: /home/claude/luet_pm_gui.py:1148 /home/claude/luet_pm_gui.py:1210
-#: /home/claude/luet_pm_gui.py:1240 /home/claude/luet_pm_tui.py:277
-#: /home/claude/luet_pm_tui.py:436 /home/claude/luet_pm_tui.py:481
-#: /home/claude/luet_pm_tui.py:832 /home/claude/luet_pm_tui.py:877
-#: /home/claude/luet_pm_tui.py:906 /home/claude/luet_pm_tui.py:908
-#: /home/claude/luet_pm_tui.py:943 /home/claude/luet_pm_tui.py:1004
-#: /home/claude/luet_pm_tui.py:1013 /home/claude/luet_pm_tui.py:1026
-#: /home/claude/luet_pm_tui.py:1039 /home/claude/luet_pm_tui.py:1057
-#: /home/claude/luet_pm_tui.py:1135 /home/claude/luet_pm_tui.py:1163
-#: /home/claude/luet_pm_tui.py:1592 /home/claude/luet_pm_tui.py:1625
-msgid "Ready"
-msgstr "Bereit"
-
-#: /home/claude/luet_pm_core.py:572
-msgid "Error starting upgrade process"
-msgstr "Fehler beim Start des Upgrade-Prozesses"
-
-#: /home/claude/luet_pm_core.py:580
-msgid "Error during initial upgrade step"
-msgstr "Fehler im ersten Upgrade-Schritt"
-
-#: /home/claude/luet_pm_core.py:589 /home/claude/luet_pm_core.py:602
-#: /home/claude/luet_pm_tui.py:867
-msgid "System upgrade completed successfully"
-msgstr "System-Upgrade erfolgreich abgeschlossen"
-
-#: /home/claude/luet_pm_core.py:592
-#, fuzzy
-msgid ""
-"\n"
-"--- Repositories updated, continuing with package upgrade... ---\n"
-"\n"
-msgstr ""
-"\n"
-"--- Repositorien aktualisiert, fahre mit Package-Upgrade fort...\n"
-"---\n"
-
-#: /home/claude/luet_pm_core.py:593
-msgid "Continuing with package upgrade..."
-msgstr "Package-Upgrade wird fortgesetzt..."
-
-#: /home/claude/luet_pm_core.py:606
-msgid "Error starting second upgrade step"
-msgstr "Fehler beim Start des zweiten Upgrade-Schritts"
-
-#: /home/claude/luet_pm_core.py:657 /home/claude/luet_pm_gui.py:1263
-msgid "Clear Luet cache ({})"
-msgstr "Leere Luet-Cache ({})"
-
-#: /home/claude/luet_pm_core.py:659 /home/claude/luet_pm_gui.py:501
-#: /home/claude/luet_pm_gui.py:1266 /home/claude/luet_pm_tui.py:133
-msgid "Clear Luet cache"
-msgstr "Luet-Cache leeren"
-
-#: /home/claude/luet_pm_core.py:860 /home/claude/luet_pm_core.py:878
-#: /home/claude/luet_pm_tui.py:1108 /home/claude/luet_pm_tui.py:1142
-msgid "Error executing the search command"
-msgstr "Fehler beim Ausführen des Suchbefehls"
-
-#: /home/claude/luet_pm_core.py:875
-msgid "Invalid JSON output"
-msgstr "Ungültige JSON-Ausgabe"
-
-#: /home/claude/luet_pm_core.py:877
-msgid "Error running search:"
-msgstr "Fehler bei der Suchausführung:"
-
-#: /home/claude/luet_pm_core.py:1297
-msgid "Previous"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:1297
-msgid "{} versions back"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:1454
-msgid "Failed to write repository configuration"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:1484 /home/claude/luet_pm_gui.py:1495
-#: /home/claude/luet_pm_tui.py:1051
-#, fuzzy
-msgid "Rollback completed successfully"
-msgstr "System-Upgrade erfolgreich abgeschlossen"
-
-#: /home/claude/luet_pm_core.py:1485
-msgid "Rollback failed during upgrade"
-msgstr ""
-
-# , python-format
-#: /home/claude/luet_pm_core.py:1522
-#, python-format
-msgid "%d day ago"
-msgid_plural "%d days ago"
-msgstr[0] "%d Tag zuvor"
-msgstr[1] "%d Tage zuvor"
-
-# , python-format
-#: /home/claude/luet_pm_core.py:1525
-#, python-format
-msgid "%d hour ago"
-msgid_plural "%d hours ago"
-msgstr[0] "%d Stunde zuvor"
-msgstr[1] "%d Stunden zuvor"
-
-# , python-format
-#: /home/claude/luet_pm_core.py:1528
-#, python-format
-msgid "%d minute ago"
-msgid_plural "%d minutes ago"
-msgstr[0] "%d Minute zuvor"
-msgstr[1] "%d Minuten zuvor"
-
-#: /home/claude/luet_pm_core.py:1530
-msgid "just now"
-msgstr "gerade eben"
-
-#: /home/claude/luet_pm_core.py:1544 /home/claude/luet_pm_tui.py:380
-msgid "repositories not synced"
-msgstr "Repositorien nicht synchronisiert"
-
-#: /home/claude/luet_pm_core.py:1602
-#, fuzzy
-msgid "No metadata found for this package."
-msgstr "Für dieses Paket wurden keine Dateien gefunden."
-
-#: /home/claude/luet_pm_core.py:1609 /home/claude/luet_pm_gui.py:578
-#: /home/claude/luet_pm_gui.py:1420
-msgid "Version"
-msgstr "Version"
-
-#: /home/claude/luet_pm_core.py:1610
-#, fuzzy
-msgid "Installed"
-msgstr "Installiert:"
-
-#: /home/claude/luet_pm_core.py:1611
-#, fuzzy
-msgid "License"
-msgstr "Lizenz:"
-
-#: /home/claude/luet_pm_core.py:1614 /home/claude/luet_pm_gui.py:579
-msgid "Repository"
-msgstr "Repository"
-
-#: /home/claude/luet_pm_core.py:1615
-#, fuzzy
-msgid "Description"
-msgstr "Beschreibung:"
-
-#: /home/claude/luet_pm_core.py:1616
-msgid "Homepage"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:1627 /home/claude/luet_pm_gui.py:159
-msgid "Yes"
-msgstr "Ja"
-
-#: /home/claude/luet_pm_core.py:1627 /home/claude/luet_pm_gui.py:159
-msgid "No"
-msgstr "Nein"
-
-#: /home/claude/luet_pm_core.py:1627
-msgid "(unknown)"
-msgstr ""
-
-#: /home/claude/luet_pm_core.py:1652 /home/claude/luet_pm_core.py:1654
-#: /home/claude/luet_pm_core.py:1699
-msgid "(none)"
-msgstr ""
-
-#: /home/claude/luet_pm_gui.py:88
+#: luet_pm_gui.py:92
 msgid "Visit our website"
 msgstr "Besuche unsere Webseite"
 
-#: /home/claude/luet_pm_gui.py:101
+#: luet_pm_gui.py:105
 msgid "GitHub Repository"
 msgstr "GitHub Repository"
 
-#: /home/claude/luet_pm_gui.py:121
+#: luet_pm_gui.py:125
 msgid "Package Details"
 msgstr "Paketdetails"
 
-#: /home/claude/luet_pm_gui.py:157
+#: luet_pm_gui.py:161
 msgid "Package:"
 msgstr "Paket:"
 
-#: /home/claude/luet_pm_gui.py:158
+#: luet_pm_gui.py:162
 msgid "Version:"
 msgstr "Version:"
 
-#: /home/claude/luet_pm_gui.py:159
+#: luet_pm_gui.py:163
 msgid "Installed:"
 msgstr "Installiert:"
 
-#: /home/claude/luet_pm_gui.py:196
+#: luet_pm_gui.py:163 luet_pm_core.py:1632
+msgid "Yes"
+msgstr "Ja"
+
+#: luet_pm_gui.py:163 luet_pm_core.py:1632
+msgid "No"
+msgstr "Nein"
+
+#: luet_pm_gui.py:200
 msgid "Repository:"
 msgstr "Repository:"
 
-#: /home/claude/luet_pm_gui.py:204
+#: luet_pm_gui.py:208
 msgid "Description:"
 msgstr "Beschreibung:"
 
-#: /home/claude/luet_pm_gui.py:209
+#: luet_pm_gui.py:213
 msgid "License:"
 msgstr "Lizenz:"
 
-#: /home/claude/luet_pm_gui.py:216
+#: luet_pm_gui.py:220
 msgid "Required by"
 msgstr "Benötigt von"
 
-#: /home/claude/luet_pm_gui.py:228
+#: luet_pm_gui.py:232
 msgid "Package files"
 msgstr "Paketdateien"
 
-#: /home/claude/luet_pm_gui.py:230
+#: luet_pm_gui.py:234
 msgid "Filter files..."
 msgstr "Dateien filtern..."
 
-#: /home/claude/luet_pm_gui.py:235 /home/claude/luet_pm_gui.py:514
-#: /home/claude/luet_pm_tui.py:118
+#: luet_pm_gui.py:239 luet_pm_gui.py:518 luet_pm_tui.py:118
 msgid "File"
 msgstr "Datei"
 
-#: /home/claude/luet_pm_gui.py:250 /home/claude/luet_pm_gui.py:1299
+#: luet_pm_gui.py:254 luet_pm_gui.py:1303
 msgid "Close"
 msgstr "Schließen"
 
-#: /home/claude/luet_pm_gui.py:276
+#: luet_pm_gui.py:280
 msgid "Copy All Files"
 msgstr "Alle Dateien kopieren"
 
-#: /home/claude/luet_pm_gui.py:297
+#: luet_pm_gui.py:301
 msgid "Error retrieving required by information."
 msgstr "Fehler beim Abrufen der ‚benötigt von‘-Information."
 
-#: /home/claude/luet_pm_gui.py:305
+#: luet_pm_gui.py:309
 msgid "There are no packages installed that require this package."
 msgstr "Es sind keine Pakete installiert, die dieses Paket benötigen."
 
-#: /home/claude/luet_pm_gui.py:315
+#: luet_pm_gui.py:319
 msgid "Loading..."
 msgstr "Laden..."
 
-#: /home/claude/luet_pm_gui.py:326
+#: luet_pm_gui.py:330
 msgid "Error retrieving package files information."
 msgstr "Fehler beim Abrufen der Paketdateiinformationen."
 
-#: /home/claude/luet_pm_gui.py:329
+#: luet_pm_gui.py:333
 msgid "No files found for this package."
 msgstr "Für dieses Paket wurden keine Dateien gefunden."
 
-#: /home/claude/luet_pm_gui.py:355
+#: luet_pm_gui.py:359
 msgid "revdeps failed:"
 msgstr "Abhängigkeiten (revdeps) fehlgeschlagen:"
 
-#: /home/claude/luet_pm_gui.py:364
+#: luet_pm_gui.py:368
 msgid "Error retrieving required by info:"
 msgstr "Fehler beim Abrufen der ‚benötigt von‘-Info:"
 
-#: /home/claude/luet_pm_gui.py:372
+#: luet_pm_gui.py:376
 msgid "search for package failed:"
 msgstr "Suche nach Paket fehlgeschlagen:"
 
-#: /home/claude/luet_pm_gui.py:380
+#: luet_pm_gui.py:384
 msgid "Error retrieving package files info:"
 msgstr "Fehler beim Abrufen der Paketdatei-Infos:"
 
-#: /home/claude/luet_pm_gui.py:389
+#: luet_pm_gui.py:393
 msgid "Luet Package Search"
 msgstr "Luet Paket-Suche"
 
-#: /home/claude/luet_pm_gui.py:432
+#: luet_pm_gui.py:436
 #, fuzzy
 msgid "Warning: no pkexec/sudo found - admin actions will fail"
 msgstr ""
 "Warnung: kein pkexec/sudo gefunden — Administrator-Aktionen werden "
 "fehlschlagen"
 
-#: /home/claude/luet_pm_gui.py:487 /home/claude/luet_pm_tui.py:124
-#: /home/claude/luet_pm_tui.py:242
+#: luet_pm_gui.py:491 luet_pm_tui.py:124 luet_pm_tui.py:242
 msgid "Update repositories"
 msgstr "Repositorien aktualisieren"
 
-#: /home/claude/luet_pm_gui.py:491 /home/claude/luet_pm_tui.py:124
-#: /home/claude/luet_pm_tui.py:245
+#: luet_pm_gui.py:495 luet_pm_tui.py:124 luet_pm_tui.py:245
 msgid "Full system upgrade"
 msgstr "Vollständiges System-Upgrade"
 
-#: /home/claude/luet_pm_gui.py:494 /home/claude/luet_pm_tui.py:124
-#: /home/claude/luet_pm_tui.py:248
+#: luet_pm_gui.py:498 luet_pm_tui.py:124 luet_pm_tui.py:248
 msgid "Check system"
 msgstr "System prüfen"
 
-#: /home/claude/luet_pm_gui.py:497 /home/claude/luet_pm_gui.py:1279
-#: /home/claude/luet_pm_gui.py:1393 /home/claude/luet_pm_tui.py:163
-#: /home/claude/luet_pm_tui.py:253
+#: luet_pm_gui.py:501 luet_pm_gui.py:1283 luet_pm_gui.py:1397
+#: luet_pm_tui.py:163 luet_pm_tui.py:253
 msgid "Roll back"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:504 /home/claude/luet_pm_tui.py:124
-#: /home/claude/luet_pm_tui.py:240
+#: luet_pm_gui.py:505 luet_pm_gui.py:1270 luet_pm_tui.py:133
+#: luet_pm_core.py:659
+msgid "Clear Luet cache"
+msgstr "Luet-Cache leeren"
+
+#: luet_pm_gui.py:508 luet_pm_tui.py:124 luet_pm_tui.py:240
 msgid "Quit"
 msgstr "Beenden"
 
-#: /home/claude/luet_pm_gui.py:508 /home/claude/luet_pm_tui.py:125
-#: /home/claude/luet_pm_tui.py:258
+#: luet_pm_gui.py:512 luet_pm_tui.py:125 luet_pm_tui.py:258
 msgid "Documentation"
 msgstr "Dokumentation"
 
-#: /home/claude/luet_pm_gui.py:511 /home/claude/luet_pm_tui.py:125
-#: /home/claude/luet_pm_tui.py:260 /home/claude/luet_pm_tui.py:262
+#: luet_pm_gui.py:515 luet_pm_tui.py:125 luet_pm_tui.py:260 luet_pm_tui.py:262
 msgid "About"
 msgstr "Über"
 
-#: /home/claude/luet_pm_gui.py:516 /home/claude/luet_pm_tui.py:118
+#: luet_pm_gui.py:520 luet_pm_tui.py:118
 msgid "Help"
 msgstr "Hilfe"
 
-#: /home/claude/luet_pm_gui.py:549 /home/claude/luet_pm_tui.py:588
+#: luet_pm_gui.py:540 luet_pm_gui.py:929 luet_pm_gui.py:1052
+#: luet_pm_gui.py:1068 luet_pm_gui.py:1119 luet_pm_gui.py:1152
+#: luet_pm_gui.py:1214 luet_pm_gui.py:1244 luet_pm_tui.py:277
+#: luet_pm_tui.py:436 luet_pm_tui.py:481 luet_pm_tui.py:832 luet_pm_tui.py:877
+#: luet_pm_tui.py:906 luet_pm_tui.py:908 luet_pm_tui.py:943 luet_pm_tui.py:1004
+#: luet_pm_tui.py:1013 luet_pm_tui.py:1026 luet_pm_tui.py:1039
+#: luet_pm_tui.py:1057 luet_pm_tui.py:1135 luet_pm_tui.py:1163
+#: luet_pm_tui.py:1592 luet_pm_tui.py:1625 luet_pm_core.py:529
+msgid "Ready"
+msgstr "Bereit"
+
+#: luet_pm_gui.py:553 luet_pm_tui.py:588
 msgid "Enter package name"
 msgstr "Paketname eingeben"
 
-#: /home/claude/luet_pm_gui.py:552
+#: luet_pm_gui.py:556
 msgid "Advanced"
 msgstr "Erweitert"
 
-#: /home/claude/luet_pm_gui.py:554
+#: luet_pm_gui.py:558
 msgid "Check this box to also search inside filenames and labels"
 msgstr "Dieses Feld aktivieren, um auch in Dateinamen und Labels zu suchen"
 
-#: /home/claude/luet_pm_gui.py:557 /home/claude/luet_pm_tui.py:576
+#: luet_pm_gui.py:561 luet_pm_tui.py:576
 msgid "Search"
 msgstr "Suchen"
 
-#: /home/claude/luet_pm_gui.py:575
+#: luet_pm_gui.py:579 luet_pm_tui.py:632
 msgid "Category"
 msgstr "Kategorie"
 
-#: /home/claude/luet_pm_gui.py:576
+#: luet_pm_gui.py:580 luet_pm_tui.py:632
 msgid "Name"
 msgstr "Name"
 
-#: /home/claude/luet_pm_gui.py:580
+#: luet_pm_gui.py:582 luet_pm_gui.py:1424 luet_pm_tui.py:632
+#: luet_pm_core.py:1614
+msgid "Version"
+msgstr "Version"
+
+#: luet_pm_gui.py:583 luet_pm_tui.py:632 luet_pm_core.py:1619
+msgid "Repository"
+msgstr "Repository"
+
+#: luet_pm_gui.py:584 luet_pm_tui.py:632
 msgid "Action"
 msgstr "Aktion"
 
-#: /home/claude/luet_pm_gui.py:581 /home/claude/luet_pm_gui.py:797
+#: luet_pm_gui.py:585 luet_pm_gui.py:801
 msgid "Details"
 msgstr "Details"
 
-#: /home/claude/luet_pm_gui.py:623 /home/claude/luet_pm_tui.py:682
-#: /home/claude/luet_pm_tui.py:707
+#: luet_pm_gui.py:627 luet_pm_tui.py:682 luet_pm_tui.py:707
 msgid "Toggle output log"
 msgstr "Ausgabe-Protokoll umschalten"
 
-#: /home/claude/luet_pm_gui.py:721 /home/claude/luet_pm_tui.py:1087
+#: luet_pm_gui.py:725 luet_pm_tui.py:1087
 msgid "Invalid search query"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:730 /home/claude/luet_pm_gui.py:1202
-#: /home/claude/luet_pm_tui.py:1075
+#: luet_pm_gui.py:734 luet_pm_gui.py:1206 luet_pm_tui.py:1075
 msgid "Searching for {}..."
 msgstr "Suche nach {}..."
 
-#: /home/claude/luet_pm_gui.py:777 /home/claude/luet_pm_tui.py:651
-#: /home/claude/luet_pm_tui.py:1155 /home/claude/luet_pm_tui.py:1236
+#: luet_pm_gui.py:781 luet_pm_tui.py:651 luet_pm_tui.py:1155
+#: luet_pm_tui.py:1236
 msgid "Protected"
 msgstr "Geschützt"
 
-#: /home/claude/luet_pm_gui.py:780 /home/claude/luet_pm_tui.py:653
+#: luet_pm_gui.py:784 luet_pm_tui.py:653
 msgid "Remove"
 msgstr "Entfernen"
 
-#: /home/claude/luet_pm_gui.py:783 /home/claude/luet_pm_tui.py:655
+#: luet_pm_gui.py:787 luet_pm_tui.py:655
 msgid "Install"
 msgstr "Installieren"
 
-#: /home/claude/luet_pm_gui.py:802 /home/claude/luet_pm_tui.py:1134
+#: luet_pm_gui.py:806 luet_pm_tui.py:1134
 msgid "Found {} results matching '{}'"
 msgstr "Gefunden: {} Ergebnisse, die zu '{}' passen"
 
-#: /home/claude/luet_pm_gui.py:802 /home/claude/luet_pm_gui.py:1064
+#: luet_pm_gui.py:806 luet_pm_gui.py:1068
 msgid "No results"
 msgstr "Keine Ergebnisse"
 
-#: /home/claude/luet_pm_gui.py:805
+#: luet_pm_gui.py:809
 #, fuzzy
 msgid "Error processing search results:"
 msgstr "Fehler bei der Suchausführung:"
 
-#: /home/claude/luet_pm_gui.py:806
+#: luet_pm_gui.py:810
 #, fuzzy
 msgid "Error displaying search results"
 msgstr "Fehler bei der Suchausführung:"
 
-#: /home/claude/luet_pm_gui.py:907 /home/claude/luet_pm_tui.py:1154
-#: /home/claude/luet_pm_tui.py:1235
+#: luet_pm_gui.py:911 luet_pm_tui.py:1154 luet_pm_tui.py:1235
 msgid "This package ({}) is protected and can't be removed."
 msgstr "Dieses Paket ({}) ist geschützt und kann nicht entfernt werden."
 
-#: /home/claude/luet_pm_gui.py:922
+#: luet_pm_gui.py:926
 msgid "Searching again for '{}'..."
 msgstr "Suche erneut nach '{}'..."
 
-#: /home/claude/luet_pm_gui.py:930 /home/claude/luet_pm_tui.py:1199
+#: luet_pm_gui.py:934 luet_pm_tui.py:1199
 msgid "Do you want to install {}?"
 msgstr "Möchtest du {} installieren?"
 
-#: /home/claude/luet_pm_gui.py:941 /home/claude/luet_pm_gui.py:942
-#: /home/claude/luet_pm_tui.py:1203
+#: luet_pm_gui.py:945 luet_pm_gui.py:946 luet_pm_tui.py:1203
 msgid "Installing {}..."
 msgstr "Installiere {}..."
 
-#: /home/claude/luet_pm_gui.py:950 /home/claude/luet_pm_gui.py:988
-#: /home/claude/luet_pm_tui.py:1179 /home/claude/luet_pm_tui.py:1210
+#: luet_pm_gui.py:954 luet_pm_gui.py:992 luet_pm_tui.py:1179
+#: luet_pm_tui.py:1210
 msgid "Finalizing: Updating package cache..."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:958 /home/claude/luet_pm_gui.py:965
+#: luet_pm_gui.py:962 luet_pm_gui.py:969
 msgid "Error installing package"
 msgstr "Fehler bei der Paketinstallation"
 
-#: /home/claude/luet_pm_gui.py:970 /home/claude/luet_pm_tui.py:1169
+#: luet_pm_gui.py:974 luet_pm_tui.py:1169
 msgid "Do you want to uninstall {}?"
 msgstr "Möchtest du {} deinstallieren?"
 
-#: /home/claude/luet_pm_gui.py:971
+#: luet_pm_gui.py:975
 msgid ""
 "This will remove the package and its dependencies not required by other "
 "packages."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:979 /home/claude/luet_pm_gui.py:980
-#: /home/claude/luet_pm_tui.py:1172
+#: luet_pm_gui.py:983 luet_pm_gui.py:984 luet_pm_tui.py:1172
 msgid "Uninstalling {}..."
 msgstr "Deinstalliere {}..."
 
-#: /home/claude/luet_pm_gui.py:996
+#: luet_pm_gui.py:1000
 msgid "Error uninstalling package: '{}'"
 msgstr "Fehler beim Deinstallieren des Pakets: '{}'"
 
-#: /home/claude/luet_pm_gui.py:1010
+#: luet_pm_gui.py:1014
 msgid "Error uninstalling package"
 msgstr "Fehler bei der Deinstallation des Pakets"
 
-#: /home/claude/luet_pm_gui.py:1098 /home/claude/luet_pm_tui.py:810
+#: luet_pm_gui.py:1102 luet_pm_tui.py:810
 msgid "Updating repositories..."
 msgstr "Repositorien werden aktualisiert..."
 
-#: /home/claude/luet_pm_gui.py:1105 /home/claude/luet_pm_tui.py:818
+#: luet_pm_gui.py:1109 luet_pm_tui.py:818
 msgid "Repositories updated"
 msgstr "Repositorien aktualisiert"
 
-#: /home/claude/luet_pm_gui.py:1107 /home/claude/luet_pm_gui.py:1114
-#: /home/claude/luet_pm_tui.py:823
+#: luet_pm_gui.py:1111 luet_pm_gui.py:1118 luet_pm_tui.py:823
 msgid "Error updating repositories"
 msgstr "Fehler beim Aktualisieren der Repositorien"
 
-#: /home/claude/luet_pm_gui.py:1135 /home/claude/luet_pm_tui.py:899
+#: luet_pm_gui.py:1139 luet_pm_tui.py:899
 msgid "Checking system for missing files..."
 msgstr "System wird auf fehlende Dateien geprüft..."
 
-#: /home/claude/luet_pm_gui.py:1143
+#: luet_pm_gui.py:1147
 msgid "Missing files: preparing to reinstall..."
 msgstr "Fehlende Dateien: Vorbereitung zur Neuinstallation..."
 
-#: /home/claude/luet_pm_gui.py:1148 /home/claude/luet_pm_tui.py:914
+#: luet_pm_gui.py:1152 luet_pm_tui.py:914
 msgid "Could not repair some packages"
 msgstr "Einige Pakete konnten nicht repariert werden"
 
-#: /home/claude/luet_pm_gui.py:1167 /home/claude/luet_pm_tui.py:849
+#: luet_pm_gui.py:1171 luet_pm_tui.py:849
 msgid "Perform a full system upgrade?"
 msgstr "Vollständiges System-Upgrade durchführen?"
 
-#: /home/claude/luet_pm_gui.py:1168
+#: luet_pm_gui.py:1172
 #, fuzzy
 msgid ""
 "This will update all repositories and then upgrade all installed packages. "
@@ -567,53 +350,56 @@ msgstr ""
 "Dieser Vorgang kann einige Zeit in Anspruch nehmen und erfordert eine "
 "Internetverbindung."
 
-#: /home/claude/luet_pm_gui.py:1175
+#: luet_pm_gui.py:1179
 msgid "Performing full system upgrade"
 msgstr "Vollständiges System-Upgrade wird durchgeführt"
 
-#: /home/claude/luet_pm_gui.py:1178 /home/claude/luet_pm_tui.py:851
+#: luet_pm_gui.py:1182 luet_pm_tui.py:851
 msgid "Performing full system upgrade..."
 msgstr "Vollständiges System-Upgrade wird durchgeführt..."
 
-#: /home/claude/luet_pm_gui.py:1208 /home/claude/luet_pm_tui.py:869
+#: luet_pm_gui.py:1212 luet_pm_tui.py:869
 msgid "Error during system upgrade"
 msgstr "Fehler beim System-Upgrade"
 
-#: /home/claude/luet_pm_gui.py:1226 /home/claude/luet_pm_tui.py:934
+#: luet_pm_gui.py:1230 luet_pm_tui.py:934
 msgid "Clear Luet cache?"
 msgstr "Luet-Cache leeren?"
 
-#: /home/claude/luet_pm_gui.py:1227
+#: luet_pm_gui.py:1231
 msgid "This will run 'luet cleanup' and remove cached package data."
 msgstr ""
 "Dies führt ‘luet cleanup’ aus und entfernt zwischengespeicherte Paketdaten."
 
-#: /home/claude/luet_pm_gui.py:1236 /home/claude/luet_pm_tui.py:936
+#: luet_pm_gui.py:1240 luet_pm_tui.py:936
 msgid "Clearing Luet cache..."
 msgstr "Luet-Cache wird geleert..."
 
-#: /home/claude/luet_pm_gui.py:1240 /home/claude/luet_pm_tui.py:947
+#: luet_pm_gui.py:1244 luet_pm_tui.py:947
 msgid "Error clearing Luet cache"
 msgstr "Fehler beim Leeren des Luet-Cache"
 
-#: /home/claude/luet_pm_gui.py:1256 /home/claude/luet_pm_tui.py:531
+#: luet_pm_gui.py:1260 luet_pm_tui.py:531
 msgid "Last sync: {}"
 msgstr "Letzte Synchronisierung: {}"
 
-#: /home/claude/luet_pm_gui.py:1274 /home/claude/luet_pm_tui.py:161
-#: /home/claude/luet_pm_tui.py:256
+#: luet_pm_gui.py:1267 luet_pm_core.py:657
+msgid "Clear Luet cache ({})"
+msgstr "Leere Luet-Cache ({})"
+
+#: luet_pm_gui.py:1278 luet_pm_tui.py:161 luet_pm_tui.py:256
 msgid "View pinned state"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1285 /home/claude/luet_pm_tui.py:393
+#: luet_pm_gui.py:1289 luet_pm_tui.py:393
 msgid "unknown"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1290
+#: luet_pm_gui.py:1294
 msgid "System is pinned to a previous version"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1293
+#: luet_pm_gui.py:1297
 msgid ""
 "Desktop: {}\n"
 "\n"
@@ -624,64 +410,64 @@ msgid ""
 "further or do a full upgrade when ready."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1300
+#: luet_pm_gui.py:1304
 msgid "Unpin"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1309 /home/claude/luet_pm_tui.py:424
+#: luet_pm_gui.py:1313 luet_pm_tui.py:424
 msgid "Unpinning..."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1329
+#: luet_pm_gui.py:1333
 msgid "Unpinned. You can now roll back further or upgrade."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1331 /home/claude/luet_pm_tui.py:439
+#: luet_pm_gui.py:1335 luet_pm_tui.py:439
 #, fuzzy
 msgid "Error during unpin"
 msgstr "Fehler beim System-Upgrade"
 
-#: /home/claude/luet_pm_gui.py:1341 /home/claude/luet_pm_tui.py:998
+#: luet_pm_gui.py:1345 luet_pm_tui.py:998
 msgid "Checking rollback availability..."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1346 /home/claude/luet_pm_tui.py:1007
+#: luet_pm_gui.py:1350 luet_pm_tui.py:1007
 msgid "Cannot determine current desktop version."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1374 /home/claude/luet_pm_tui.py:1016
+#: luet_pm_gui.py:1378 luet_pm_tui.py:1016
 msgid "No previous version available to roll back to."
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1386
+#: luet_pm_gui.py:1390 luet_pm_tui.py:971
 msgid "Select rollback target"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1392
+#: luet_pm_gui.py:1396
 msgid "Cancel"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1404
+#: luet_pm_gui.py:1408
 msgid "Choose a version to roll back to:"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1420
+#: luet_pm_gui.py:1424
 msgid "Date"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1420
+#: luet_pm_gui.py:1424
 msgid "Desktop"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1420
+#: luet_pm_gui.py:1424
 msgid "Community"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1451
+#: luet_pm_gui.py:1455
 msgid "Roll back to {}?"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1453
+#: luet_pm_gui.py:1457
 msgid ""
 "This will revert your system to:\n"
 "\n"
@@ -692,25 +478,33 @@ msgid ""
 "Are you sure you want to continue?"
 msgstr ""
 
-#: /home/claude/luet_pm_gui.py:1469 /home/claude/luet_pm_tui.py:1042
+#: luet_pm_gui.py:1473 luet_pm_tui.py:1042
 #, fuzzy
 msgid "Rolling back..."
 msgstr "Neuinstallation von {}..."
 
-#: /home/claude/luet_pm_tui.py:259 /home/claude/luet_pm_tui.py:931
-#: /home/claude/luet_pm_tui.py:995 /home/claude/luet_pm_tui.py:1016
+#: luet_pm_gui.py:1499 luet_pm_tui.py:1051 luet_pm_core.py:1489
+#, fuzzy
+msgid "Rollback completed successfully"
+msgstr "System-Upgrade erfolgreich abgeschlossen"
+
+#: luet_pm_tui.py:259 luet_pm_tui.py:931 luet_pm_tui.py:995 luet_pm_tui.py:1016
 msgid "Info"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:259
+#: luet_pm_tui.py:259
 msgid "Opening luet documentation (URL TBD)"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:279
+#: luet_pm_tui.py:279
 msgid "Not Synced"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:394
+#: luet_pm_tui.py:380 luet_pm_core.py:1549
+msgid "repositories not synced"
+msgstr "Repositorien nicht synchronisiert"
+
+#: luet_pm_tui.py:394
 msgid ""
 "System is pinned to a previous version.\n"
 "\n"
@@ -719,107 +513,111 @@ msgid ""
 "Updates and rollbacks are disabled while pinned."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:410
+#: luet_pm_tui.py:410
 msgid "Press 'u' to unpin, any other key to close."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:422
+#: luet_pm_tui.py:422
 #, fuzzy
 msgid "Unpin the system?"
 msgstr "System prüfen"
 
-#: /home/claude/luet_pm_tui.py:476
+#: luet_pm_tui.py:476
 msgid "Terminal too small! Min 20x80."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:629
+#: luet_pm_tui.py:629
 #, fuzzy
 msgid " Results "
 msgstr "Keine Ergebnisse"
 
-#: /home/claude/luet_pm_tui.py:685
+#: luet_pm_tui.py:685
 msgid "Scrolled Up: {} line."
 msgid_plural "Scrolled Up: {} lines."
 msgstr[0] ""
 msgstr[1] ""
 
-#: /home/claude/luet_pm_tui.py:686
+#: luet_pm_tui.py:686
 msgid "{} ({} PgUp/PgDn to navigate)"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:716
+#: luet_pm_tui.py:716
 msgid ""
 "Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle "
 "log | PgUp/PgDn=log scroll | q=quit"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:718
+#: luet_pm_tui.py:718
 msgid ""
 "SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit "
 "| q=quit"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:777
+#: luet_pm_tui.py:777
 msgid "Press 'y' to confirm, any other key to cancel."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:799
+#: luet_pm_tui.py:799
 msgid "Press any key to continue"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:852
+#: luet_pm_tui.py:852
 #, fuzzy
 msgid "Full system upgrade initiated."
 msgstr "Vollständiges System-Upgrade"
 
-#: /home/claude/luet_pm_tui.py:893
+#: luet_pm_tui.py:867 luet_pm_core.py:589 luet_pm_core.py:602
+msgid "System upgrade completed successfully"
+msgstr "System-Upgrade erfolgreich abgeschlossen"
+
+#: luet_pm_tui.py:893
 msgid "Upgrade initiation failed: {}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:894
+#: luet_pm_tui.py:894
 msgid "Upgrade failed to start"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:910
+#: luet_pm_tui.py:910
 msgid ""
 "\n"
 "--- Missing packages found. Starting repair sequence. ---"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:914
+#: luet_pm_tui.py:914
 #, fuzzy
 msgid "System repair finished successfully."
 msgstr "System-Upgrade erfolgreich abgeschlossen"
 
-#: /home/claude/luet_pm_tui.py:931
+#: luet_pm_tui.py:931
 msgid "No cache to clear"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:937
+#: luet_pm_tui.py:937
 msgid "--- Running 'luet cleanup' ---"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:942
+#: luet_pm_tui.py:942
 msgid "Luet cache cleanup finished successfully."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:946
+#: luet_pm_tui.py:946
 msgid "Luet cache cleanup finished with errors."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:976
+#: luet_pm_tui.py:976
 msgid "↑↓ select   Enter confirm   Esc cancel"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:995
+#: luet_pm_tui.py:995
 msgid "Roll back is only available on stable repositories."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1007
+#: luet_pm_tui.py:1007
 msgid "Error"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1029
+#: luet_pm_tui.py:1029
 msgid ""
 "Roll back to {}?\n"
 "\n"
@@ -829,93 +627,272 @@ msgid ""
 "A full system downgrade will be performed."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1107
+#: luet_pm_tui.py:1107
 #, fuzzy
 msgid "Search core error: {}"
 msgstr "Suche nach {}..."
 
-#: /home/claude/luet_pm_tui.py:1141
+#: luet_pm_tui.py:1108 luet_pm_tui.py:1142 luet_pm_core.py:867
+#: luet_pm_core.py:885
+msgid "Error executing the search command"
+msgstr "Fehler beim Ausführen des Suchbefehls"
+
+#: luet_pm_tui.py:1141
 #, fuzzy
 msgid "Search result processing failed: {}"
 msgstr "Suche nach Paket fehlgeschlagen:"
 
-#: /home/claude/luet_pm_tui.py:1186
+#: luet_pm_tui.py:1186
 #, fuzzy
 msgid "Error uninstalling: '{}'"
 msgstr "Fehler beim Deinstallieren des Pakets: '{}'"
 
-#: /home/claude/luet_pm_tui.py:1217
+#: luet_pm_tui.py:1217
 #, fuzzy
 msgid "Error installing: '{}'"
 msgstr "Fehler beim Deinstallieren des Pakets: '{}'"
 
-#: /home/claude/luet_pm_tui.py:1253
+#: luet_pm_tui.py:1253
 msgid "Details for {}/{}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1284
+#: luet_pm_tui.py:1284
 msgid "Line {}/{}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1351
+#: luet_pm_tui.py:1351
 #, fuzzy
 msgid "Required by for {}/{}"
 msgstr "Benötigt von"
 
-#: /home/claude/luet_pm_tui.py:1352
+#: luet_pm_tui.py:1352
 msgid "Loading required by list..."
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1384
+#: luet_pm_tui.py:1384
 #, fuzzy
 msgid "This package is not required by any other package."
 msgstr "Es sind keine Pakete installiert, die dieses Paket benötigen."
 
-#: /home/claude/luet_pm_tui.py:1386 /home/claude/luet_pm_tui.py:1520
+#: luet_pm_tui.py:1386 luet_pm_tui.py:1520
 msgid "Press any key to close"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1405
+#: luet_pm_tui.py:1405
 msgid "Required by for {}/{} ({} packages)"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1414
+#: luet_pm_tui.py:1414
 msgid "Package {}/{} | Page {}/{}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1423 /home/claude/luet_pm_tui.py:1554
+#: luet_pm_tui.py:1423 luet_pm_tui.py:1554
 msgid "Keys: Up/Down/PgUp/PgDn=scroll | Any other key=close"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1477
+#: luet_pm_tui.py:1477
 msgid "Files for {}/{}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1478
+#: luet_pm_tui.py:1478
 #, fuzzy
 msgid "Loading file list..."
 msgstr "Laden..."
 
-#: /home/claude/luet_pm_tui.py:1518
+#: luet_pm_tui.py:1518
 #, fuzzy
 msgid "No files found or package not installed"
 msgstr "Für dieses Paket wurden keine Dateien gefunden."
 
-#: /home/claude/luet_pm_tui.py:1536
+#: luet_pm_tui.py:1536
 msgid "Files for {}/{} ({} files)"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1545
+#: luet_pm_tui.py:1545
 msgid "File {}/{} | Page {}/{}"
 msgstr ""
 
-#: /home/claude/luet_pm_tui.py:1714
+#: luet_pm_tui.py:1714
 #, fuzzy
 msgid "Starting Vajo: a Luet TUI frontend..."
 msgstr "Luet-Cache wird geleert..."
 
-#: /home/claude/luet_pm_tui.py:1720
+#: luet_pm_tui.py:1720
 msgid "An error occurred outside of curses: {}"
+msgstr ""
+
+#: luet_pm_core.py:152
+#, fuzzy
+msgid "Vajo: a Luet Package Manager Frontend"
+msgstr "Luet Paket-Suche"
+
+#: luet_pm_core.py:160
+#, fuzzy
+msgid "© 2023 - 2026 MocaccinoOS. All Rights Reserved"
+msgstr ""
+"© 2023 - 2025 MocaccinoOS.\n"
+"Alle Rechte vorbehalten"
+
+#: luet_pm_core.py:177
+msgid ""
+"Vajo: a Luet Package Manager TUI (ncurses)\n"
+"Version: {}\n"
+"Website: {}\n"
+"Authors: {}\n"
+"(Uses luet_pm_core.py)"
+msgstr ""
+
+#: luet_pm_core.py:209
+msgid "No elevation helper available"
+msgstr "Kein Hilfsprogramm zur Erhöhung der Rechte verfügbar"
+
+#: luet_pm_core.py:259
+msgid ""
+"\n"
+"Error executing command: {}\n"
+msgstr ""
+"\n"
+"Fehler beim Ausführen des Befehls: {}\n"
+
+#: luet_pm_core.py:384
+#, fuzzy
+msgid "Updating repositories"
+msgstr "Repositorien werden aktualisiert..."
+
+#: luet_pm_core.py:484
+msgid "luet oscheck failed with return code {}"
+msgstr ""
+
+#: luet_pm_core.py:490
+msgid "Repair sequence started for {} missing packages.\n"
+msgstr ""
+
+#: luet_pm_core.py:491
+msgid "Found {} missing packages. Starting repair immediately.\n"
+msgstr ""
+
+#: luet_pm_core.py:497
+msgid "Reinstalling {}..."
+msgstr "Neuinstallation von {}..."
+
+#: luet_pm_core.py:510
+msgid "Failed reinstalling {}"
+msgstr "Fehler beim Neuinstallieren von {}"
+
+#: luet_pm_core.py:521
+msgid "System check failed due to exception"
+msgstr ""
+
+#: luet_pm_core.py:572
+msgid "Error starting upgrade process"
+msgstr "Fehler beim Start des Upgrade-Prozesses"
+
+#: luet_pm_core.py:580
+msgid "Error during initial upgrade step"
+msgstr "Fehler im ersten Upgrade-Schritt"
+
+#: luet_pm_core.py:592
+#, fuzzy
+msgid ""
+"\n"
+"--- Repositories updated, continuing with package upgrade... ---\n"
+"\n"
+msgstr ""
+"\n"
+"--- Repositorien aktualisiert, fahre mit Package-Upgrade fort...\n"
+"---\n"
+
+#: luet_pm_core.py:593
+msgid "Continuing with package upgrade..."
+msgstr "Package-Upgrade wird fortgesetzt..."
+
+#: luet_pm_core.py:606
+msgid "Error starting second upgrade step"
+msgstr "Fehler beim Start des zweiten Upgrade-Schritts"
+
+#: luet_pm_core.py:882
+msgid "Invalid JSON output"
+msgstr "Ungültige JSON-Ausgabe"
+
+#: luet_pm_core.py:884
+msgid "Error running search:"
+msgstr "Fehler bei der Suchausführung:"
+
+#: luet_pm_core.py:1302
+msgid "Previous"
+msgstr ""
+
+#: luet_pm_core.py:1302
+msgid "{} versions back"
+msgstr ""
+
+#: luet_pm_core.py:1459
+msgid "Failed to write repository configuration"
+msgstr ""
+
+#: luet_pm_core.py:1490
+msgid "Rollback failed during upgrade"
+msgstr ""
+
+# , python-format
+#: luet_pm_core.py:1527
+#, python-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "%d Tag zuvor"
+msgstr[1] "%d Tage zuvor"
+
+# , python-format
+#: luet_pm_core.py:1530
+#, python-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] "%d Stunde zuvor"
+msgstr[1] "%d Stunden zuvor"
+
+# , python-format
+#: luet_pm_core.py:1533
+#, python-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] "%d Minute zuvor"
+msgstr[1] "%d Minuten zuvor"
+
+#: luet_pm_core.py:1535
+msgid "just now"
+msgstr "gerade eben"
+
+#: luet_pm_core.py:1607
+#, fuzzy
+msgid "No metadata found for this package."
+msgstr "Für dieses Paket wurden keine Dateien gefunden."
+
+#: luet_pm_core.py:1615
+#, fuzzy
+msgid "Installed"
+msgstr "Installiert:"
+
+#: luet_pm_core.py:1616
+#, fuzzy
+msgid "License"
+msgstr "Lizenz:"
+
+#: luet_pm_core.py:1620
+#, fuzzy
+msgid "Description"
+msgstr "Beschreibung:"
+
+#: luet_pm_core.py:1621
+msgid "Homepage"
+msgstr ""
+
+#: luet_pm_core.py:1632
+msgid "(unknown)"
+msgstr ""
+
+#: luet_pm_core.py:1657 luet_pm_core.py:1659 luet_pm_core.py:1704
+#: luet_pm_core.py:1714
+msgid "(none)"
 msgstr ""
 
 #, fuzzy
