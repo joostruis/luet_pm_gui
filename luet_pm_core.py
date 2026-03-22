@@ -1458,16 +1458,20 @@ class RollbackManager:
         def _do_rollback():
             RollbackManager.backup_vajo_files(command_runner_sync)
 
+            # Clean up config files that may be incompatible with older package
+            # versions (e.g. sshd config format changes, python/bash version changes).
+            # These will be restored by luet upgrade from the pinned snapshot.
+            # NOTE: /etc/shells and /etc/pam.d/* are intentionally NOT removed —
+            # their absence breaks pkexec and PAM authentication immediately,
+            # making recovery impossible if the upgrade fails or is interrupted.
             cleanup_cmd = (
                 "rm -rf /etc/ssh/sshd_config.d && "
                 "rm -f /etc/ssh/sshd_config && "
                 "rm -rf /etc/bash_completion* && "
                 "rm -rf /usr/share/bash-completion && "
                 "rm -f /etc/nsswitch.conf && "
-                "rm -f /etc/pam.d/* && "
                 "rm -f /etc/profile && "
-                "rm -rf /etc/profile.d/* && "
-                "rm -f /etc/shells"
+                "rm -rf /etc/profile.d/*"
             )
             command_runner_sync(["sh", "-c", cleanup_cmd], require_root=True)
 
