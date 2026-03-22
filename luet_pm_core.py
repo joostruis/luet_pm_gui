@@ -830,10 +830,17 @@ class PackageOperations:
         def worker():
             # 1. If system is pinned, re-apply the reference: to conf files
             # in case a package install overwrote them
+            repo_updated = False
             if RollbackManager.is_pinned():
                 pinned_version = RollbackManager.get_current_desktop_version()
                 if pinned_version:
+                    was_community_enabled = RollbackManager.is_community_enabled()
                     RollbackManager._restore_pin(pinned_version, run_sync_func)
+                    # If community was just enabled (wasn't before), update repos
+                    # so the pinned community index gets downloaded
+                    if not was_community_enabled and RollbackManager.is_community_enabled():
+                        run_sync_func(["luet", "repo", "update"], require_root=True)
+                        repo_updated = True
 
             # 2. Refresh the installed packages list (Blocking/Slow)
             try:
@@ -991,26 +998,24 @@ class RollbackManager:
         if community_version:
             community_path = os.path.join(
                 RollbackManager.REPOS_CONF_DIR, RollbackManager.COMMUNITY_STABLE_FILE)
-            # Enable community if the repository package is installed in the luet db
-            # (i.e. the user installed repository/mocaccino-community-stable)
+            # Check luet database to see if community repository package is installed.
+            # We cannot rely on the conf file's enable state since our rollback wrote
+            # enable: false there, and luet's config-protect pending file gets cleaned
+            # up by _restore_pin before mos config-update can merge it.
             community_enabled = False
             try:
-                result = subprocess.run(
+                result = run_sync_func(
                     ["luet", "search", "--installed",
                      "repository/mocaccino-community-stable", "-q"],
-                    capture_output=True, text=True, timeout=15
+                    require_root=True
                 )
-                community_enabled = result.returncode == 0 and \
-                    "mocaccino-community-stable" in result.stdout
+                if result.returncode == 0:
+                    for line in result.stdout.splitlines():
+                        if "mocaccino-community-stable" in line:
+                            community_enabled = True
+                            break
             except Exception:
-                # Fall back to reading the current file's enable state
-                if os.path.exists(community_path):
-                    try:
-                        with open(community_path, "r") as f:
-                            data = yaml.safe_load(f)
-                        community_enabled = data.get("enable", False) is True
-                    except Exception:
-                        pass
+                pass
             community_content = (
                 f'name: "mocaccino-community-stable"\n'
                 f'description: "MocaccinoOS Community Repository (Stable)"\n'
