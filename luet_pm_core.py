@@ -153,7 +153,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.4.1"
+        return "0.8.4.0"
 
     @staticmethod
     def get_copyright():
@@ -552,7 +552,11 @@ class SystemUpgrader:
 
     def start_upgrade(self):
         try:
-            # Unpin any rollback references and remove pin file before upgrading
+            # Always write the latest stable reference before upgrading.
+            # unpin_references() fetches the current stable tag from
+            # collection.yaml and writes it to the conf files, ensuring
+            # luet resolves against the correct stable tag rather than
+            # the latest available tag on quay.io.
             unpin_cmd = RollbackManager.unpin_references()
             remove_pin = f"rm -f {RollbackManager.PIN_FILE} {RollbackManager.ANCHOR_FILE}"
             if unpin_cmd:
@@ -1191,8 +1195,10 @@ class RollbackManager:
         versions = {}
         current_name = None
         for line in content.split('\n'):
-            nm = re.search(r'name:\s*"([^"]+)"', line)
-            vm = re.search(r'version:\s*"([^"]+)"', line)
+            # Only match top-level package fields (4 spaces indent)
+            # to avoid matching nested label fields like package.version
+            nm = re.search(r'^    name:\s*"([^"]+)"', line)
+            vm = re.search(r'^    version:\s*"([^"]+)"', line)
             if nm:
                 current_name = nm.group(1)
             if vm and current_name:
@@ -1261,8 +1267,10 @@ class RollbackManager:
     @staticmethod
     def get_rollback_candidates(current_desktop_version):
         """
-        Clones the repository-index and returns the last 10 dual-bump snapshots
-        older than the current version. Each entry: {label, desktop, community, date, sha}
+        Clones the repository-index and returns rollback candidates:
+        the last 10 dual-bump snapshots from the current version, plus
+        the closest snapshot to ~1 year ago and ~2 years ago (deduplicated).
+        Each entry: {label, desktop, community, date, sha}
         Returns empty list if none found.
         """
         clone_dir = "/tmp/mocaccino-repo-index-cache"
@@ -1292,15 +1300,41 @@ class RollbackManager:
             if current_idx is None:
                 return []
 
-            # Take up to 10 snapshots older than current
-            older = snapshots[current_idx + 1:current_idx + 11]
+            older = snapshots[current_idx + 1:]
             if not older:
                 return []
 
+            seen = set()
             candidates = []
-            for i, snapshot in enumerate(older):
+
+            def _add(label, snapshot):
+                if snapshot["desktop"] not in seen:
+                    seen.add(snapshot["desktop"])
+                    candidates.append(dict(snapshot, label=label))
+
+            # Last 10 snapshots
+            for i, snapshot in enumerate(older[:10]):
                 label = _("Previous") if i == 0 else _("{} versions back").format(i + 1)
-                candidates.append(dict(snapshot, label=label))
+                _add(label, snapshot)
+
+            # Time-based: ~1 year ago and ~2 years ago
+            today = datetime.date.today()
+            one_year_ago = (today - datetime.timedelta(days=365)).isoformat()
+            two_years_ago = (today - datetime.timedelta(days=730)).isoformat()
+
+            def closest_to(target_date):
+                return min(
+                    older,
+                    key=lambda s: abs(
+                        (datetime.date.fromisoformat(s["date"]) -
+                         datetime.date.fromisoformat(target_date)).days
+                    )
+                )
+
+            if older:
+                _add(_("~1 year ago"), closest_to(one_year_ago))
+            if older:
+                _add(_("~2 years ago"), closest_to(two_years_ago))
 
             return candidates
 
@@ -1314,71 +1348,104 @@ class RollbackManager:
                 pass
 
     @staticmethod
-    def unpin_references():
+    def _write_latest_stable_refs(latest_desktop, latest_community):
         """
-        Returns a shell command string that removes reference: fields from
-        the stable repo conf files, or empty string if nothing is pinned.
-        Designed to be prepended to an elevated sh -c command.
+        Returns a shell command string that writes the latest stable reference:
+        fields to the conf files. Used before a full upgrade to ensure luet
+        resolves against the correct stable tag.
         """
-        def _make_content(name, desc, priority, url):
-            return (
-                f'name: "{name}"\n'
-                f'description: "{desc}"\n'
-                f'type: "docker"\n'
-                f'enable: true\n'
-                f'cached: true\n'
-                f'priority: {priority}\n'
-                f'urls:\n'
-                f'  - "{url}"\n'
-            )
-
         def _escape(s):
             return s.replace("'", "'\\''")
 
         cmds = []
-        files = [
-            (
-                RollbackManager.DESKTOP_STABLE_FILE,
-                "mocaccino-desktop-stable",
-                "MocaccinoOS desktop Repository (stable)",
-                3,
-                "quay.io/mocaccino/desktop",
-            ),
-            (
-                RollbackManager.COMMUNITY_STABLE_FILE,
-                "mocaccino-community-stable",
-                "MocaccinoOS Community Repository (Stable)",
-                50,
-                "quay.io/mocaccino/mocaccino-community",
-            ),
-        ]
-        for filename, name, desc, priority, url in files:
-            path = os.path.join(RollbackManager.REPOS_CONF_DIR, filename)
-            if not os.path.exists(path):
-                continue
-            try:
-                with open(path, "r") as f:
-                    data = yaml.safe_load(f)
-                if "reference" not in data:
-                    continue  # Already unpinned, skip
-                # Preserve the current enable state
-                currently_enabled = data.get("enable", True)
-            except Exception:
-                continue
-            content = (
-                f'name: "{name}"\n'
-                f'description: "{desc}"\n'
-                f'type: "docker"\n'
-                f'enable: {"true" if currently_enabled else "false"}\n'
-                f'cached: true\n'
-                f'priority: {priority}\n'
-                f'urls:\n'
-                f'  - "{url}"\n'
+
+        if latest_desktop:
+            path = os.path.join(
+                RollbackManager.REPOS_CONF_DIR, RollbackManager.DESKTOP_STABLE_FILE)
+            if os.path.exists(path):
+                try:
+                    with open(path, "r") as f:
+                        data = yaml.safe_load(f)
+                    enabled = data.get("enable", True)
+                except Exception:
+                    enabled = True
+                content = (
+                    f'name: "mocaccino-desktop-stable"\n'
+                    f'description: "MocaccinoOS desktop Repository (stable)"\n'
+                    f'type: "docker"\n'
+                    f'enable: {"true" if enabled else "false"}\n'
+                    f'cached: true\n'
+                    f'priority: 3\n'
+                    f'urls:\n'
+                    f'  - "quay.io/mocaccino/desktop"\n'
+                    f'reference: "{latest_desktop}-repository.yaml"\n'
+                )
+                cmds.append(f"printf '%s' '{_escape(content)}' > {path}")
+
+        if latest_community:
+            path = os.path.join(
+                RollbackManager.REPOS_CONF_DIR, RollbackManager.COMMUNITY_STABLE_FILE)
+            if os.path.exists(path):
+                try:
+                    with open(path, "r") as f:
+                        data = yaml.safe_load(f)
+                    enabled = data.get("enable", True)
+                except Exception:
+                    enabled = True
+                content = (
+                    f'name: "mocaccino-community-stable"\n'
+                    f'description: "MocaccinoOS Community Repository (Stable)"\n'
+                    f'type: "docker"\n'
+                    f'enable: {"true" if enabled else "false"}\n'
+                    f'cached: true\n'
+                    f'priority: 50\n'
+                    f'urls:\n'
+                    f'  - "quay.io/mocaccino/mocaccino-community"\n'
+                    f'reference: "{latest_community}-repository.yaml"\n'
+                )
+                cmds.append(f"printf '%s' '{_escape(content)}' > {path}")
+
+        return " && ".join(cmds)
+
+    @staticmethod
+    def _get_latest_stable_versions():
+        """
+        Fetches the latest stable desktop and community versions from
+        the repository-index collection.yaml on GitHub.
+        Returns (desktop_version, community_version) or (None, None) on failure.
+        """
+        url = "https://raw.githubusercontent.com/mocaccinoOS/repository-index/master/packages/collection.yaml"
+        try:
+            result = subprocess.run(
+                ["curl", "-sf", "--max-time", "15", url],
+                capture_output=True, text=True
             )
-            cmds.append(f"printf '%s' '{_escape(content)}' > {path}")
+            if result.returncode != 0 or not result.stdout.strip():
+                return None, None
+            versions = RollbackManager._parse_collection_yaml(result.stdout)
+            desktop = versions.get("mocaccino-desktop-stable", "").replace("-repository.yaml", "").strip()
+            community = versions.get("mocaccino-community-stable", "").replace("-repository.yaml", "").strip()
+            return desktop or None, community or None
+        except Exception as e:
+            print("RollbackManager._get_latest_stable_versions error:", e)
+            return None, None
+
+    @staticmethod
+    def unpin_references():
+        """
+        Returns a shell command string that writes the latest stable reference:
+        fields to the conf files and removes the pin file.
+        Fetches latest versions from repository-index collection.yaml.
+        """
+        latest_desktop, latest_community = RollbackManager._get_latest_stable_versions()
+        cmds = []
+
+        write_cmds = RollbackManager._write_latest_stable_refs(
+            latest_desktop, latest_community)
+        if write_cmds:
+            cmds.append(write_cmds)
 
         # Remove the pin file so is_pinned() returns False
-        # get_current_desktop_version() will fall back to luet search --installed
         cmds.append(f"rm -f {RollbackManager.PIN_FILE}")
 
         return " && ".join(cmds)
