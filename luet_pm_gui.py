@@ -4,14 +4,10 @@ import gi
 import os
 import sys
 import json
-import re
 import threading
 import time
-import subprocess
 import shutil
-import yaml
 import webbrowser
-import datetime
 import gettext
 import locale
 import signal
@@ -1488,7 +1484,6 @@ class SearchApp(Gtk.Window):
             )
             return False
 
-        import threading
         threading.Thread(target=_prepare, daemon=True).start()
 
     def _on_rollback_finished(self, returncode, message):
