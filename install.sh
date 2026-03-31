@@ -15,8 +15,8 @@ install -Dm755 luet_pm_gui.py $PACKAGE_DIR/usr/bin/luet_pm_gui.py
 install -Dm755 vajo.sh $PACKAGE_DIR/usr/bin/vajo.sh
 
 # Create convenient symlinks for easier launching
-ln -sf $PACKAGE_DIR/usr/bin/luet_pm_gui.py $PACKAGE_DIR/usr/bin/vajo-gui
-ln -sf $PACKAGE_DIR/usr/bin/luet_pm_tui.py $PACKAGE_DIR/usr/bin/vajo-tui
+ln -sf luet_pm_gui.py $PACKAGE_DIR/usr/bin/vajo-gui
+ln -sf luet_pm_tui.py $PACKAGE_DIR/usr/bin/vajo-tui
 
 # Install polkit policy + rules
 install -Dm644 org.mocaccino.vajo.policy $PACKAGE_DIR/usr/share/polkit-1/actions/org.mocaccino.vajo.policy
