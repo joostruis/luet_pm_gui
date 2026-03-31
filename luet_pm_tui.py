@@ -17,7 +17,6 @@ import traceback
 import shutil
 import os
 import sys
-import re
 import signal
 
 # -------------------------
