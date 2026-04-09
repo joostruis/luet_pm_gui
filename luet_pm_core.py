@@ -1297,10 +1297,15 @@ class RollbackManager:
                  if s["desktop"] <= current_desktop_version),
                 None
             )
-            if current_idx is None:
-                return []
 
-            older = snapshots[current_idx + 1:]
+            # If current version is newer than all snapshots in the clone
+            # (e.g. after an upgrade that moved past the cloned depth),
+            # treat all snapshots as rollback candidates.
+            if current_idx is None:
+                older = snapshots
+            else:
+                older = snapshots[current_idx + 1:]
+
             if not older:
                 return []
 
