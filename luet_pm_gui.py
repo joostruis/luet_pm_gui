@@ -1474,14 +1474,17 @@ class SearchApp(Gtk.Window):
             def on_finish(returncode, message):
                 GLib.idle_add(self._on_rollback_finished, returncode, message)
 
-            RollbackManager.run_rollback(
-                previous_snapshot=previous,
-                command_runner_realtime=self.command_runner.run_realtime,
-                command_runner_sync=self.command_runner.run_sync,
-                log_callback=on_log,
-                on_finish_callback=on_finish,
-                schedule_callback=GLib.idle_add
-            )
+            def _start_rollback():
+                RollbackManager.run_rollback(
+                    previous_snapshot=previous,
+                    command_runner_realtime=self.command_runner.run_realtime,
+                    command_runner_sync=self.command_runner.run_sync,
+                    log_callback=on_log,
+                    on_finish_callback=on_finish,
+                    schedule_callback=GLib.idle_add
+                )
+
+            threading.Thread(target=_start_rollback, daemon=True).start()
             return False
 
         threading.Thread(target=_prepare, daemon=True).start()

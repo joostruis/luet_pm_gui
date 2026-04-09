@@ -1058,16 +1058,18 @@ class LuetTUI:
                         self.set_status(message, error=True)
                 self.scheduler.schedule(_cb)
 
-            RollbackManager.run_rollback(
-                previous_snapshot=previous,
-                command_runner_realtime=self.command_runner.run_realtime,
-                command_runner_sync=self.command_runner.run_sync,
-                log_callback=on_log,
-                on_finish_callback=on_finish,
-                schedule_callback=self.scheduler.schedule
-            )
+            def _start_rollback():
+                RollbackManager.run_rollback(
+                    previous_snapshot=previous,
+                    command_runner_realtime=self.command_runner.run_realtime,
+                    command_runner_sync=self.command_runner.run_sync,
+                    log_callback=on_log,
+                    on_finish_callback=on_finish,
+                    schedule_callback=self.scheduler.schedule
+                )
 
-        import threading
+            threading.Thread(target=_start_rollback, daemon=True).start()
+
         threading.Thread(target=_prepare, daemon=True).start()
         
     def run_search(self, query):

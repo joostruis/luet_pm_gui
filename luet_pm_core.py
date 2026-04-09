@@ -1297,15 +1297,10 @@ class RollbackManager:
                  if s["desktop"] <= current_desktop_version),
                 None
             )
-
-            # If current version is newer than all snapshots in the clone
-            # (e.g. after an upgrade that moved past the cloned depth),
-            # treat all snapshots as rollback candidates.
             if current_idx is None:
-                older = snapshots
-            else:
-                older = snapshots[current_idx + 1:]
+                return []
 
+            older = snapshots[current_idx + 1:]
             if not older:
                 return []
 
@@ -1571,7 +1566,10 @@ class RollbackManager:
             )
             return False
 
-        schedule_callback(_do_rollback)
+        # _do_rollback is called directly because run_rollback always executes
+        # in a worker thread (both GUI and TUI). schedule_callback is still used
+        # for the finish callback to marshal results back to the main thread.
+        _do_rollback()
 
 
 class SyncInfo:
