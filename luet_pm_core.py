@@ -13,6 +13,11 @@ import datetime
 import gettext
 import locale
 
+try:
+    from packaging import version as _pkg_version
+except ImportError:
+    _pkg_version = None
+
 # -------------------------
 # Set up locale and translation
 # -------------------------
@@ -145,7 +150,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.4.4"
+        return "0.8.4.3"
 
     @staticmethod
     def get_copyright():
@@ -918,18 +923,14 @@ class SearchProcessor:
             pkg['installed_version'] = installed_version
             
             # Check if packaging module is available for version comparison
-            try:
-                from packaging import version as pkg_version
+            if _pkg_version is not None:
                 available_version = pkg.get("version")
                 if installed_version and available_version:
                     try:
-                        if pkg_version.parse(available_version) > pkg_version.parse(installed_version):
+                        if _pkg_version.parse(available_version) > _pkg_version.parse(installed_version):
                             pkg['upgrade_symbol'] = "↑"
-                    except (pkg_version.InvalidVersion, TypeError):
+                    except (_pkg_version.InvalidVersion, TypeError):
                         pass
-            except ImportError:
-                # packaging library not available, skip upgrade detection
-                pass
         
         return pkg
         
