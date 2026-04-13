@@ -1487,8 +1487,7 @@ class LuetTUI:
                 win.addstr(0, 2, f" {title} "[:ww - 4])
                 
                 # Advance spinner and get the new frame
-                self.spinner.next_frame()
-                spinner_frame = self.spinner.get_current_frame()
+                spinner_frame = self.spinner.advance()
                 
                 display_msg = f"{spinner_frame} {loading_msg}"
                 

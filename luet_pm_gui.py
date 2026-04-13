@@ -1048,7 +1048,7 @@ class SearchApp(Gtk.Window):
             if not keep_message: self.set_status_message(_("Ready"))
 
     def _spinner_tick(self, message):
-        frame = self.spinner.get_next_frame()
+        frame = self.spinner.advance()
         self.set_status_message("{} {}".format(frame, message))
         return True
 

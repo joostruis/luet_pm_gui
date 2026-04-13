@@ -126,19 +126,11 @@ class Spinner:
         return self.FRAMES[self._frame_index]
 
     def advance(self):
-            """
-            Advance the spinner to the next frame in the sequence AND return it.
-            """
-            self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
-            return self.get_current_frame()
-        
-    # --- Compatibility Aliases ---
-    # Alias 'next_frame' to 'advance' (Used by TUI's show_package_files)
-    next_frame = advance
-
-    # Alias 'get_next_frame' to 'advance' 
-    # (Fixes the AttributeError in luet_pm_gui.py)
-    get_next_frame = advance
+        """
+        Advance the spinner to the next frame in the sequence AND return it.
+        """
+        self._frame_index = (self._frame_index + 1) % len(self.FRAMES)
+        return self.get_current_frame()
 
 # -------------------------
 # Application Metadata/About Info
@@ -409,7 +401,6 @@ class SystemChecker:
     @staticmethod
     def _parse_reinstall_candidates(output):
         candidates = {}
-        import re
         pkg_id_pattern = re.compile(r"(\S+/\S+)")
         version_suffix_pattern = re.compile(r'-\d+(\.\d+)*.*$')
 
