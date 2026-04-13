@@ -207,7 +207,7 @@ class Menu:
 
                 win.addstr(1 + idx, 2, it[:width - 4], item_attr)
 
-            win.refresh()
+            win.noutrefresh()
         except curses.error:
             pass
 
@@ -728,13 +728,13 @@ class LuetTUI:
 
             if self.search_win:
                 self.search_win.noutrefresh()
-            
+
+            if self.menu.is_open:
+                curses.curs_set(0)
+                self.menu.draw(self.stdscr)
+
             curses.doupdate()
         except curses.error: pass
-        
-        if self.menu.is_open:
-            curses.curs_set(0)
-            self.menu.draw(self.stdscr)
 
     def prompt_string(self, prompt, initial=""):
         curses.echo()
