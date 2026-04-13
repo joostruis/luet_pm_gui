@@ -581,24 +581,46 @@ class SearchApp(Gtk.Window):
             (_("Details"), 7)
         ]
 
+        # Fixed widths for all columns. Total of non-Name columns = ~570px,
+        # leaving ~430px for Name to expand into on a 1000px window.
+        # Window total = 1000px, scrollbar ~15px, borders ~5px → ~980px usable.
+        col_fixed_widths = {
+            0: 110,   # Category
+            1: None,  # Name — expands to fill remaining space
+            2: 24,    # Upgrade symbol
+            3: 110,   # Version
+            4: 150,   # Repository
+            6: 90,    # Action
+            7: 80,    # Details
+        }
+
         for title, data_index in columns:
             renderer = Gtk.CellRendererText()
             col = Gtk.TreeViewColumn(title, renderer, text=data_index)
+            col.set_sizing(Gtk.TreeViewColumnSizing.FIXED)
+
+            fixed_w = col_fixed_widths.get(data_index)
+            if fixed_w is not None:
+                col.set_fixed_width(fixed_w)
 
             if data_index == 2:
+                # Upgrade symbol: narrow, not interactive
                 col.set_expand(False)
                 col.set_resizable(False)
                 col.set_clickable(False)
+            elif data_index == 1:
+                # Name expands to fill remaining space
+                col.set_expand(True)
+                col.set_resizable(True)
+                col.set_sort_column_id(data_index)
+                col.set_clickable(True)
+            elif data_index == 7:
+                # Details: resizable but not sortable
+                col.set_resizable(True)
             else:
-                # Let Name column expand horizontally
-                if data_index == 1:
-                    col.set_expand(True)
-
-                # Enable sorting for everything except "Details"
-                if data_index != 7: # Details column
-                    col.set_sort_column_id(data_index)
-                    col.set_resizable(True)
-                    col.set_clickable(True)
+                col.set_resizable(True)
+                col.set_sort_column_id(data_index)
+                col.set_clickable(True)
 
             # Highlight color (now index 8)
             col.add_attribute(renderer, "cell-background", 8)
@@ -616,7 +638,7 @@ class SearchApp(Gtk.Window):
 
         # --- ScrolledWindow for Results ---
         scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.add(self.treeview)
 
         # --- Output Log (Expander) ---
