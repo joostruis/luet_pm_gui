@@ -135,6 +135,8 @@ class Menu:
         self.is_pinned = False
         self.update_cache_menu_item()
         self.update_rollback_menu_item()
+        self._dropdown_box = None
+        self._dropdown_item_rows = []
 
     def update_cache_menu_item(self):
         """Update the cache menu item with current cache info."""
@@ -168,6 +170,7 @@ class Menu:
     def draw(self, stdscr):
         """Draws the currently active dropdown menu."""
         if not self.is_open:
+            self._dropdown_box = None
             return
 
         h, w = stdscr.getmaxyx()
@@ -183,6 +186,10 @@ class Menu:
         width = max(len(it) for it in items) + 4
         height = len(items) + 2
         y = 1
+
+        # Store bounding box and per-item rows for mouse hit-testing
+        self._dropdown_box = (y, x, y + height - 1, x + width - 1)
+        self._dropdown_item_rows = [y + 1 + i for i in range(len(items))]
 
         try:
             win = curses.newwin(height, width, y, x)
@@ -297,9 +304,24 @@ class LuetTUI:
         self.visible_log_height_lines = 0
 
         curses.curs_set(0)
-        self.stdscr.nodelay(True)
+        # Use a 30ms timeout instead of nodelay — getch() returns immediately
+        # when input arrives, eliminating click latency, while still allowing
+        # the spinner and scheduler to tick regularly when idle.
+        self.stdscr.timeout(30)
         self.stdscr.keypad(True)
         curses.start_color()
+
+        # Enable mouse: all button events
+        curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+
+        # Menu bar hit regions: list of (start_x, end_x, menu_index)
+        # Populated during draw() so they stay in sync with actual rendering
+        self._menu_bar_regions = []
+
+        # Results area geometry — updated each draw() for mouse hit-testing
+        self._results_top_y = 0
+        self._results_bottom_y = 0
+
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK) # Error color
 
@@ -486,17 +508,16 @@ class LuetTUI:
 
         try:
             x_pos = 0
+            self._menu_bar_regions = []
             for i, (title, index) in enumerate(Menu.get_menu_titles()):
                 seg = f"  {title}  "
-                
                 attr = curses.A_REVERSE
-                
                 if is_busy:
                     attr |= curses.A_DIM
                 elif self.menu.is_open and index == self.menu.active_menu:
                     attr |= curses.A_NORMAL
-                
                 self.stdscr.addstr(0, x_pos, seg, attr)
+                self._menu_bar_regions.append((x_pos, x_pos + len(seg), index))
                 x_pos += len(seg)
                 
             if x_pos < w:
@@ -556,6 +577,10 @@ class LuetTUI:
         
         self.visible_results_count = max(0, results_h - 3)
         self.visible_log_height_lines = max(0, log_h - 2)
+
+        # Track results area rows for mouse hit-testing (row 0=border, 1=header, 2+=data)
+        self._results_top_y = results_y + 2
+        self._results_bottom_y = results_y + 2 + self.visible_results_count - 1
 
         try:
             if self.search_win is None:
@@ -805,9 +830,10 @@ class LuetTUI:
             self.draw()
             
     def run_update_repositories(self):
-            # 1. Start the operation: Set status and activate spinner
+            # 1. Start the operation: Set status, open log and activate spinner
+            self.log_visible = True
+            self.log_scroll = 0
             self.set_status(_("Updating repositories..."))
-            # self.running_op = True # This flag is not used by draw(), set_status is enough
             self.draw()
             
             def on_log(line): self.append_to_log(line)
@@ -847,6 +873,8 @@ class LuetTUI:
     def run_full_upgrade(self):
         if not self.confirm_yes_no(_("Perform a full system upgrade?")): return
         
+        self.log_visible = True
+        self.log_scroll = 0
         self.set_status(_("Performing full system upgrade..."))
         self.append_to_log(_("Full system upgrade initiated."))
         self.draw()
@@ -1579,6 +1607,76 @@ class LuetTUI:
             
             self.draw()
 
+    def _handle_mouse(self, mx, my, bstate):
+        """Handle a mouse event. Called from run() when KEY_MOUSE is received."""
+        # Accept press, release or click — terminals differ on which they report
+        is_click = bool(bstate & (
+            curses.BUTTON1_PRESSED |
+            curses.BUTTON1_RELEASED |
+            curses.BUTTON1_CLICKED
+        ))
+        is_scroll_up = bool(bstate & curses.BUTTON4_PRESSED)
+        is_scroll_down = bool(bstate & getattr(curses, 'BUTTON5_PRESSED', 0x200000))
+
+        # --- Scroll wheel on the results list ---
+        if is_scroll_up or is_scroll_down:
+            if self._results_top_y <= my <= self._results_bottom_y + 2:
+                if is_scroll_up and self.selected_index > 0:
+                    self.selected_index -= 1
+                elif is_scroll_down and self.selected_index < len(self.results) - 1:
+                    self.selected_index += 1
+            return
+
+        if not is_click:
+            return
+
+        # --- Click on menu bar (row 0) ---
+        if my == 0:
+            for start_x, end_x, menu_index in self._menu_bar_regions:
+                if start_x <= mx < end_x:
+                    if self.menu.is_open and self.menu.active_menu == menu_index:
+                        self.menu.is_open = False
+                    else:
+                        self.menu.active_menu = menu_index
+                        self.menu.selected_index = 0
+                        self.menu.is_open = True
+                    return
+            if self.menu.is_open:
+                self.menu.is_open = False
+            return
+
+        # --- Click inside an open dropdown ---
+        if self.menu.is_open and self.menu._dropdown_box is not None:
+            top_y, left_x, bot_y, right_x = self.menu._dropdown_box
+            if top_y <= my <= bot_y and left_x <= mx <= right_x:
+                for item_idx, item_y in enumerate(self.menu._dropdown_item_rows):
+                    if my == item_y:
+                        self.menu.selected_index = item_idx
+                        self.menu.activate_item()
+                        self.menu.is_open = False
+                        return
+                return  # click on border — stay open
+            else:
+                self.menu.is_open = False
+                return
+
+        # --- Click on search area (rows 3-5) ---
+        if 3 <= my <= 5:
+            self.focus = 'search'
+            self.search_cursor_pos = len(self.search_query)
+            return
+
+        # --- Click on a results list row ---
+        if self._results_top_y <= my <= self._results_bottom_y:
+            row_offset = my - self._results_top_y
+            clicked_index = self.results_scroll_offset + row_offset
+            if 0 <= clicked_index < len(self.results):
+                if clicked_index == self.selected_index:
+                    self.show_details()
+                else:
+                    self.selected_index = clicked_index
+                    self.focus = 'list'
+
     def run(self):
             try:
                 while self.running:
@@ -1617,7 +1715,6 @@ class LuetTUI:
                                 self.menu.is_open = False
                             
                             self.draw()
-                            time.sleep(0.03)
                             continue
                     
                         # If an error is displayed, any key press should clear it and return to Ready
@@ -1625,7 +1722,15 @@ class LuetTUI:
                             self.set_status(_("Ready"))
                             # We continue to process the key press normally
 
-                        if self.menu.is_open:
+                        # --- Mouse handling ---
+                        if ch == curses.KEY_MOUSE:
+                            try:
+                                _id, mx, my, _z, bstate = curses.getmouse()
+                                self._handle_mouse(mx, my, bstate)
+                            except curses.error:
+                                pass
+
+                        elif self.menu.is_open:
                             self.menu.handle_input(ch)
                         
                         elif self.focus == 'search':
@@ -1685,7 +1790,6 @@ class LuetTUI:
                                 self.do_install_uninstall_selected()
                                 
                     self.draw()
-                    time.sleep(0.03)
             finally:
                 # Always cleanup, even on exception or signal
                 self.cleanup()
