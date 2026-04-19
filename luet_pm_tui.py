@@ -66,6 +66,24 @@ except ImportError:
     pkg_version = None
 
 # -------------------------
+# Process title
+# -------------------------
+def set_process_title(title: str) -> None:
+    """Set the process name visible in tmux, ps, top, etc."""
+    # Method 1: argv[0] — affects some tools
+    sys.argv[0] = title
+
+    # Method 2: prctl PR_SET_NAME — affects tmux window title and ps
+    try:
+        import ctypes
+        import ctypes.util
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        PR_SET_NAME = 15
+        libc.prctl(PR_SET_NAME, title.encode()[:15], 0, 0, 0)
+    except Exception:
+        pass  # Non-Linux or unavailable — silently skip
+
+# -------------------------
 # Signal handling for graceful shutdown
 # -------------------------
 _tui_app_instance = None
@@ -1814,6 +1832,7 @@ def main(stdscr):
         traceback.print_exc()
 
 if __name__ == "__main__":
+    set_process_title("vajo-tui")
     try:
         print(_("Starting Vajo: a Luet TUI frontend..."))
         curses.wrapper(main)
