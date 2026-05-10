@@ -206,6 +206,9 @@ class PackageDetailsPopup(Gtk.Window):
             if license_:
                 lic_label = Gtk.Label(label=license_)
                 lic_label.set_xalign(0)
+                lic_label.set_line_wrap(True)
+                lic_label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+                lic_label.set_max_width_chars(40)
                 add_right(next_right_row, _("License:"), lic_label)
                 next_right_row += 1
 
