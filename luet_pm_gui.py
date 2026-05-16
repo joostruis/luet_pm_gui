@@ -849,6 +849,14 @@ class SearchApp(Gtk.Window):
                 # Get the symbol processed by the worker thread
                 upgrade_symbol = pkg.get('upgrade_symbol', '') # Default to empty string
 
+                # Get description — luet search JSON doesn't include it, so fall back to index
+                desc = pkg.get("description", "")
+                if not desc and self.desc_index.is_ready:
+                    key = f"{category}/{name}"
+                    indexed = self.desc_index._index.get(key)
+                    if indexed:
+                        desc = indexed.get("description", "")
+
                 # New ListStore fields: [Cat, Name, UpgradeSymbol, Version, Repo, ACTION_ID, ACTION_DISPLAY, Details, Highlight Color, Description]
                 self.liststore.append([
                     category,                  # 0
@@ -860,7 +868,7 @@ class SearchApp(Gtk.Window):
                     action_display,            # 6
                     _("Details"),              # 7
                     None,                      # 8
-                    pkg.get("description", ""), # 9
+                    desc,                      # 9
                 ])
                 
             n = len(self.liststore)
