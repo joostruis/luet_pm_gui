@@ -55,6 +55,7 @@ try:
         SearchProcessor,
         DescriptionIndex,
         RollbackManager,
+        Debug,
         _,
         ngettext,
     )
