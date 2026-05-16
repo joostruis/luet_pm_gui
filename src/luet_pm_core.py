@@ -854,20 +854,27 @@ class PackageSearcher:
     def run_search_core(command_runner_sync, search_command):
         try:
             res = command_runner_sync(search_command, require_root=True)
+
+            output = (res.stdout or "").strip()
+
+            # luet returns non-zero when no packages match — treat empty output
+            # as no results rather than a hard error so description index can
+            # still contribute matches
             if res.returncode != 0:
+                if not output:
+                    return {"packages": []}
                 print("Search error:", res.stderr)
                 return {"error": _("Error executing the search command")}
-            
-            output = (res.stdout or "").strip()
+
             if not output:
-                 return {"packages": []}
-            
+                return {"packages": []}
+
             data = json.loads(output)
             packages = data.get("packages") if isinstance(data, dict) else None
-            
+
             if packages is None:
                 return {"packages": []}
-                
+
             return {"packages": packages}
         except json.JSONDecodeError:
             print("Search error: Invalid JSON")
@@ -1018,17 +1025,22 @@ class DescriptionIndex:
 
     def search(self, query):
         """
-        Case-insensitive substring search over description fields.
+        Case-insensitive multi-word search over package name and description.
+        All words in the query must match somewhere in the name or description.
         Returns a list of package dicts matching the query.
         """
-        query_lower = query.lower()
+        words = query.lower().split()
+        if not words:
+            return []
         with self._lock:
             if not self._ready:
                 return []
-            return [
-                dict(pkg) for pkg in self._index.values()
-                if query_lower in pkg.get("description", "").lower()
-            ]
+            results = []
+            for pkg in self._index.values():
+                haystack = (pkg.get("name", "") + " " + pkg.get("description", "")).lower()
+                if all(w in haystack for w in words):
+                    results.append(dict(pkg))
+            return results
 
 
 from modules.rollback import RollbackManager
