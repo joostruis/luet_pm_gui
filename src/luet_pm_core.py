@@ -59,58 +59,37 @@ class PackageState:
     def get_installed_packages(command_runner_sync):
         """Return a dict of installed packages and their versions."""
         try:
+            Debug.log("get_installed_packages: calling luet database get-all-installed")
+            _t0 = time.time()
             res = command_runner_sync(["luet", "database", "get-all-installed"], require_root=True)
-            
+            Debug.log(f"get_installed_packages: luet call done in {time.time()-_t0:.3f}s")
+
             if res.returncode != 0 and not res.stdout.strip():
                 print(f"luet database get-all-installed failed with return code {res.returncode}. Stderr: {res.stderr}")
                 return {}
-            
-            # --- START FIX: Aggressive Root-Level Filtering ---
-            valid_yaml_lines = []
-            
-            for line in res.stdout.splitlines():
-                stripped_line = line.lstrip()
 
-                if not stripped_line:
-                    continue
-
-                # Skip log/warning lines that luet sometimes injects
-                if stripped_line.startswith('WARNING') or \
-                   stripped_line.startswith('ERROR') or \
-                   stripped_line.startswith('INFO') or \
-                   stripped_line.startswith('DEBUG'):
-                    continue
-
-                if line.startswith(' ') or line.startswith('\t') or line.startswith('-'):
-                    valid_yaml_lines.append(line)
-                
-            clean_output = "\n".join(valid_yaml_lines)
-            
-            if not clean_output.strip():
-                 return {}
-            
-            # Use yaml.safe_load on the cleaned output
-            data = yaml.safe_load(clean_output)
-            # --- END FIX ---
-
-            if not isinstance(data, list):
-                print(f"luet database get-all-installed returned unexpected type: {type(data)}")
-                return {}
-            
+            # Fast line scanner — avoids yaml.safe_load which takes ~2.5s on 54k lines.
+            # We only need category, name, version from each package block.
+            Debug.log("get_installed_packages: parsing output")
+            _t1 = time.time()
             pkgs = {}
-            for pkg in data or []: 
-                category = pkg.get('category')
-                name = pkg.get('name')
-                version = pkg.get('version')
-                
-                if category and name and version:
-                    key = f"{category}/{name}"
-                    pkgs[key] = version
-            
+            cat = name = ver = None
+            for line in res.stdout.splitlines():
+                stripped = line.strip()
+                if stripped.startswith('category:'):
+                    cat = stripped[len('category:'):].strip().strip('"')
+                elif stripped.startswith('name:'):
+                    name = stripped[len('name:'):].strip().strip('"')
+                elif stripped.startswith('version:'):
+                    ver = stripped[len('version:'):].strip().strip('"')
+                if cat and name and ver:
+                    pkgs[f"{cat}/{name}"] = ver
+                    cat = name = ver = None
+            Debug.log(f"get_installed_packages: parse done in {time.time()-_t1:.3f}s, {len(pkgs)} packages")
             return pkgs
+
         except Exception as e:
-            # Final updated error message
-            print("Error fetching installed package list using luet database get-all-installed (YAML parsing failed, check luet logs):", e)
+            print("Error fetching installed package list:", e)
             return {}
 
 # -------------------------
