@@ -22,12 +22,18 @@ import signal
 # -------------------------
 # Version-Agnostic Core Discovery
 # -------------------------
-# Define the shared path where luet_pm_core.py is installed
+# Version-Agnostic Core Discovery
+# -------------------------
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
 SHARED_LIB_PATH = "/usr/share/vajo"
 
-if os.path.exists(SHARED_LIB_PATH):
-    # Insert at the beginning of the path to prioritize this version
-    sys.path.insert(0, SHARED_LIB_PATH)
+# Prefer local development version if present alongside this script
+if os.path.exists(LOCAL_CORE):
+    sys.path.insert(0, SCRIPT_DIR)
+else:
+    if os.path.exists(SHARED_LIB_PATH):
+        sys.path.insert(0, SHARED_LIB_PATH)
 
 # Import core backend
 try:
@@ -46,6 +52,7 @@ try:
         PackageDetails,
         PackageState,
         SearchProcessor,
+        DescriptionIndex,
         RollbackManager,
         _,
         ngettext,
@@ -349,11 +356,17 @@ class LuetTUI:
         # FIX: Initialize cache as empty and populate asynchronously
         self.installed_packages_cache = {}
         self.cache_initialized = False  # Track cache initialization status
-        
+
+        # Description index for treefs-based description search
+        self.desc_index = DescriptionIndex()
+
         self.init_app()
-        
+
         # Start async cache population
         self.refresh_installed_packages_cache_async()
+
+        # Start building the description index in the background
+        self.desc_index.build_async(self.command_runner.run_sync)
 
     def cleanup(self):
         """Clean up resources before exit"""
@@ -1142,13 +1155,35 @@ class LuetTUI:
                         installed_packages_dict = PackageState.get_installed_packages(self.command_runner.run_sync)
                     else:
                         installed_packages_dict = self.installed_packages_cache
-                
-                # Pass the sanitized query directly - subprocess with list args is safe
+
+                # Name-based search via luet
                 search_cmd = ["luet", "search", "-o", "json", "-q", sanitized_query]
                 result = PackageSearcher.run_search_core(self.command_runner.run_sync, search_cmd)
-                
                 result = SearchProcessor.process_search_results(result, installed_packages_dict)
-                
+
+                # Merge description matches from local treefs index
+                # Wait briefly if the index is still being built (it's usually ready in ~0.2s)
+                if not self.desc_index.is_ready:
+                    import time as _time
+                    for _ in range(20):  # wait up to 2 seconds
+                        _time.sleep(0.1)
+                        if self.desc_index.is_ready:
+                            break
+
+                if self.desc_index.is_ready and "error" not in result:
+                    existing_keys = {
+                        f"{p.get('category', '')}/{p.get('name', '')}"
+                        for p in result.get("packages", [])
+                    }
+                    for pkg in self.desc_index.search(sanitized_query):
+                        key = f"{pkg['category']}/{pkg['name']}"
+                        if key in existing_keys:
+                            continue
+                        if PackageFilter.is_package_hidden(pkg["category"], pkg["name"]):
+                            continue
+                        enriched = SearchProcessor._enrich_package_info(dict(pkg), installed_packages_dict)
+                        result["packages"].append(enriched)
+
                 self.scheduler.schedule(self.on_search_finished, result)
             except Exception as e:
                 self.scheduler.schedule(self.append_to_log, _("Search core error: {}").format(e))

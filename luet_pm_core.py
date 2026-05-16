@@ -934,6 +934,111 @@ class SearchProcessor:
         
         return pkg
         
+# -------------------------
+# DescriptionIndex - local treefs description search
+# -------------------------
+class DescriptionIndex:
+    """
+    Builds an in-memory index of package descriptions by walking the luet
+    treefs at /var/luet/db/repos. Used to enable description-based search
+    that luet's CLI does not natively support.
+    """
+
+    REPOS_PATH = "/var/luet/db/repos"
+
+    def __init__(self):
+        self._index = {}  # "category/name" -> dict
+        self._ready = False
+        self._lock = threading.Lock()
+
+    def build_async(self, run_sync, on_ready_callback=None):
+        """
+        Walk the treefs in a background thread and build the index.
+        Uses a single privileged 'find' call to locate all definition.yaml
+        files, then reads them with a privileged Python subprocess so that
+        root-only paths under /var/luet/db/repos are accessible.
+        """
+        def worker():
+            index = {}
+            try:
+                # One privileged find to get all paths
+                res = run_sync(
+                    ["find", self.REPOS_PATH, "-path", "*/treefs/*",
+                     "-name", "definition.yaml"],
+                    require_root=True
+                )
+                if res.returncode != 0 or not res.stdout.strip():
+                    print("DescriptionIndex: find returned no results")
+                    return
+
+                paths = [p.strip() for p in res.stdout.strip().splitlines() if p.strip()]
+
+                # Read all files in one privileged python call to avoid
+                # per-file sudo overhead (2345 cat calls would be very slow)
+                script = (
+                    "import sys, yaml\n"
+                    "import json\n"
+                    "result = {}\n"
+                    "for path in sys.argv[1:]:\n"
+                    "    try:\n"
+                    "        parts = path.split('/')\n"
+                    "        ri = parts.index('repos')\n"
+                    "        repo = parts[ri+1]\n"
+                    "        data = yaml.safe_load(open(path))\n"
+                    "        if not isinstance(data, dict): continue\n"
+                    "        cat = data.get('category','')\n"
+                    "        name = data.get('name','')\n"
+                    "        desc = data.get('description','')\n"
+                    "        ver = str(data.get('version',''))\n"
+                    "        if cat and name and desc:\n"
+                    "            key = cat+'/'+name\n"
+                    "            if key not in result:\n"
+                    "                result[key]={'category':cat,'name':name,'version':ver,'description':str(desc),'repository':repo}\n"
+                    "    except Exception: pass\n"
+                    "print(json.dumps(result))\n"
+                )
+
+                res2 = run_sync(
+                    ["python3", "-c", script] + paths,
+                    require_root=True
+                )
+                if res2.returncode == 0 and res2.stdout.strip():
+                    try:
+                        index = json.loads(res2.stdout.strip())
+                    except Exception as e:
+                        print(f"DescriptionIndex: JSON parse error: {e}")
+
+            except Exception as e:
+                print(f"DescriptionIndex: error building index: {e}")
+
+            with self._lock:
+                self._index = index
+                self._ready = True
+            if on_ready_callback:
+                on_ready_callback()
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @property
+    def is_ready(self):
+        with self._lock:
+            return self._ready
+
+    def search(self, query):
+        """
+        Case-insensitive substring search over description fields.
+        Returns a list of package dicts matching the query.
+        """
+        query_lower = query.lower()
+        with self._lock:
+            if not self._ready:
+                return []
+            return [
+                dict(pkg) for pkg in self._index.values()
+                if query_lower in pkg.get("description", "").lower()
+            ]
+
+
 class RollbackManager:
     """
     Manages stable repository rollback by reading/writing reference tags

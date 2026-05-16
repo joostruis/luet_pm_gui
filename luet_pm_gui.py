@@ -69,7 +69,7 @@ try:
         CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
         CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
         PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, 
-        SearchProcessor, RollbackManager
+        SearchProcessor, RollbackManager, DescriptionIndex
     )
 except ImportError as e:
     print("FATAL: luet_pm_core.py not found in local directory or /usr/share/vajo.")
@@ -429,13 +429,19 @@ class SearchApp(Gtk.Window):
         self.installed_packages_cache = {}
         self.cache_initialized = False
 
+        # Description index for treefs-based description search
+        self.desc_index = DescriptionIndex()
+
         self.init_search_ui()
 
         if self.elevation_cmd is None and os.getuid() != 0:
             GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found - admin actions will fail"))
-        
+
         # Start async cache population
         self.refresh_installed_packages_cache_async()
+
+        # Start building the description index in the background
+        self.desc_index.build_async(self.command_runner.run_sync)
     
     def refresh_installed_packages_cache_async(self):
         """Refresh the cached list of installed packages asynchronously"""
@@ -767,11 +773,36 @@ class SearchApp(Gtk.Window):
             else:
                 installed_packages_dict = self.installed_packages_cache
 
-        # Run the search
+        # Run the name/label search via luet
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)
-        
+
         # Process results using centralized logic
         result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
+
+        # Merge description matches from local treefs index
+        # Wait briefly if the index is still being built (it's usually ready in ~0.2s)
+        if not self.desc_index.is_ready:
+            import time as _time
+            for _ in range(20):  # wait up to 2 seconds
+                _time.sleep(0.1)
+                if self.desc_index.is_ready:
+                    break
+
+        if self.desc_index.is_ready and "error" not in result_data:
+            existing_keys = {
+                f"{p.get('category', '')}/{p.get('name', '')}"
+                for p in result_data.get("packages", [])
+            }
+            # Extract the query term from the search command (last argument)
+            query = search_command[-1] if search_command else ""
+            for pkg in self.desc_index.search(query):
+                key = f"{pkg['category']}/{pkg['name']}"
+                if key in existing_keys:
+                    continue
+                if PackageFilter.is_package_hidden(pkg["category"], pkg["name"]):
+                    continue
+                enriched = SearchProcessor._enrich_package_info(dict(pkg), installed_packages_dict)
+                result_data["packages"].append(enriched)
 
         # Pass processed data to GUI thread
         GLib.idle_add(self.on_search_finished, result_data)
