@@ -166,7 +166,7 @@ class AboutInfo:
     @staticmethod
     def get_ncurses_about_text():
         """Returns a consolidated, translated string for the ncurses TUI about box."""
-        return _("Vajo: a Luet Package Manager TUI (ncurses)\nVersion: {}\nWebsite: {}\nAuthors: {}\n(Uses luet_pm_core.py)").format(
+        return _("Vajo: a Luet Package Manager TUI (ncurses)\nVersion: {}\nWebsite: {}\nAuthors: {}\n(Uses vajo_core.py)").format(
             AboutInfo.get_version(),
             AboutInfo.get_website(),
             ", ".join(AboutInfo.get_authors())

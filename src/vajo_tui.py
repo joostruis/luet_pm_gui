@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-luet_pm_ncurses.py — curses-based TUI using luet_pm_core.py
+luet_pm_ncurses.py — curses-based TUI using vajo_core.py
 
 Implements a full TUI interface with a functional menu, thread-safe command execution,
 and robust package listing and log viewing, with full translation support via _() and ngettext.
@@ -27,10 +27,10 @@ import signal
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SHARED_LIB_PATH = "/usr/share/vajo"
 
-# In development all files are siblings inside src/, so luet_pm_core.py is
+# In development all files are siblings inside src/, so vajo_core.py is
 # right next to this script. When installed, this script lives in /usr/bin/
 # and core is in /usr/share/vajo/ — fall back to that.
-LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
+LOCAL_CORE = os.path.join(SCRIPT_DIR, "vajo_core.py")
 if os.path.exists(LOCAL_CORE):
     sys.path.insert(0, SCRIPT_DIR)
 elif os.path.exists(SHARED_LIB_PATH):
@@ -38,7 +38,7 @@ elif os.path.exists(SHARED_LIB_PATH):
 
 # Import core backend
 try:
-    from luet_pm_core import (
+    from vajo_core import (
         CommandRunner,
         RepositoryUpdater,
         SystemChecker,
@@ -60,10 +60,10 @@ try:
         ngettext,
     )
 except ImportError as e:
-    print(f"FATAL: Could not import luet_pm_core.py from {SHARED_LIB_PATH}. Error: {e}", file=sys.stderr)
+    print(f"FATAL: Could not import vajo_core.py from {SHARED_LIB_PATH}. Error: {e}", file=sys.stderr)
     sys.exit(1)
 except Exception as e:
-    print(f"Failed to initialize luet_pm_core: {e}", file=sys.stderr)
+    print(f"Failed to initialize vajo_core: {e}", file=sys.stderr)
     sys.exit(1)
 
 # Import packaging for version comparison

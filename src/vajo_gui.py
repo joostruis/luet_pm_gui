@@ -56,24 +56,24 @@ ngettext = gettext.ngettext
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SHARED_LIB_PATH = "/usr/share/vajo"
 
-# In development all files are siblings inside src/, so luet_pm_core.py is
+# In development all files are siblings inside src/, so vajo_core.py is
 # right next to this script. When installed, this script lives in /usr/bin/
 # and core is in /usr/share/vajo/ — fall back to that.
-LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
+LOCAL_CORE = os.path.join(SCRIPT_DIR, "vajo_core.py")
 if os.path.exists(LOCAL_CORE):
     sys.path.insert(0, SCRIPT_DIR)
 elif os.path.exists(SHARED_LIB_PATH):
     sys.path.insert(0, SHARED_LIB_PATH)
 
 try:
-    from luet_pm_core import (
+    from vajo_core import (
         CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
         CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
         PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, 
         SearchProcessor, RollbackManager, DescriptionIndex, Debug
     )
 except ImportError as e:
-    print("FATAL: luet_pm_core.py not found in local directory or /usr/share/vajo.")
+    print("FATAL: vajo_core.py not found in local directory or /usr/share/vajo.")
     print(f"Error: {e}")
     sys.exit(1)
 
@@ -499,7 +499,7 @@ class SearchApp(Gtk.Window):
             with self.cache_lock:
                 self.installed_packages_cache = {}
 
-    # Mocking for local development without luet_pm_core.py
+    # Mocking for local development without vajo_core.py
     def get_last_sync_time(self):
          return SyncInfo.get_last_sync_time()
 
