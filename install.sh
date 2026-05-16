@@ -35,3 +35,9 @@ done
 SHARED_DIR="$PACKAGE_DIR/usr/share/vajo"
 install -d "$SHARED_DIR"
 install -m644 luet_pm_core.py "$SHARED_DIR/luet_pm_core.py"
+
+# Install submodules
+install -d "$SHARED_DIR/modules"
+install -m644 modules/__init__.py "$SHARED_DIR/modules/__init__.py"
+install -m644 modules/i18n.py "$SHARED_DIR/modules/i18n.py"
+install -m644 modules/rollback.py "$SHARED_DIR/modules/rollback.py"
