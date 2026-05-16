@@ -12,7 +12,6 @@ install -Dm644 data/vajo.desktop $PACKAGE_DIR/usr/share/applications/vajo.deskto
 # Install executables
 install -Dm755 src/vajo_tui.py $PACKAGE_DIR/usr/bin/vajo_tui.py
 install -Dm755 src/vajo_gui.py $PACKAGE_DIR/usr/bin/vajo_gui.py
-install -Dm755 vajo.sh $PACKAGE_DIR/usr/bin/vajo.sh
 
 # Create convenient symlinks for easier launching
 ln -sf vajo_gui.py $PACKAGE_DIR/usr/bin/vajo-gui

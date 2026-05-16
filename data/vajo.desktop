@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Vajo: a Luet Package Manager Frontend
-Exec=/usr/bin/vajo.sh
+Exec=/usr/bin/vajo-gui
 Icon=vajo
 Terminal=false
 Type=Application
