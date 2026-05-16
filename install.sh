@@ -10,8 +10,8 @@ install -Dm644 data/vajo.png $PACKAGE_DIR/usr/share/pixmaps/vajo.png
 install -Dm644 data/vajo.desktop $PACKAGE_DIR/usr/share/applications/vajo.desktop
 
 # Install executables
-install -Dm755 luet_pm_tui.py $PACKAGE_DIR/usr/bin/luet_pm_tui.py
-install -Dm755 luet_pm_gui.py $PACKAGE_DIR/usr/bin/luet_pm_gui.py
+install -Dm755 src/luet_pm_tui.py $PACKAGE_DIR/usr/bin/luet_pm_tui.py
+install -Dm755 src/luet_pm_gui.py $PACKAGE_DIR/usr/bin/luet_pm_gui.py
 install -Dm755 vajo.sh $PACKAGE_DIR/usr/bin/vajo.sh
 
 # Create convenient symlinks for easier launching
@@ -34,10 +34,10 @@ done
 # Install Python core module to a version-independent location
 SHARED_DIR="$PACKAGE_DIR/usr/share/vajo"
 install -d "$SHARED_DIR"
-install -m644 luet_pm_core.py "$SHARED_DIR/luet_pm_core.py"
+install -m644 src/luet_pm_core.py "$SHARED_DIR/luet_pm_core.py"
 
 # Install submodules
 install -d "$SHARED_DIR/modules"
-install -m644 modules/__init__.py "$SHARED_DIR/modules/__init__.py"
-install -m644 modules/i18n.py "$SHARED_DIR/modules/i18n.py"
-install -m644 modules/rollback.py "$SHARED_DIR/modules/rollback.py"
+install -m644 src/modules/__init__.py "$SHARED_DIR/modules/__init__.py"
+install -m644 src/modules/i18n.py "$SHARED_DIR/modules/i18n.py"
+install -m644 src/modules/rollback.py "$SHARED_DIR/modules/rollback.py"
