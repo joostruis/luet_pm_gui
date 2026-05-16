@@ -723,6 +723,7 @@ class SearchApp(Gtk.Window):
         self.advanced_search_checkbox.set_sensitive(False)
         self.search_button.set_sensitive(False)
         self.treeview.set_sensitive(False)
+        self.treeview.set_has_tooltip(False)
         for item in self.menu_bar.get_children():
             if isinstance(item, Gtk.MenuItem): item.set_sensitive(False)
     def enable_gui(self):
@@ -731,6 +732,7 @@ class SearchApp(Gtk.Window):
             self.advanced_search_checkbox.set_sensitive(True)
             self.search_button.set_sensitive(True)
             self.treeview.set_sensitive(True)
+            self.treeview.set_has_tooltip(True)
             for item in self.menu_bar.get_children():
                 if isinstance(item, Gtk.MenuItem): item.set_sensitive(True)
             GLib.idle_add(self.enable_gui_after_search)
@@ -738,6 +740,7 @@ class SearchApp(Gtk.Window):
         self.search_entry.set_sensitive(True)
         self.search_button.set_sensitive(True)
         self.treeview.set_sensitive(True)
+        self.treeview.set_has_tooltip(True)
 
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text().strip()
