@@ -19,8 +19,8 @@ ln -sf luet_pm_gui.py $PACKAGE_DIR/usr/bin/vajo-gui
 ln -sf luet_pm_tui.py $PACKAGE_DIR/usr/bin/vajo-tui
 
 # Install polkit policy + rules
-install -Dm644 org.mocaccino.vajo.policy $PACKAGE_DIR/usr/share/polkit-1/actions/org.mocaccino.vajo.policy
-install -Dm644 99-luet.rules $PACKAGE_DIR/etc/polkit-1/rules.d/99-luet.rules
+install -Dm644 polkit/org.mocaccino.vajo.policy $PACKAGE_DIR/usr/share/polkit-1/actions/org.mocaccino.vajo.policy
+install -Dm644 polkit/99-luet.rules $PACKAGE_DIR/etc/polkit-1/rules.d/99-luet.rules
 chown root:root $PACKAGE_DIR/etc/polkit-1/rules.d/99-luet.rules
 
 # Install translations
