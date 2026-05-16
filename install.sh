@@ -4,10 +4,10 @@ set -e
 PACKAGE_DIR="/package"
 
 # Install icon
-install -Dm644 vajo.png $PACKAGE_DIR/usr/share/pixmaps/vajo.png
+install -Dm644 data/vajo.png $PACKAGE_DIR/usr/share/pixmaps/vajo.png
 
 # Install desktop entry
-install -Dm644 vajo.desktop $PACKAGE_DIR/usr/share/applications/vajo.desktop
+install -Dm644 data/vajo.desktop $PACKAGE_DIR/usr/share/applications/vajo.desktop
 
 # Install executables
 install -Dm755 luet_pm_tui.py $PACKAGE_DIR/usr/bin/luet_pm_tui.py
