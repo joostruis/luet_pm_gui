@@ -573,10 +573,10 @@ class SearchApp(Gtk.Window):
         # --- TreeView (Results Table) ---
         self.treeview = Gtk.TreeView()
 
-        # ListStore fields (9 total):
+        # ListStore fields (10 total):
         # 0: Category | 1: Name | 2: Upgrade Symbol | 3: Version | 4: Repository |
-        # 5: Action ID | 6: Action Text | 7: Details | 8: Highlight Color
-        self.liststore = Gtk.ListStore(str, str, str, str, str, int, str, str, str)
+        # 5: Action ID | 6: Action Text | 7: Details | 8: Highlight Color | 9: Description (tooltip)
+        self.liststore = Gtk.ListStore(str, str, str, str, str, int, str, str, str, str)
         self.treeview.set_model(self.liststore)
 
         # --- Columns ---
@@ -598,7 +598,7 @@ class SearchApp(Gtk.Window):
             1: None,  # Name — expands to fill remaining space
             2: 24,    # Upgrade symbol
             3: 110,   # Version
-            4: 150,   # Repository
+            4: 200,   # Repository
             6: 90,    # Action
             7: 80,    # Details
         }
@@ -618,9 +618,10 @@ class SearchApp(Gtk.Window):
                 col.set_resizable(False)
                 col.set_clickable(False)
             elif data_index == 1:
-                # Name expands to fill remaining space
+                # Name expands to fill remaining space but capped so Repository is visible
                 col.set_expand(True)
                 col.set_resizable(True)
+                col.set_max_width(280)
                 col.set_sort_column_id(data_index)
                 col.set_clickable(True)
             elif data_index == 7:
@@ -634,6 +635,10 @@ class SearchApp(Gtk.Window):
             # Highlight color (now index 8)
             col.add_attribute(renderer, "cell-background", 8)
             self.treeview.append_column(col)
+
+        # Tooltips — show description on hover
+        self.treeview.set_has_tooltip(True)
+        self.treeview.connect("query-tooltip", self.on_treeview_query_tooltip)
 
         # Mouse events for clickable cells
         self.treeview.connect("button-press-event", self.on_treeview_button_clicked)
@@ -780,7 +785,7 @@ class SearchApp(Gtk.Window):
         result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
 
         # Merge description matches from local treefs index
-        # Wait briefly if the index is still being built (it's usually ready in ~0.2s)
+        # Wait briefly if the index is still being built
         if not self.desc_index.is_ready:
             import time as _time
             for _ in range(20):  # wait up to 2 seconds
@@ -841,7 +846,7 @@ class SearchApp(Gtk.Window):
                 # Get the symbol processed by the worker thread
                 upgrade_symbol = pkg.get('upgrade_symbol', '') # Default to empty string
 
-                # New ListStore fields: [Cat, Name, UpgradeSymbol, Version, Repo, ACTION_ID, ACTION_DISPLAY, Details, Highlight Color]
+                # New ListStore fields: [Cat, Name, UpgradeSymbol, Version, Repo, ACTION_ID, ACTION_DISPLAY, Details, Highlight Color, Description]
                 self.liststore.append([
                     category,                  # 0
                     name,                      # 1
@@ -851,7 +856,8 @@ class SearchApp(Gtk.Window):
                     action_id,                 # 5
                     action_display,            # 6
                     _("Details"),              # 7
-                    None                       # 8
+                    None,                      # 8
+                    pkg.get("description", ""), # 9
                 ])
                 
             n = len(self.liststore)
@@ -863,6 +869,19 @@ class SearchApp(Gtk.Window):
             self.stop_spinner(True)
         finally:
             self.enable_gui()
+
+    def on_treeview_query_tooltip(self, treeview, x, y, keyboard_mode, tooltip):
+        """Show package description as a tooltip when hovering over a row."""
+        # get_tooltip_context handles coordinate translation from widget to bin window
+        is_row, tx, ty, model, path, iter_ = treeview.get_tooltip_context(x, y, keyboard_mode)
+        if not is_row:
+            return False
+        desc = model.get_value(iter_, 9)
+        if not desc:
+            return False
+        tooltip.set_text(desc)
+        treeview.set_tooltip_row(tooltip, path)
+        return True
 
     def on_treeview_button_clicked(self, treeview, event):
         """
