@@ -25,15 +25,16 @@ import signal
 # Version-Agnostic Core Discovery
 # -------------------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
 SHARED_LIB_PATH = "/usr/share/vajo"
 
-# Prefer local development version if present alongside this script
+# In development all files are siblings inside src/, so luet_pm_core.py is
+# right next to this script. When installed, this script lives in /usr/bin/
+# and core is in /usr/share/vajo/ — fall back to that.
+LOCAL_CORE = os.path.join(SCRIPT_DIR, "luet_pm_core.py")
 if os.path.exists(LOCAL_CORE):
     sys.path.insert(0, SCRIPT_DIR)
-else:
-    if os.path.exists(SHARED_LIB_PATH):
-        sys.path.insert(0, SHARED_LIB_PATH)
+elif os.path.exists(SHARED_LIB_PATH):
+    sys.path.insert(0, SHARED_LIB_PATH)
 
 # Import core backend
 try:
