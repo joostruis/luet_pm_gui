@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-modules/rollback.py — RollbackManager extracted from luet_pm_core.py.
+modules/rollback.py — RollbackManager extracted from vajo_core.py.
 
 Manages stable repository rollback by reading/writing reference tags
 in /etc/luet/repos.conf.d/ and resolving the previous snapshot from
@@ -122,9 +122,9 @@ class RollbackManager:
 
     VAJO_BACKUP_DIR = "/var/luet/vajo-backup"
     VAJO_FILES = [
-        ("/usr/share/vajo/luet_pm_core.py",           "luet_pm_core.py"),
-        ("/usr/bin/luet_pm_gui.py",                    "luet_pm_gui.py"),
-        ("/usr/bin/luet_pm_tui.py",                    "luet_pm_tui.py"),
+        ("/usr/share/vajo/vajo_core.py",           "vajo_core.py"),
+        ("/usr/bin/vajo_gui.py",                    "vajo_gui.py"),
+        ("/usr/bin/vajo_tui.py",                    "vajo_tui.py"),
         ("/usr/share/vajo/modules/__init__.py",        "modules/__init__.py"),
         ("/usr/share/vajo/modules/i18n.py",            "modules/i18n.py"),
         ("/usr/share/vajo/modules/rollback.py",        "modules/rollback.py"),
