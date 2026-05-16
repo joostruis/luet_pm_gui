@@ -364,9 +364,11 @@ class LuetTUI:
         self.init_app()
 
         # Start async cache population
+        Debug.log("TUI: starting cache refresh")
         self.refresh_installed_packages_cache_async()
 
         # Start building the description index in the background
+        Debug.log("TUI: starting description index build")
         self.desc_index.build_async(self.command_runner.run_sync)
 
     def cleanup(self):
@@ -412,6 +414,7 @@ class LuetTUI:
 
     def _on_cache_updated(self, new_cache):
         """Callback when cache update completes"""
+        Debug.log("TUI: cache update complete")
         with self.cache_lock:
             self.installed_packages_cache = new_cache
             self.cache_initialized = True

@@ -70,7 +70,7 @@ try:
         CommandRunner, RepositoryUpdater, SystemChecker, SystemUpgrader, 
         CacheCleaner, PackageOperations, PackageSearcher, SyncInfo, 
         PackageFilter, AboutInfo, Spinner, PackageDetails, PackageState, 
-        SearchProcessor, RollbackManager, DescriptionIndex
+        SearchProcessor, RollbackManager, DescriptionIndex, Debug
     )
 except ImportError as e:
     print("FATAL: luet_pm_core.py not found in local directory or /usr/share/vajo.")
@@ -439,9 +439,11 @@ class SearchApp(Gtk.Window):
             GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found - admin actions will fail"))
 
         # Start async cache population
+        Debug.log("GUI: starting cache refresh")
         self.refresh_installed_packages_cache_async()
 
         # Start building the description index in the background
+        Debug.log("GUI: starting description index build")
         self.desc_index.build_async(self.command_runner.run_sync)
     
     def refresh_installed_packages_cache_async(self):
@@ -458,6 +460,7 @@ class SearchApp(Gtk.Window):
 
     def _on_cache_updated(self, new_cache):
         """Callback when cache update completes"""
+        Debug.log("GUI: cache update complete")
         with self.cache_lock:
             self.installed_packages_cache = new_cache
             self.cache_initialized = True

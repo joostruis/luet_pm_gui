@@ -11,6 +11,30 @@ import shutil
 import yaml
 import datetime
 
+# -------------------------
+# Debug logging
+# -------------------------
+class Debug:
+    """Simple debug logger. Activated by passing --debug on the command line."""
+    enabled = "--debug" in sys.argv
+
+    @staticmethod
+    def log(msg):
+        if Debug.enabled:
+            print(f"[DEBUG] {time.time():.3f} {msg}", flush=True)
+
+    @staticmethod
+    def timer(label):
+        """Returns a context manager that logs elapsed time for a block."""
+        import contextlib
+        @contextlib.contextmanager
+        def _timer():
+            t0 = time.time()
+            Debug.log(f"{label} started")
+            yield
+            Debug.log(f"{label} done in {time.time()-t0:.3f}s")
+        return _timer()
+
 try:
     from packaging import version as _pkg_version
 except ImportError:
@@ -946,21 +970,24 @@ class DescriptionIndex:
     def build_async(self, run_sync, on_ready_callback=None):
         """
         Walk the treefs in a background thread and build the index.
-        Uses a single privileged grep to extract description lines from all
-        definition.yaml files. This avoids YAML parsing (~7s for 2345 files)
-        by reading only the description line and deriving category/name/version/repo
-        from the path structure:
-          /var/luet/db/repos/<repo>/treefs/<cat>/<name>/<version>/definition.yaml
+        Uses a single privileged 'find' call to locate all definition.yaml
+        files, then reads them with a privileged Python subprocess so that
+        root-only paths under /var/luet/db/repos are accessible.
         """
         def worker():
             index = {}
+            Debug.log("DescriptionIndex: build started")
+            _t0 = time.time()
             try:
                 # Single privileged grep — ~90ms vs ~7s for YAML parsing
+                # Derives category/name/version/repo from path structure:
+                # .../repos/<repo>/treefs/<cat>/<name>/<version>/definition.yaml
                 res = run_sync(
                     ["grep", "-rH", "--include=definition.yaml",
                      "^description:", self.REPOS_PATH],
                     require_root=True
                 )
+                Debug.log(f"DescriptionIndex: grep done in {time.time()-_t0:.3f}s")
 
                 if res.returncode != 0 or not res.stdout.strip():
                     print("DescriptionIndex: grep returned no results")
@@ -975,17 +1002,12 @@ class DescriptionIndex:
                         if not desc:
                             continue
 
-                        # Derive metadata from path structure:
-                        # .../repos/<repo>/treefs/<cat>/<name>/<version>/definition.yaml
                         parts = filepath.split('/')
-                        try:
-                            ri = parts.index('repos')
-                            repo = parts[ri + 1]
-                            cat  = parts[ri + 3]
-                            name = parts[ri + 4]
-                            ver  = parts[ri + 5]
-                        except (ValueError, IndexError):
-                            continue
+                        ri = parts.index('repos')
+                        repo = parts[ri + 1]
+                        cat  = parts[ri + 3]
+                        name = parts[ri + 4]
+                        ver  = parts[ri + 5]
 
                         if not (cat and name and desc):
                             continue
@@ -1005,6 +1027,7 @@ class DescriptionIndex:
             except Exception as e:
                 print(f"DescriptionIndex: error building index: {e}")
 
+            Debug.log(f"DescriptionIndex: build complete, {len(index)} packages indexed in {time.time()-_t0:.3f}s")
             with self._lock:
                 self._index = index
                 self._ready = True
