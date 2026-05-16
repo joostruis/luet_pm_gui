@@ -357,11 +357,15 @@ class LuetTUI:
         # FIX: Initialize cache as empty and populate asynchronously
         self.installed_packages_cache = {}
         self.cache_initialized = False  # Track cache initialization status
+        self._index_ready = False
 
         # Description index for treefs-based description search
         self.desc_index = DescriptionIndex()
 
         self.init_app()
+
+        # Show "Initializing..." so is_busy=True blocks all input until ready
+        self.status_message = _("Initializing...")
 
         # Start async cache population
         Debug.log("TUI: starting cache refresh")
@@ -369,7 +373,7 @@ class LuetTUI:
 
         # Start building the description index in the background
         Debug.log("TUI: starting description index build")
-        self.desc_index.build_async(self.command_runner.run_sync)
+        self.desc_index.build_async(self.command_runner.run_sync, on_ready_callback=self._on_index_ready)
 
     def cleanup(self):
         """Clean up resources before exit"""
@@ -418,6 +422,22 @@ class LuetTUI:
         with self.cache_lock:
             self.installed_packages_cache = new_cache
             self.cache_initialized = True
+        self._check_startup_complete()
+
+    def _on_index_ready(self):
+        """Called from background thread when description index is built."""
+        Debug.log("TUI: index ready")
+        self.scheduler.schedule(self._on_index_ready_main)
+
+    def _on_index_ready_main(self):
+        self._index_ready = True
+        self._check_startup_complete()
+
+    def _check_startup_complete(self):
+        """Set status to Ready only once both cache and description index are ready."""
+        if self.cache_initialized and self._index_ready:
+            Debug.log("TUI: startup complete")
+            self.set_status(_("Ready"))
 
     def refresh_installed_packages_cache(self):
         """Refresh the cached list of installed packages"""

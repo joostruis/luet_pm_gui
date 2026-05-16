@@ -429,6 +429,7 @@ class SearchApp(Gtk.Window):
         
         self.installed_packages_cache = {}
         self.cache_initialized = False
+        self._index_ready = False
 
         # Description index for treefs-based description search
         self.desc_index = DescriptionIndex()
@@ -438,13 +439,17 @@ class SearchApp(Gtk.Window):
         if self.elevation_cmd is None and os.getuid() != 0:
             GLib.idle_add(self.set_status_message, _("Warning: no pkexec/sudo found - admin actions will fail"))
 
+        # Keep GUI disabled during startup until both cache and index are ready
+        self.disable_gui()
+        self.set_status_message(_("Initializing..."))
+
         # Start async cache population
         Debug.log("GUI: starting cache refresh")
         self.refresh_installed_packages_cache_async()
 
         # Start building the description index in the background
         Debug.log("GUI: starting description index build")
-        self.desc_index.build_async(self.command_runner.run_sync)
+        self.desc_index.build_async(self.command_runner.run_sync, on_ready_callback=self._on_index_ready)
     
     def refresh_installed_packages_cache_async(self):
         """Refresh the cached list of installed packages asynchronously"""
@@ -464,6 +469,23 @@ class SearchApp(Gtk.Window):
         with self.cache_lock:
             self.installed_packages_cache = new_cache
             self.cache_initialized = True
+        GLib.idle_add(self._check_startup_complete)
+
+    def _on_index_ready(self):
+        """Called from background thread when description index is built."""
+        Debug.log("GUI: index ready")
+        GLib.idle_add(self._on_index_ready_main)
+
+    def _on_index_ready_main(self):
+        self._index_ready = True
+        self._check_startup_complete()
+
+    def _check_startup_complete(self):
+        """Enable the GUI only once both the cache and description index are ready."""
+        if self.cache_initialized and self._index_ready:
+            Debug.log("GUI: startup complete, enabling GUI")
+            self.set_status_message(_("Ready"))
+            self.enable_gui()
 
     def refresh_installed_packages_cache(self):
         """Refresh the cached list of installed packages"""
