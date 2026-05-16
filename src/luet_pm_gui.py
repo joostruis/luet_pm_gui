@@ -763,16 +763,16 @@ class SearchApp(Gtk.Window):
         
         advanced = self.advanced_search_checkbox.get_active()
         search_cmd = ["luet", "search", "-o", "json", 
-                    "--by-label-regex" if advanced else "-q", 
+                    "--files" if advanced else "-q", 
                     sanitized_name]
         
         self.last_search = sanitized_name
         self.start_spinner(_("Searching for {}...").format(sanitized_name))
         self.disable_gui()
-        self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
+        self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd, advanced), daemon=True)
         self.search_thread.start()
 
-    def run_search(self, search_command):
+    def run_search(self, search_command, advanced=False):
         """ Worker thread: Calls core logic """
 
         # Use cached installed packages, but if cache isn't initialized yet, fetch it now
@@ -785,33 +785,36 @@ class SearchApp(Gtk.Window):
         # Run the name/label search via luet
         result_data = PackageSearcher.run_search_core(self.command_runner.run_sync, search_command)
 
-        # Process results using centralized logic
-        result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
+        # In advanced (file search) mode skip hidden filtering so layers/X is visible.
+        # In normal mode use centralized processing which filters hidden packages.
+        if advanced:
+            result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict, skip_hidden=True)
+        else:
+            result_data = SearchProcessor.process_search_results(result_data, installed_packages_dict)
 
-        # Merge description matches from local treefs index
-        # Wait briefly if the index is still being built
-        if not self.desc_index.is_ready:
-            import time as _time
-            for _ in range(20):  # wait up to 2 seconds
-                _time.sleep(0.1)
-                if self.desc_index.is_ready:
-                    break
+            # Merge description matches from local treefs index
+            # Wait briefly if the index is still being built
+            if not self.desc_index.is_ready:
+                import time as _time
+                for _ in range(20):  # wait up to 2 seconds
+                    _time.sleep(0.1)
+                    if self.desc_index.is_ready:
+                        break
 
-        if self.desc_index.is_ready and "error" not in result_data:
-            existing_keys = {
-                f"{p.get('category', '')}/{p.get('name', '')}"
-                for p in result_data.get("packages", [])
-            }
-            # Extract the query term from the search command (last argument)
-            query = search_command[-1] if search_command else ""
-            for pkg in self.desc_index.search(query):
-                key = f"{pkg['category']}/{pkg['name']}"
-                if key in existing_keys:
-                    continue
-                if PackageFilter.is_package_hidden(pkg["category"], pkg["name"]):
-                    continue
-                enriched = SearchProcessor._enrich_package_info(dict(pkg), installed_packages_dict)
-                result_data["packages"].append(enriched)
+            if self.desc_index.is_ready and "error" not in result_data:
+                existing_keys = {
+                    f"{p.get('category', '')}/{p.get('name', '')}"
+                    for p in result_data.get("packages", [])
+                }
+                query = search_command[-1] if search_command else ""
+                for pkg in self.desc_index.search(query):
+                    key = f"{pkg['category']}/{pkg['name']}"
+                    if key in existing_keys:
+                        continue
+                    if PackageFilter.is_package_hidden(pkg["category"], pkg["name"]):
+                        continue
+                    enriched = SearchProcessor._enrich_package_info(dict(pkg), installed_packages_dict)
+                    result_data["packages"].append(enriched)
 
         # Pass processed data to GUI thread
         GLib.idle_add(self.on_search_finished, result_data)
@@ -1004,10 +1007,10 @@ class SearchApp(Gtk.Window):
         
         if self.last_search:
             advanced = self.advanced_search_checkbox.get_active()
-            search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
+            search_cmd = ["luet", "search", "-o", "json", "--files" if advanced else "-q", self.last_search]
             self.clear_liststore()
             self.start_spinner(_("Searching again for '{}'...").format(self.last_search))
-            self.start_search_thread(search_cmd)
+            self.start_search_thread(search_cmd, advanced)
         else:
             self.set_status_message(_("Ready"))
             self.enable_gui()
@@ -1117,8 +1120,8 @@ class SearchApp(Gtk.Window):
         popup.show_all()
         self.disable_gui()
 
-    def start_search_thread(self, search_cmd):
-        self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd,), daemon=True)
+    def start_search_thread(self, search_cmd, advanced=False):
+        self.search_thread = threading.Thread(target=self.run_search, args=(search_cmd, advanced), daemon=True)
         self.search_thread.start()
 
     # ---------------------------------
@@ -1282,13 +1285,13 @@ class SearchApp(Gtk.Window):
                 # 2. FIX: Re-run search to update the list with new cache data
                 if self.last_search:
                     advanced = self.advanced_search_checkbox.get_active()
-                    search_cmd = ["luet", "search", "-o", "json", "--by-label-regex" if advanced else "-q", self.last_search]
+                    search_cmd = ["luet", "search", "-o", "json", "--files" if advanced else "-q", self.last_search]
                     
                     self.clear_liststore()
 
                     self.start_spinner(_("Searching for {}...").format(self.last_search))
 
-                    self.start_search_thread(search_cmd)
+                    self.start_search_thread(search_cmd, advanced)
                 else:
                     self.enable_gui()
             else:

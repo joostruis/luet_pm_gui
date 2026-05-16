@@ -142,7 +142,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.6.3"
+        return "0.8.6.2"
 
     @staticmethod
     def get_copyright():
@@ -854,27 +854,20 @@ class PackageSearcher:
     def run_search_core(command_runner_sync, search_command):
         try:
             res = command_runner_sync(search_command, require_root=True)
-
-            output = (res.stdout or "").strip()
-
-            # luet returns non-zero when no packages match — treat empty output
-            # as no results rather than a hard error so description index can
-            # still contribute matches
             if res.returncode != 0:
-                if not output:
-                    return {"packages": []}
                 print("Search error:", res.stderr)
                 return {"error": _("Error executing the search command")}
-
+            
+            output = (res.stdout or "").strip()
             if not output:
-                return {"packages": []}
-
+                 return {"packages": []}
+            
             data = json.loads(output)
             packages = data.get("packages") if isinstance(data, dict) else None
-
+            
             if packages is None:
                 return {"packages": []}
-
+                
             return {"packages": packages}
         except json.JSONDecodeError:
             print("Search error: Invalid JSON")
@@ -890,7 +883,7 @@ class SearchProcessor:
     """Unified search result processing for both GUI and TUI"""
     
     @staticmethod
-    def process_search_results(search_result, installed_packages_dict):
+    def process_search_results(search_result, installed_packages_dict, skip_hidden=False):
         """Process and enrich search results with installation status and upgrade info"""
         if "error" in search_result:
             return search_result
@@ -898,7 +891,7 @@ class SearchProcessor:
         processed_packages = []
         for pkg in search_result.get("packages", []):
             pkg = SearchProcessor._enrich_package_info(pkg, installed_packages_dict)
-            if not PackageFilter.is_package_hidden(pkg.get("category", ""), pkg.get("name", "")):
+            if skip_hidden or not PackageFilter.is_package_hidden(pkg.get("category", ""), pkg.get("name", "")):
                 processed_packages.append(pkg)
         
         search_result["packages"] = processed_packages
