@@ -946,59 +946,61 @@ class DescriptionIndex:
     def build_async(self, run_sync, on_ready_callback=None):
         """
         Walk the treefs in a background thread and build the index.
-        Uses a single privileged 'find' call to locate all definition.yaml
-        files, then reads them with a privileged Python subprocess so that
-        root-only paths under /var/luet/db/repos are accessible.
+        Uses a single privileged grep to extract description lines from all
+        definition.yaml files. This avoids YAML parsing (~7s for 2345 files)
+        by reading only the description line and deriving category/name/version/repo
+        from the path structure:
+          /var/luet/db/repos/<repo>/treefs/<cat>/<name>/<version>/definition.yaml
         """
         def worker():
             index = {}
             try:
-                # One privileged find to get all paths
+                # Single privileged grep — ~90ms vs ~7s for YAML parsing
                 res = run_sync(
-                    ["find", self.REPOS_PATH, "-path", "*/treefs/*",
-                     "-name", "definition.yaml"],
+                    ["grep", "-rH", "--include=definition.yaml",
+                     "^description:", self.REPOS_PATH],
                     require_root=True
                 )
+
                 if res.returncode != 0 or not res.stdout.strip():
-                    print("DescriptionIndex: find returned no results")
+                    print("DescriptionIndex: grep returned no results")
                     return
 
-                paths = [p.strip() for p in res.stdout.strip().splitlines() if p.strip()]
-
-                # Read all files in one privileged python call to avoid
-                # per-file sudo overhead (2345 cat calls would be very slow)
-                script = (
-                    "import sys, yaml\n"
-                    "import json\n"
-                    "result = {}\n"
-                    "for path in sys.argv[1:]:\n"
-                    "    try:\n"
-                    "        parts = path.split('/')\n"
-                    "        ri = parts.index('repos')\n"
-                    "        repo = parts[ri+1]\n"
-                    "        data = yaml.safe_load(open(path))\n"
-                    "        if not isinstance(data, dict): continue\n"
-                    "        cat = data.get('category','')\n"
-                    "        name = data.get('name','')\n"
-                    "        desc = data.get('description','')\n"
-                    "        ver = str(data.get('version',''))\n"
-                    "        if cat and name and desc:\n"
-                    "            key = cat+'/'+name\n"
-                    "            if key not in result:\n"
-                    "                result[key]={'category':cat,'name':name,'version':ver,'description':str(desc),'repository':repo}\n"
-                    "    except Exception: pass\n"
-                    "print(json.dumps(result))\n"
-                )
-
-                res2 = run_sync(
-                    ["python3", "-c", script] + paths,
-                    require_root=True
-                )
-                if res2.returncode == 0 and res2.stdout.strip():
+                for line in res.stdout.splitlines():
                     try:
-                        index = json.loads(res2.stdout.strip())
-                    except Exception as e:
-                        print(f"DescriptionIndex: JSON parse error: {e}")
+                        # line format: /path/to/definition.yaml:description: some text
+                        colon_idx = line.index(':description:')
+                        filepath = line[:colon_idx]
+                        desc = line[colon_idx + len(':description:'):].strip()
+                        if not desc:
+                            continue
+
+                        # Derive metadata from path structure:
+                        # .../repos/<repo>/treefs/<cat>/<name>/<version>/definition.yaml
+                        parts = filepath.split('/')
+                        try:
+                            ri = parts.index('repos')
+                            repo = parts[ri + 1]
+                            cat  = parts[ri + 3]
+                            name = parts[ri + 4]
+                            ver  = parts[ri + 5]
+                        except (ValueError, IndexError):
+                            continue
+
+                        if not (cat and name and desc):
+                            continue
+
+                        key = f"{cat}/{name}"
+                        if key not in index:
+                            index[key] = {
+                                "category":    cat,
+                                "name":        name,
+                                "version":     ver,
+                                "description": desc,
+                                "repository":  repo,
+                            }
+                    except Exception:
+                        continue
 
             except Exception as e:
                 print(f"DescriptionIndex: error building index: {e}")
