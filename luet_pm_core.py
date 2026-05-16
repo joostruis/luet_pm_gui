@@ -150,7 +150,7 @@ class AboutInfo:
         
     @staticmethod
     def get_version():
-        return "0.8.6.0"
+        return "0.8.5.2"
 
     @staticmethod
     def get_copyright():
@@ -328,7 +328,7 @@ class PackageFilter:
         :param name: Package name
         :return: True if package should be hidden, False otherwise
         """
-        if category == "entity":
+        if category in ("entity", "buildbase", "layerbase"):
             return True
         
         key = "{}/{}".format(category, name)
