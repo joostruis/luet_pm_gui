@@ -2,7 +2,7 @@
 """
 modules/i18n.py — Shared translation setup for Vajo modules.
 
-Both luet_pm_core.py and any submodules import _ and ngettext from here,
+Both vajo_core.py and any submodules import _ and ngettext from here,
 avoiding circular dependencies while keeping translations consistent.
 """
 
@@ -12,8 +12,8 @@ import locale
 try:
     locale.setlocale(locale.LC_ALL, '')
     localedir = '/usr/share/locale'
-    gettext.bindtextdomain('luet_pm_ui', localedir)
-    gettext.textdomain('luet_pm_ui')
+    gettext.bindtextdomain('vajo_ui', localedir)
+    gettext.textdomain('vajo_ui')
     _ = gettext.gettext
     ngettext = gettext.ngettext
 except Exception:

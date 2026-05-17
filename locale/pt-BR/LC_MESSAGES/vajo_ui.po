@@ -1,4 +1,5 @@
-# Ukrainian translations for luet_pm_gui package.
+# Portuguese translations for luet_pm_gui package
+# Traduções em português brasileiro para o pacote luet_pm_gui.
 # Copyright (C) 2025 MocaccinoOS
 # This file is distributed under the same license as the luet_pm_gui package.
 # Automatically generated, 2025.
@@ -7,390 +8,397 @@ msgid ""
 msgstr ""
 "Project-Id-Version: luet_pm_gui VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 20:10+0100\n"
+"POT-Creation-Date: 2026-05-17 15:56+0200\n"
 "PO-Revision-Date: 2025-09-16 21:20+0200\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
-"Language: uk\n"
+"Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: luet_pm_gui.py:92
+#: vajo_gui.py:89
 msgid "Visit our website"
 msgstr ""
 
-#: luet_pm_gui.py:105
+#: vajo_gui.py:102
 msgid "GitHub Repository"
 msgstr ""
 
-#: luet_pm_gui.py:125
+#: vajo_gui.py:122
 msgid "Package Details"
 msgstr ""
 
-#: luet_pm_gui.py:161
+#: vajo_gui.py:157
 msgid "Package:"
 msgstr ""
 
-#: luet_pm_gui.py:162
+#: vajo_gui.py:158
 msgid "Version:"
 msgstr ""
 
-#: luet_pm_gui.py:163
+#: vajo_gui.py:159
 msgid "Installed:"
 msgstr ""
 
-#: luet_pm_gui.py:163 luet_pm_core.py:1632
+#: vajo_gui.py:159 vajo_core.py:1185
 msgid "Yes"
 msgstr ""
 
-#: luet_pm_gui.py:163 luet_pm_core.py:1632
+#: vajo_gui.py:159 vajo_core.py:1185
 msgid "No"
 msgstr ""
 
-#: luet_pm_gui.py:200
+#: vajo_gui.py:196
 msgid "Repository:"
 msgstr ""
 
-#: luet_pm_gui.py:208
+#: vajo_gui.py:204
 msgid "Description:"
 msgstr ""
 
-#: luet_pm_gui.py:213
+#: vajo_gui.py:212
 msgid "License:"
 msgstr ""
 
-#: luet_pm_gui.py:220
+#: vajo_gui.py:219
 msgid "Required by"
 msgstr ""
 
-#: luet_pm_gui.py:232
+#: vajo_gui.py:231
 msgid "Package files"
 msgstr ""
 
-#: luet_pm_gui.py:234
+#: vajo_gui.py:233
 msgid "Filter files..."
 msgstr ""
 
-#: luet_pm_gui.py:239 luet_pm_gui.py:518 luet_pm_tui.py:118
+#: vajo_gui.py:238 vajo_gui.py:567 vajo_tui.py:144
 msgid "File"
 msgstr ""
 
-#: luet_pm_gui.py:254 luet_pm_gui.py:1303
+#: vajo_gui.py:260 vajo_gui.py:1471
 msgid "Close"
 msgstr ""
 
-#: luet_pm_gui.py:280
+#: vajo_gui.py:292
 msgid "Copy All Files"
 msgstr ""
 
-#: luet_pm_gui.py:301
+#: vajo_gui.py:313
 msgid "Error retrieving required by information."
 msgstr ""
 
-#: luet_pm_gui.py:309
+#: vajo_gui.py:321
 msgid "There are no packages installed that require this package."
 msgstr ""
 
-#: luet_pm_gui.py:319
+#: vajo_gui.py:331
 msgid "Loading..."
 msgstr ""
 
-#: luet_pm_gui.py:330
+#: vajo_gui.py:342
 msgid "Error retrieving package files information."
 msgstr ""
 
-#: luet_pm_gui.py:333
+#: vajo_gui.py:345
 msgid "No files found for this package."
 msgstr ""
 
-#: luet_pm_gui.py:359
+#: vajo_gui.py:374
 msgid "revdeps failed:"
 msgstr ""
 
-#: luet_pm_gui.py:368
+#: vajo_gui.py:383
 msgid "Error retrieving required by info:"
 msgstr ""
 
-#: luet_pm_gui.py:376
+#: vajo_gui.py:391
 msgid "search for package failed:"
 msgstr ""
 
-#: luet_pm_gui.py:384
+#: vajo_gui.py:399
 msgid "Error retrieving package files info:"
 msgstr ""
 
-#: luet_pm_gui.py:393
+#: vajo_gui.py:408
 msgid "Luet Package Search"
 msgstr ""
 
-#: luet_pm_gui.py:436
+#: vajo_gui.py:455
 msgid "Warning: no pkexec/sudo found - admin actions will fail"
 msgstr ""
 
-#: luet_pm_gui.py:491 luet_pm_tui.py:124 luet_pm_tui.py:242
-msgid "Update repositories"
+#: vajo_gui.py:459 vajo_tui.py:371
+msgid "Initializing..."
 msgstr ""
 
-#: luet_pm_gui.py:495 luet_pm_tui.py:124 luet_pm_tui.py:245
-msgid "Full system upgrade"
-msgstr ""
-
-#: luet_pm_gui.py:498 luet_pm_tui.py:124 luet_pm_tui.py:248
-msgid "Check system"
-msgstr ""
-
-#: luet_pm_gui.py:501 luet_pm_gui.py:1283 luet_pm_gui.py:1397
-#: luet_pm_tui.py:163 luet_pm_tui.py:253
-msgid "Roll back"
-msgstr ""
-
-#: luet_pm_gui.py:505 luet_pm_gui.py:1270 luet_pm_tui.py:133
-#: luet_pm_core.py:659
-msgid "Clear Luet cache"
-msgstr ""
-
-#: luet_pm_gui.py:508 luet_pm_tui.py:124 luet_pm_tui.py:240
-msgid "Quit"
-msgstr ""
-
-#: luet_pm_gui.py:512 luet_pm_tui.py:125 luet_pm_tui.py:258
-msgid "Documentation"
-msgstr ""
-
-#: luet_pm_gui.py:515 luet_pm_tui.py:125 luet_pm_tui.py:260 luet_pm_tui.py:262
-msgid "About"
-msgstr ""
-
-#: luet_pm_gui.py:520 luet_pm_tui.py:118
-msgid "Help"
-msgstr ""
-
-#: luet_pm_gui.py:540 luet_pm_gui.py:929 luet_pm_gui.py:1052
-#: luet_pm_gui.py:1068 luet_pm_gui.py:1119 luet_pm_gui.py:1152
-#: luet_pm_gui.py:1214 luet_pm_gui.py:1244 luet_pm_tui.py:277
-#: luet_pm_tui.py:436 luet_pm_tui.py:481 luet_pm_tui.py:832 luet_pm_tui.py:877
-#: luet_pm_tui.py:906 luet_pm_tui.py:908 luet_pm_tui.py:943 luet_pm_tui.py:1004
-#: luet_pm_tui.py:1013 luet_pm_tui.py:1026 luet_pm_tui.py:1039
-#: luet_pm_tui.py:1057 luet_pm_tui.py:1135 luet_pm_tui.py:1163
-#: luet_pm_tui.py:1592 luet_pm_tui.py:1625 luet_pm_core.py:529
+#: vajo_gui.py:502 vajo_gui.py:589 vajo_gui.py:1097 vajo_gui.py:1220
+#: vajo_gui.py:1236 vajo_gui.py:1287 vajo_gui.py:1320 vajo_gui.py:1382
+#: vajo_gui.py:1412 vajo_tui.py:312 vajo_tui.py:443 vajo_tui.py:515
+#: vajo_tui.py:560 vajo_tui.py:915 vajo_tui.py:964 vajo_tui.py:993
+#: vajo_tui.py:995 vajo_tui.py:1030 vajo_tui.py:1091 vajo_tui.py:1100
+#: vajo_tui.py:1113 vajo_tui.py:1126 vajo_tui.py:1146 vajo_tui.py:1279
+#: vajo_tui.py:1307 vajo_tui.py:1807 vajo_tui.py:1839 vajo_core.py:521
 msgid "Ready"
 msgstr ""
 
-#: luet_pm_gui.py:553 luet_pm_tui.py:588
+#: vajo_gui.py:537 vajo_tui.py:150 vajo_tui.py:275
+msgid "Update repositories"
+msgstr ""
+
+#: vajo_gui.py:541 vajo_tui.py:150 vajo_tui.py:278
+msgid "Full system upgrade"
+msgstr ""
+
+#: vajo_gui.py:544 vajo_tui.py:150 vajo_tui.py:281
+msgid "Installed packages"
+msgstr ""
+
+#: vajo_gui.py:547 vajo_tui.py:150 vajo_tui.py:283
+msgid "Check system"
+msgstr ""
+
+#: vajo_gui.py:550 vajo_gui.py:1451 vajo_gui.py:1565 vajo_tui.py:191
+#: vajo_tui.py:288
+msgid "Roll back"
+msgstr ""
+
+#: vajo_gui.py:554 vajo_gui.py:1438 vajo_tui.py:159 vajo_core.py:655
+msgid "Clear Luet cache"
+msgstr ""
+
+#: vajo_gui.py:557 vajo_tui.py:150 vajo_tui.py:273
+msgid "Quit"
+msgstr ""
+
+#: vajo_gui.py:561 vajo_tui.py:151 vajo_tui.py:293
+msgid "Documentation"
+msgstr ""
+
+#: vajo_gui.py:564 vajo_tui.py:151 vajo_tui.py:295 vajo_tui.py:297
+msgid "About"
+msgstr ""
+
+#: vajo_gui.py:569 vajo_tui.py:144
+msgid "Help"
+msgstr ""
+
+#: vajo_gui.py:602 vajo_tui.py:670
 msgid "Enter package name"
 msgstr ""
 
-#: luet_pm_gui.py:556
+#: vajo_gui.py:605
 msgid "Advanced"
 msgstr ""
 
-#: luet_pm_gui.py:558
+#: vajo_gui.py:607
 msgid "Check this box to also search inside filenames and labels"
 msgstr ""
 
-#: luet_pm_gui.py:561 luet_pm_tui.py:576
+#: vajo_gui.py:610 vajo_tui.py:658
 msgid "Search"
 msgstr ""
 
-#: luet_pm_gui.py:579 luet_pm_tui.py:632
+#: vajo_gui.py:628 vajo_tui.py:714
 msgid "Category"
 msgstr ""
 
-#: luet_pm_gui.py:580 luet_pm_tui.py:632
+#: vajo_gui.py:629 vajo_tui.py:714
 msgid "Name"
 msgstr ""
 
-#: luet_pm_gui.py:582 luet_pm_gui.py:1424 luet_pm_tui.py:632
-#: luet_pm_core.py:1614
+#: vajo_gui.py:631 vajo_gui.py:1592 vajo_tui.py:714 vajo_core.py:1167
 msgid "Version"
 msgstr ""
 
-#: luet_pm_gui.py:583 luet_pm_tui.py:632 luet_pm_core.py:1619
+#: vajo_gui.py:632 vajo_tui.py:714 vajo_core.py:1172
 msgid "Repository"
 msgstr ""
 
-#: luet_pm_gui.py:584 luet_pm_tui.py:632
+#: vajo_gui.py:633 vajo_tui.py:714
 msgid "Action"
 msgstr ""
 
-#: luet_pm_gui.py:585 luet_pm_gui.py:801
+#: vajo_gui.py:634 vajo_gui.py:952
 msgid "Details"
 msgstr ""
 
-#: luet_pm_gui.py:627 luet_pm_tui.py:682 luet_pm_tui.py:707
+#: vajo_gui.py:703 vajo_tui.py:764 vajo_tui.py:789
 msgid "Toggle output log"
 msgstr ""
 
-#: luet_pm_gui.py:725 luet_pm_tui.py:1087
+#: vajo_gui.py:820 vajo_gui.py:1087 vajo_gui.py:1368 vajo_tui.py:949
+#: vajo_tui.py:1140 vajo_tui.py:1193 vajo_tui.py:1308
+msgid "installed"
+msgstr ""
+
+#: vajo_gui.py:840 vajo_tui.py:1209
 msgid "Invalid search query"
 msgstr ""
 
-#: luet_pm_gui.py:734 luet_pm_gui.py:1206 luet_pm_tui.py:1075
+#: vajo_gui.py:849 vajo_gui.py:1375 vajo_tui.py:1197
 msgid "Searching for {}..."
 msgstr ""
 
-#: luet_pm_gui.py:781 luet_pm_tui.py:651 luet_pm_tui.py:1155
-#: luet_pm_tui.py:1236
+#: vajo_gui.py:924 vajo_tui.py:733 vajo_tui.py:1299 vajo_tui.py:1382
 msgid "Protected"
 msgstr ""
 
-#: luet_pm_gui.py:784 luet_pm_tui.py:653
+#: vajo_gui.py:927 vajo_tui.py:735
 msgid "Remove"
 msgstr ""
 
-#: luet_pm_gui.py:787 luet_pm_tui.py:655
+#: vajo_gui.py:930 vajo_tui.py:737
 msgid "Install"
 msgstr ""
 
-#: luet_pm_gui.py:806 luet_pm_tui.py:1134
+#: vajo_gui.py:958 vajo_tui.py:1278
 msgid "Found {} results matching '{}'"
 msgstr ""
 
-#: luet_pm_gui.py:806 luet_pm_gui.py:1068
+#: vajo_gui.py:958 vajo_gui.py:1236
 msgid "No results"
 msgstr ""
 
-#: luet_pm_gui.py:809
+#: vajo_gui.py:961
 msgid "Error processing search results:"
 msgstr ""
 
-#: luet_pm_gui.py:810
+#: vajo_gui.py:962
 msgid "Error displaying search results"
 msgstr ""
 
-#: luet_pm_gui.py:911 luet_pm_tui.py:1154 luet_pm_tui.py:1235
+#: vajo_gui.py:1076 vajo_tui.py:1298 vajo_tui.py:1381
 msgid "This package ({}) is protected and can't be removed."
 msgstr ""
 
-#: luet_pm_gui.py:926
+#: vajo_gui.py:1094
 msgid "Searching again for '{}'..."
 msgstr ""
 
-#: luet_pm_gui.py:934 luet_pm_tui.py:1199
+#: vajo_gui.py:1102 vajo_tui.py:1345
 msgid "Do you want to install {}?"
 msgstr ""
 
-#: luet_pm_gui.py:945 luet_pm_gui.py:946 luet_pm_tui.py:1203
+#: vajo_gui.py:1113 vajo_gui.py:1114 vajo_tui.py:1349
 msgid "Installing {}..."
 msgstr ""
 
-#: luet_pm_gui.py:954 luet_pm_gui.py:992 luet_pm_tui.py:1179
-#: luet_pm_tui.py:1210
+#: vajo_gui.py:1122 vajo_gui.py:1160 vajo_tui.py:1325 vajo_tui.py:1356
 msgid "Finalizing: Updating package cache..."
 msgstr ""
 
-#: luet_pm_gui.py:962 luet_pm_gui.py:969
+#: vajo_gui.py:1130 vajo_gui.py:1137
 msgid "Error installing package"
 msgstr ""
 
-#: luet_pm_gui.py:974 luet_pm_tui.py:1169
+#: vajo_gui.py:1142 vajo_tui.py:1315
 msgid "Do you want to uninstall {}?"
 msgstr ""
 
-#: luet_pm_gui.py:975
+#: vajo_gui.py:1143
 msgid ""
 "This will remove the package and its dependencies not required by other "
 "packages."
 msgstr ""
 
-#: luet_pm_gui.py:983 luet_pm_gui.py:984 luet_pm_tui.py:1172
+#: vajo_gui.py:1151 vajo_gui.py:1152 vajo_tui.py:1318
 msgid "Uninstalling {}..."
 msgstr ""
 
-#: luet_pm_gui.py:1000
+#: vajo_gui.py:1168
 msgid "Error uninstalling package: '{}'"
 msgstr ""
 
-#: luet_pm_gui.py:1014
+#: vajo_gui.py:1182
 msgid "Error uninstalling package"
 msgstr ""
 
-#: luet_pm_gui.py:1102 luet_pm_tui.py:810
+#: vajo_gui.py:1270 vajo_tui.py:894
 msgid "Updating repositories..."
 msgstr ""
 
-#: luet_pm_gui.py:1109 luet_pm_tui.py:818
+#: vajo_gui.py:1277 vajo_tui.py:901
 msgid "Repositories updated"
 msgstr ""
 
-#: luet_pm_gui.py:1111 luet_pm_gui.py:1118 luet_pm_tui.py:823
+#: vajo_gui.py:1279 vajo_gui.py:1286 vajo_tui.py:906
 msgid "Error updating repositories"
 msgstr ""
 
-#: luet_pm_gui.py:1139 luet_pm_tui.py:899
+#: vajo_gui.py:1307 vajo_tui.py:986
 msgid "Checking system for missing files..."
 msgstr ""
 
-#: luet_pm_gui.py:1147
+#: vajo_gui.py:1315
 msgid "Missing files: preparing to reinstall..."
 msgstr ""
 
-#: luet_pm_gui.py:1152 luet_pm_tui.py:914
+#: vajo_gui.py:1320 vajo_tui.py:1001
 msgid "Could not repair some packages"
 msgstr ""
 
-#: luet_pm_gui.py:1171 luet_pm_tui.py:849
+#: vajo_gui.py:1339 vajo_tui.py:932
 msgid "Perform a full system upgrade?"
 msgstr ""
 
-#: luet_pm_gui.py:1172
+#: vajo_gui.py:1340
 msgid ""
 "This will update all repositories and then upgrade all installed packages. "
 "This action may take some time and requires an internet connection."
 msgstr ""
 
-#: luet_pm_gui.py:1179
+#: vajo_gui.py:1347
 msgid "Performing full system upgrade"
 msgstr ""
 
-#: luet_pm_gui.py:1182 luet_pm_tui.py:851
+#: vajo_gui.py:1350 vajo_tui.py:936
 msgid "Performing full system upgrade..."
 msgstr ""
 
-#: luet_pm_gui.py:1212 luet_pm_tui.py:869
+#: vajo_gui.py:1380 vajo_tui.py:956
 msgid "Error during system upgrade"
 msgstr ""
 
-#: luet_pm_gui.py:1230 luet_pm_tui.py:934
+#: vajo_gui.py:1398 vajo_tui.py:1021
 msgid "Clear Luet cache?"
 msgstr ""
 
-#: luet_pm_gui.py:1231
+#: vajo_gui.py:1399
 msgid "This will run 'luet cleanup' and remove cached package data."
 msgstr ""
 
-#: luet_pm_gui.py:1240 luet_pm_tui.py:936
+#: vajo_gui.py:1408 vajo_tui.py:1023
 msgid "Clearing Luet cache..."
 msgstr ""
 
-#: luet_pm_gui.py:1244 luet_pm_tui.py:947
+#: vajo_gui.py:1412 vajo_tui.py:1034
 msgid "Error clearing Luet cache"
 msgstr ""
 
-#: luet_pm_gui.py:1260 luet_pm_tui.py:531
+#: vajo_gui.py:1428 vajo_tui.py:609
 msgid "Last sync: {}"
 msgstr ""
 
-#: luet_pm_gui.py:1267 luet_pm_core.py:657
+#: vajo_gui.py:1435 vajo_core.py:653
 msgid "Clear Luet cache ({})"
 msgstr ""
 
-#: luet_pm_gui.py:1278 luet_pm_tui.py:161 luet_pm_tui.py:256
+#: vajo_gui.py:1446 vajo_tui.py:189 vajo_tui.py:291
 msgid "View pinned state"
 msgstr ""
 
-#: luet_pm_gui.py:1289 luet_pm_tui.py:393
+#: vajo_gui.py:1457 vajo_tui.py:472
 msgid "unknown"
 msgstr ""
 
-#: luet_pm_gui.py:1294
+#: vajo_gui.py:1462
 msgid "System is pinned to a previous version"
 msgstr ""
 
-#: luet_pm_gui.py:1297
+#: vajo_gui.py:1465
 msgid ""
 "Desktop: {}\n"
 "\n"
@@ -401,63 +409,63 @@ msgid ""
 "further or do a full upgrade when ready."
 msgstr ""
 
-#: luet_pm_gui.py:1304
+#: vajo_gui.py:1472
 msgid "Unpin"
 msgstr ""
 
-#: luet_pm_gui.py:1313 luet_pm_tui.py:424
+#: vajo_gui.py:1481 vajo_tui.py:503
 msgid "Unpinning..."
 msgstr ""
 
-#: luet_pm_gui.py:1333
+#: vajo_gui.py:1501
 msgid "Unpinned. You can now roll back further or upgrade."
 msgstr ""
 
-#: luet_pm_gui.py:1335 luet_pm_tui.py:439
+#: vajo_gui.py:1503 vajo_tui.py:518
 msgid "Error during unpin"
 msgstr ""
 
-#: luet_pm_gui.py:1345 luet_pm_tui.py:998
+#: vajo_gui.py:1513 vajo_tui.py:1085
 msgid "Checking rollback availability..."
 msgstr ""
 
-#: luet_pm_gui.py:1350 luet_pm_tui.py:1007
+#: vajo_gui.py:1518 vajo_tui.py:1094
 msgid "Cannot determine current desktop version."
 msgstr ""
 
-#: luet_pm_gui.py:1378 luet_pm_tui.py:1016
+#: vajo_gui.py:1546 vajo_tui.py:1103
 msgid "No previous version available to roll back to."
 msgstr ""
 
-#: luet_pm_gui.py:1390 luet_pm_tui.py:971
+#: vajo_gui.py:1558 vajo_tui.py:1058
 msgid "Select rollback target"
 msgstr ""
 
-#: luet_pm_gui.py:1396
+#: vajo_gui.py:1564
 msgid "Cancel"
 msgstr ""
 
-#: luet_pm_gui.py:1408
+#: vajo_gui.py:1576
 msgid "Choose a version to roll back to:"
 msgstr ""
 
-#: luet_pm_gui.py:1424
+#: vajo_gui.py:1592
 msgid "Date"
 msgstr ""
 
-#: luet_pm_gui.py:1424
+#: vajo_gui.py:1592
 msgid "Desktop"
 msgstr ""
 
-#: luet_pm_gui.py:1424
+#: vajo_gui.py:1592
 msgid "Community"
 msgstr ""
 
-#: luet_pm_gui.py:1455
+#: vajo_gui.py:1623
 msgid "Roll back to {}?"
 msgstr ""
 
-#: luet_pm_gui.py:1457
+#: vajo_gui.py:1625
 msgid ""
 "This will revert your system to:\n"
 "\n"
@@ -468,31 +476,31 @@ msgid ""
 "Are you sure you want to continue?"
 msgstr ""
 
-#: luet_pm_gui.py:1473 luet_pm_tui.py:1042
+#: vajo_gui.py:1641 vajo_tui.py:1129
 msgid "Rolling back..."
 msgstr ""
 
-#: luet_pm_gui.py:1499 luet_pm_tui.py:1051 luet_pm_core.py:1489
+#: vajo_gui.py:1669 vajo_tui.py:1138 modules/rollback.py:642
 msgid "Rollback completed successfully"
 msgstr ""
 
-#: luet_pm_tui.py:259 luet_pm_tui.py:931 luet_pm_tui.py:995 luet_pm_tui.py:1016
+#: vajo_tui.py:294 vajo_tui.py:1018 vajo_tui.py:1082 vajo_tui.py:1103
 msgid "Info"
 msgstr ""
 
-#: luet_pm_tui.py:259
+#: vajo_tui.py:294
 msgid "Opening luet documentation (URL TBD)"
 msgstr ""
 
-#: luet_pm_tui.py:279
+#: vajo_tui.py:314
 msgid "Not Synced"
 msgstr ""
 
-#: luet_pm_tui.py:380 luet_pm_core.py:1549
+#: vajo_tui.py:459 vajo_core.py:1089
 msgid "repositories not synced"
 msgstr ""
 
-#: luet_pm_tui.py:394
+#: vajo_tui.py:473
 msgid ""
 "System is pinned to a previous version.\n"
 "\n"
@@ -501,108 +509,107 @@ msgid ""
 "Updates and rollbacks are disabled while pinned."
 msgstr ""
 
-#: luet_pm_tui.py:410
+#: vajo_tui.py:489
 msgid "Press 'u' to unpin, any other key to close."
 msgstr ""
 
-#: luet_pm_tui.py:422
+#: vajo_tui.py:501
 msgid "Unpin the system?"
 msgstr ""
 
-#: luet_pm_tui.py:476
+#: vajo_tui.py:555
 msgid "Terminal too small! Min 20x80."
 msgstr ""
 
-#: luet_pm_tui.py:629
+#: vajo_tui.py:711
 msgid " Results "
 msgstr ""
 
-#: luet_pm_tui.py:685
+#: vajo_tui.py:767
 msgid "Scrolled Up: {} line."
 msgid_plural "Scrolled Up: {} lines."
 msgstr[0] ""
 msgstr[1] ""
-msgstr[2] ""
 
-#: luet_pm_tui.py:686
+#: vajo_tui.py:768
 msgid "{} ({} PgUp/PgDn to navigate)"
 msgstr ""
 
-#: luet_pm_tui.py:716
+#: vajo_tui.py:798
 msgid ""
 "Keys: F9=menu | s=search | Enter=details | i=install/uninstall | l=toggle "
 "log | PgUp/PgDn=log scroll | q=quit"
 msgstr ""
 
-#: luet_pm_tui.py:718
+#: vajo_tui.py:800
 msgid ""
 "SEARCH: Enter=submit | Esc/Down/Tab=back to list | Backspace/Del/Arrows=edit "
 "| q=quit"
 msgstr ""
 
-#: luet_pm_tui.py:777
+#: vajo_tui.py:859
 msgid "Press 'y' to confirm, any other key to cancel."
 msgstr ""
 
-#: luet_pm_tui.py:799
+#: vajo_tui.py:881
 msgid "Press any key to continue"
 msgstr ""
 
-#: luet_pm_tui.py:852
+#: vajo_tui.py:937
 msgid "Full system upgrade initiated."
 msgstr ""
 
-#: luet_pm_tui.py:867 luet_pm_core.py:589 luet_pm_core.py:602
+#: vajo_tui.py:954 vajo_core.py:585 vajo_core.py:598
 msgid "System upgrade completed successfully"
 msgstr ""
 
-#: luet_pm_tui.py:893
+#: vajo_tui.py:980
 msgid "Upgrade initiation failed: {}"
 msgstr ""
 
-#: luet_pm_tui.py:894
+#: vajo_tui.py:981
 msgid "Upgrade failed to start"
 msgstr ""
 
-#: luet_pm_tui.py:910
+#: vajo_tui.py:997
 msgid ""
 "\n"
 "--- Missing packages found. Starting repair sequence. ---"
 msgstr ""
 
-#: luet_pm_tui.py:914
+#: vajo_tui.py:1001
 msgid "System repair finished successfully."
 msgstr ""
 
-#: luet_pm_tui.py:931
+#: vajo_tui.py:1018
 msgid "No cache to clear"
 msgstr ""
 
-#: luet_pm_tui.py:937
+#: vajo_tui.py:1024
 msgid "--- Running 'luet cleanup' ---"
 msgstr ""
 
-#: luet_pm_tui.py:942
+#: vajo_tui.py:1029
 msgid "Luet cache cleanup finished successfully."
 msgstr ""
 
-#: luet_pm_tui.py:946
+#: vajo_tui.py:1033
 msgid "Luet cache cleanup finished with errors."
 msgstr ""
 
-#: luet_pm_tui.py:976
+#: vajo_tui.py:1063
 msgid "â†‘â†“ select   Enter confirm   Esc cancel"
 msgstr ""
 
-#: luet_pm_tui.py:995
+#: vajo_tui.py:1082
 msgid "Roll back is only available on stable repositories."
 msgstr ""
 
-#: luet_pm_tui.py:1007
+#: vajo_tui.py:1094
 msgid "Error"
 msgstr ""
 
-#: luet_pm_tui.py:1029
+#: vajo_tui.py:1116
 msgid ""
 "Roll back to {}?\n"
 "\n"
@@ -612,246 +619,249 @@ msgid ""
 "A full system downgrade will be performed."
 msgstr ""
 
-#: luet_pm_tui.py:1107
+#: vajo_tui.py:1251
 msgid "Search core error: {}"
 msgstr ""
 
-#: luet_pm_tui.py:1108 luet_pm_tui.py:1142 luet_pm_core.py:867
-#: luet_pm_core.py:885
+#: vajo_tui.py:1252 vajo_tui.py:1286 vajo_core.py:863 vajo_core.py:881
 msgid "Error executing the search command"
 msgstr ""
 
-#: luet_pm_tui.py:1141
+#: vajo_tui.py:1285
 msgid "Search result processing failed: {}"
 msgstr ""
 
-#: luet_pm_tui.py:1186
+#: vajo_tui.py:1332
 msgid "Error uninstalling: '{}'"
 msgstr ""
 
-#: luet_pm_tui.py:1217
+#: vajo_tui.py:1363
 msgid "Error installing: '{}'"
 msgstr ""
 
-#: luet_pm_tui.py:1253
+#: vajo_tui.py:1399
 msgid "Details for {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1284
+#: vajo_tui.py:1430
 msgid "Line {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1351
+#: vajo_tui.py:1497
 msgid "Required by for {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1352
+#: vajo_tui.py:1498
 msgid "Loading required by list..."
 msgstr ""
 
-#: luet_pm_tui.py:1384
+#: vajo_tui.py:1530
 msgid "This package is not required by any other package."
 msgstr ""
 
-#: luet_pm_tui.py:1386 luet_pm_tui.py:1520
+#: vajo_tui.py:1532 vajo_tui.py:1665
 msgid "Press any key to close"
 msgstr ""
 
-#: luet_pm_tui.py:1405
+#: vajo_tui.py:1551
 msgid "Required by for {}/{} ({} packages)"
 msgstr ""
 
-#: luet_pm_tui.py:1414
+#: vajo_tui.py:1560
 msgid "Package {}/{} | Page {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1423 luet_pm_tui.py:1554
+#: vajo_tui.py:1569 vajo_tui.py:1699
 msgid "Keys: Up/Down/PgUp/PgDn=scroll | Any other key=close"
 msgstr ""
 
-#: luet_pm_tui.py:1477
+#: vajo_tui.py:1623
 msgid "Files for {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1478
+#: vajo_tui.py:1624
 msgid "Loading file list..."
 msgstr ""
 
-#: luet_pm_tui.py:1518
+#: vajo_tui.py:1663
 msgid "No files found or package not installed"
 msgstr ""
 
-#: luet_pm_tui.py:1536
+#: vajo_tui.py:1681
 msgid "Files for {}/{} ({} files)"
 msgstr ""
 
-#: luet_pm_tui.py:1545
+#: vajo_tui.py:1690
 msgid "File {}/{} | Page {}/{}"
 msgstr ""
 
-#: luet_pm_tui.py:1714
+#: vajo_tui.py:1936
 msgid "Starting Vajo: a Luet TUI frontend..."
 msgstr ""
 
-#: luet_pm_tui.py:1720
+#: vajo_tui.py:1942
 msgid "An error occurred outside of curses: {}"
 msgstr ""
 
-#: luet_pm_core.py:152
+#: vajo_core.py:145
 msgid "Vajo: a Luet Package Manager Frontend"
 msgstr ""
 
-#: luet_pm_core.py:160
+#: vajo_core.py:153
 msgid "Â© 2023 - 2026 MocaccinoOS. All Rights Reserved"
 msgstr ""
 
-#: luet_pm_core.py:177
+#: vajo_core.py:170
 msgid ""
 "Vajo: a Luet Package Manager TUI (ncurses)\n"
 "Version: {}\n"
 "Website: {}\n"
 "Authors: {}\n"
-"(Uses luet_pm_core.py)"
+"(Uses vajo_core.py)"
 msgstr ""
 
-#: luet_pm_core.py:209
+#: vajo_core.py:202
 msgid "No elevation helper available"
 msgstr ""
 
-#: luet_pm_core.py:259
+#: vajo_core.py:252
 msgid ""
 "\n"
 "Error executing command: {}\n"
 msgstr ""
 
-#: luet_pm_core.py:384
+#: vajo_core.py:377
 msgid "Updating repositories"
 msgstr ""
 
-#: luet_pm_core.py:484
+#: vajo_core.py:476
 msgid "luet oscheck failed with return code {}"
 msgstr ""
 
-#: luet_pm_core.py:490
+#: vajo_core.py:482
 msgid "Repair sequence started for {} missing packages.\n"
 msgstr ""
 
-#: luet_pm_core.py:491
+#: vajo_core.py:483
 msgid "Found {} missing packages. Starting repair immediately.\n"
 msgstr ""
 
-#: luet_pm_core.py:497
+#: vajo_core.py:489
 msgid "Reinstalling {}..."
 msgstr ""
 
-#: luet_pm_core.py:510
+#: vajo_core.py:502
 msgid "Failed reinstalling {}"
 msgstr ""
 
-#: luet_pm_core.py:521
+#: vajo_core.py:513
 msgid "System check failed due to exception"
 msgstr ""
 
-#: luet_pm_core.py:572
+#: vajo_core.py:568
 msgid "Error starting upgrade process"
 msgstr ""
 
-#: luet_pm_core.py:580
+#: vajo_core.py:576
 msgid "Error during initial upgrade step"
 msgstr ""
 
-#: luet_pm_core.py:592
+#: vajo_core.py:588
 msgid ""
 "\n"
 "--- Repositories updated, continuing with package upgrade... ---\n"
 "\n"
 msgstr ""
 
-#: luet_pm_core.py:593
+#: vajo_core.py:589
 msgid "Continuing with package upgrade..."
 msgstr ""
 
-#: luet_pm_core.py:606
+#: vajo_core.py:602
 msgid "Error starting second upgrade step"
 msgstr ""
 
-#: luet_pm_core.py:882
+#: vajo_core.py:878
 msgid "Invalid JSON output"
 msgstr ""
 
-#: luet_pm_core.py:884
+#: vajo_core.py:880
 msgid "Error running search:"
 msgstr ""
 
-#: luet_pm_core.py:1302
-msgid "Previous"
-msgstr ""
-
-#: luet_pm_core.py:1302
-msgid "{} versions back"
-msgstr ""
-
-#: luet_pm_core.py:1459
-msgid "Failed to write repository configuration"
-msgstr ""
-
-#: luet_pm_core.py:1490
-msgid "Rollback failed during upgrade"
-msgstr ""
-
-#: luet_pm_core.py:1527
+#: vajo_core.py:1067
 #, python-format
 msgid "%d day ago"
 msgid_plural "%d days ago"
 msgstr[0] ""
 msgstr[1] ""
-msgstr[2] ""
 
-#: luet_pm_core.py:1530
+#: vajo_core.py:1070
 #, python-format
 msgid "%d hour ago"
 msgid_plural "%d hours ago"
 msgstr[0] ""
 msgstr[1] ""
-msgstr[2] ""
 
-#: luet_pm_core.py:1533
+#: vajo_core.py:1073
 #, python-format
 msgid "%d minute ago"
 msgid_plural "%d minutes ago"
 msgstr[0] ""
 msgstr[1] ""
-msgstr[2] ""
 
-#: luet_pm_core.py:1535
+#: vajo_core.py:1075
 msgid "just now"
 msgstr ""
 
-#: luet_pm_core.py:1607
+#: vajo_core.py:1160
 msgid "No metadata found for this package."
 msgstr ""
 
-#: luet_pm_core.py:1615
+#: vajo_core.py:1168
 msgid "Installed"
 msgstr ""
 
-#: luet_pm_core.py:1616
+#: vajo_core.py:1169
 msgid "License"
 msgstr ""
 
-#: luet_pm_core.py:1620
+#: vajo_core.py:1173
 msgid "Description"
 msgstr ""
 
-#: luet_pm_core.py:1621
+#: vajo_core.py:1174
 msgid "Homepage"
 msgstr ""
 
-#: luet_pm_core.py:1632
+#: vajo_core.py:1185
 msgid "(unknown)"
 msgstr ""
 
-#: luet_pm_core.py:1657 luet_pm_core.py:1659 luet_pm_core.py:1704
-#: luet_pm_core.py:1714
+#: vajo_core.py:1210 vajo_core.py:1212 vajo_core.py:1257 vajo_core.py:1267
 msgid "(none)"
+msgstr ""
+
+#: modules/rollback.py:403
+msgid "Previous"
+msgstr ""
+
+#: modules/rollback.py:403
+msgid "{} versions back"
+msgstr ""
+
+#: modules/rollback.py:421
+msgid "~1 year ago"
+msgstr ""
+
+#: modules/rollback.py:423
+msgid "~2 years ago"
+msgstr ""
+
+#: modules/rollback.py:612
+msgid "Failed to write repository configuration"
+msgstr ""
+
+#: modules/rollback.py:643
+msgid "Rollback failed during upgrade"
 msgstr ""
