@@ -115,13 +115,16 @@ class AboutDialog(Gtk.AboutDialog):
 # Package Details popup (GUI class)
 # -------------------------
 class PackageDetailsPopup(Gtk.Window):
-    def __init__(self, run_command_sync_func, package_info):
+    def __init__(self, run_command_sync_func, package_info, on_action_callback=None):
         """
         Decoupled: Receives run_command_sync_func instead of the whole 'app'.
+        on_action_callback: called with package_info when Install/Remove is clicked.
         """
         super().__init__(title=_("Package Details"))
-        self.run_command_sync = run_command_sync_func # Injected dependency
+        self.run_command_sync = run_command_sync_func
         self.package_info = package_info
+        self.on_action_callback = on_action_callback
+        self.action_button = None
         self.loaded_package_files = {}
         self.all_files = []
 
@@ -130,6 +133,7 @@ class PackageDetailsPopup(Gtk.Window):
         version = package_info.get("version", "")
         repository = package_info.get("repository", "")
         installed = package_info.get("installed", False)
+        protected = package_info.get("protected", False)
 
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         main_box.set_margin_start(10)
@@ -257,12 +261,22 @@ class PackageDetailsPopup(Gtk.Window):
         outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         outer_box.pack_start(scrolled, True, True, 0)
 
+        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        button_box.set_margin_start(10)
+        button_box.set_margin_end(10)
+        button_box.set_margin_bottom(10)
+
         close_button = Gtk.Button(label=_("Close"))
         close_button.connect("clicked", lambda b: self.destroy())
-        close_button.set_margin_start(10)
-        close_button.set_margin_end(10)
-        close_button.set_margin_bottom(10)
-        outer_box.pack_end(close_button, False, False, 0)
+        button_box.pack_end(close_button, False, False, 0)
+
+        if on_action_callback and not protected:
+            action_label = _("Remove") if installed else _("Install")
+            self.action_button = Gtk.Button(label=action_label)
+            self.action_button.connect("clicked", self.on_action_clicked)
+            button_box.pack_end(self.action_button, False, False, 0)
+
+        outer_box.pack_end(button_box, False, False, 0)
 
         self.add(outer_box)
         self.set_default_size(900, 400)
@@ -270,6 +284,12 @@ class PackageDetailsPopup(Gtk.Window):
         self.show_all()
 
     
+    def on_action_clicked(self, button):
+        """Close the window and trigger the install/remove action."""
+        if self.on_action_callback:
+            self.on_action_callback(self.package_info)
+        self.destroy()
+
     def load_definition_yaml(self, repository, category, name, version):
         try:
             # Use centralized PackageDetails to fetch definition.yaml (handles elevation)
@@ -317,6 +337,11 @@ class PackageDetailsPopup(Gtk.Window):
         GLib.idle_add(self.update_expander_label, self.required_by_expander, count)
         if sorted_required_by:
             GLib.idle_add(self.update_textview, self.required_by_textview, "\n".join(sorted_required_by))
+            # Disable Remove button if package has revdeps — removal would fail
+            if self.package_info.get("installed", False) and self.action_button:
+                GLib.idle_add(self.action_button.set_sensitive, False)
+                GLib.idle_add(self.action_button.set_tooltip_text,
+                              _("Cannot remove: other packages depend on this one"))
         else:
             GLib.idle_add(self.update_textview, self.required_by_textview, _("There are no packages installed that require this package."))
 
@@ -1184,6 +1209,21 @@ class SearchApp(Gtk.Window):
     def clear_liststore(self):
         self.liststore.clear()
 
+    def on_details_action(self, package_info):
+        """Called when Install/Remove is clicked in the details window."""
+        self.enable_gui()
+        iter_ = self.liststore.get_iter_first()
+        while iter_:
+            if (self.liststore.get_value(iter_, 0) == package_info.get("category", "") and
+                    self.liststore.get_value(iter_, 1) == package_info.get("name", "")):
+                if package_info.get("is_actually_installed") or package_info.get("installed"):
+                    self.confirm_uninstall(iter_)
+                else:
+                    self.confirm_install(iter_)
+                return
+            iter_ = self.liststore.iter_next(iter_)
+        self.set_status_message(_("Please search for the package first."))
+
     def show_package_details_popup(self, package_info):
         repository = ""
         iter_ = self.liststore.get_iter_first()
@@ -1194,8 +1234,8 @@ class SearchApp(Gtk.Window):
             iter_ = self.liststore.iter_next(iter_)
         package_info["repository"] = repository
         
-        # Inject the core sync command runner
-        popup = PackageDetailsPopup(self.command_runner.run_sync, package_info)
+        # Inject the core sync command runner and action callback
+        popup = PackageDetailsPopup(self.command_runner.run_sync, package_info, on_action_callback=self.on_details_action)
         
         popup.set_modal(True)
         popup.connect("destroy", lambda w: self.enable_gui())

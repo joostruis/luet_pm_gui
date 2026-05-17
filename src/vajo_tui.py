@@ -1371,36 +1371,64 @@ class LuetTUI:
             )
 
     def show_details(self):
-        if not (0 <= self.selected_index < len(self.results)): return
-        pkg = self.results[self.selected_index]
-
-        if pkg.get("protected", False):
-            msg = PackageFilter.get_protection_message(pkg['category'], pkg['name'])
-            if msg is None:
-                full_name = f"{pkg['category']}/{pkg['name']}"
-                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
-            self.show_message(_("Protected"), msg)
+        if not (0 <= self.selected_index < len(self.results)):
             return
+
+        pkg = self.results[self.selected_index]
 
         category = pkg['category']
         name = pkg['name']
         repository = pkg.get('repository', '')
         installed = pkg.get('installed', False)
-        
-        # Use available version for fetching details (it's more likely to exist in repos)
-        # For installed packages that are not upgradeable, use the installed version
-        version_to_use = pkg.get('available_version', '') or pkg.get('version', '')
 
-        details = PackageDetails.get_definition_yaml(self.command_runner.run_sync, repository, category, name, version_to_use)
-        
-        # For display, show the available version in details to indicate what would be installed
-        display_version = pkg.get('available_version', '') or pkg.get('version', '')
-        text = PackageDetails.format_for_tui(details, None, None, repository, display_version, installed)
+        version_to_use = (
+            pkg.get('available_version', '')
+            or pkg.get('version', '')
+        )
+
+        details = PackageDetails.get_definition_yaml(
+            self.command_runner.run_sync,
+            repository,
+            category,
+            name,
+            version_to_use
+        )
+
+        display_version = (
+            pkg.get('available_version', '')
+            or pkg.get('version', '')
+        )
+
+        text = PackageDetails.format_for_tui(
+            details,
+            None,
+            None,
+            repository,
+            display_version,
+            installed
+        )
+
+        # Add protection notice to details instead of blocking details
+        if pkg.get("protected", False):
+            msg = PackageFilter.get_protection_message(category, name)
+            if msg is None:
+                full_name = f"{category}/{name}"
+                msg = _("This package ({}) is protected and can't be removed.").format(full_name)
+
+            text += "\n\n" + _("Protection status:") + "\n" + msg
+
         title = _("Details for {}/{}").format(category, name)
-        
-        self.show_package_details_interactive(title, text, category, name, installed)
-    
-    def show_package_details_interactive(self, title, message, category, name, installed):
+
+        self.show_package_details_interactive(
+            title,
+            text,
+            category,
+            name,
+            installed,
+            pkg
+        )
+ 
+    def show_package_details_interactive(self, title, message, category, name, installed, pkg):
         """Show package details with option to view files ('f') or revdeps ('r')."""
         self.draw()
         h, w = self.stdscr.getmaxyx()
@@ -1414,7 +1442,14 @@ class LuetTUI:
         lines = str(message).splitlines()
         max_visible = hh - 4
         max_scroll = max(0, len(lines) - max_visible)
-        
+        action_requested = False
+
+        # Pre-check revdeps for installed packages to decide if Remove is allowed
+        has_revdeps = False
+        if installed and not pkg.get("protected", False):
+            revdeps = PackageDetails.get_required_by(self.command_runner.run_sync, category, name)
+            has_revdeps = len(revdeps) > 0
+
         while True:
             win.erase()
             win.border()
@@ -1431,31 +1466,32 @@ class LuetTUI:
                     win.addstr(hh - 2, 2, scroll_info, curses.A_DIM)
                 
                 hints_parts = ["Keys:"]
-                
-                # 'f' for files is always enabled regardless of install status,
-                # as files details can sometimes still be retrieved.
-                hints_parts.append("f=files") 
-                
-                # Only show 'r' hint if the package is installed
+                hints_parts.append("f=files")
                 if installed:
                     hints_parts.append("r=required by")
-                    
+                if not pkg.get("protected", False):
+                    if has_revdeps and installed:
+                        hints_parts.append(_("remove disabled (has revdeps)"))
+                    else:
+                        hints_parts.append("i={}".format(_("remove") if installed else _("install")))
                 hints_parts.append("Up/Down/PgUp/PgDn=scroll")
                 hints_parts.append("Any other key=close")
 
                 hints = " | ".join(hints_parts)
-                
                 hint_x = max(2, ww - len(hints) - 2)
                 win.addstr(hh - 2, hint_x, hints[:ww - hint_x - 2], curses.A_DIM)
-                
+
                 win.refresh()
-                
+
                 ch = win.getch()
-                
+
                 if ch in (ord('f'), ord('F')):
                     self.show_package_files(category, name)
                 elif installed and ch in (ord('r'), ord('R')):
                     self.show_package_revdeps(category, name)
+                elif ch in (ord('i'), ord('I')) and not pkg.get("protected", False) and not has_revdeps:
+                    action_requested = True
+                    break
                 elif ch == curses.KEY_UP:
                     scroll_offset = max(0, scroll_offset - 1)
                 elif ch == curses.KEY_DOWN:
@@ -1469,8 +1505,22 @@ class LuetTUI:
                     
             except curses.error:
                 break
-        
+
         self.draw()
+
+        if action_requested:
+            self.perform_action(pkg)
+
+    def perform_action(self, pkg):
+        """Trigger install or remove for a package, as if selected from the results list."""
+        for i, r in enumerate(self.results):
+            if r['category'] == pkg['category'] and r['name'] == pkg['name']:
+                self.selected_index = i
+                self.do_install_uninstall_selected()
+                return
+        self.results.append(pkg)
+        self.selected_index = len(self.results) - 1
+        self.do_install_uninstall_selected()
 
     def show_package_revdeps(self, category, name):
             """Show a scrollable list of packages that require this package (revdeps) with spinner animation."""
