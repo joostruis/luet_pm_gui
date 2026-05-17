@@ -1174,11 +1174,16 @@ class LuetTUI:
             cat, name = key.split('/', 1)
             if PackageFilter.is_package_hidden(cat, name):
                 continue
+            repo = ""
+            if self.desc_index.is_ready:
+                indexed = self.desc_index._index.get(key)
+                if indexed:
+                    repo = indexed.get("repository", "")
             packages.append({
                 "category": cat,
                 "name": name,
                 "version": version,
-                "repository": "",
+                "repository": repo,
                 "is_actually_installed": True,
                 "protected": PackageFilter.is_package_protected(cat, name),
                 "upgrade_symbol": "",

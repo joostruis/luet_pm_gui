@@ -120,7 +120,6 @@ class PackageDetailsPopup(Gtk.Window):
         Decoupled: Receives run_command_sync_func instead of the whole 'app'.
         """
         super().__init__(title=_("Package Details"))
-        self.set_default_size(900, 400)
         self.run_command_sync = run_command_sync_func # Injected dependency
         self.package_info = package_info
         self.loaded_package_files = {}
@@ -251,10 +250,23 @@ class PackageDetailsPopup(Gtk.Window):
         self.package_files_expander.connect("activate", self.load_package_files_info)
         main_box.pack_start(self.package_files_expander, False, False, 0)
 
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.add(main_box)
+
+        outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        outer_box.pack_start(scrolled, True, True, 0)
+
         close_button = Gtk.Button(label=_("Close"))
         close_button.connect("clicked", lambda b: self.destroy())
-        main_box.pack_end(close_button, False, False, 0)
-        self.add(main_box)
+        close_button.set_margin_start(10)
+        close_button.set_margin_end(10)
+        close_button.set_margin_bottom(10)
+        outer_box.pack_end(close_button, False, False, 0)
+
+        self.add(outer_box)
+        self.set_default_size(900, 400)
+        self.set_resizable(True)
         self.show_all()
 
     
@@ -801,6 +813,7 @@ class SearchApp(Gtk.Window):
                 indexed = self.desc_index._index.get(key)
                 if indexed:
                     pkg["description"] = indexed.get("description", "")
+                    pkg["repository"] = indexed.get("repository", "")
             packages.append(pkg)
 
         packages.sort(key=lambda p: (p["category"], p["name"]))
