@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-05-17 15:56+0200\n"
-"PO-Revision-Date: 2026-03-21 12:20+0100\n"
+"PO-Revision-Date: 2026-05-17 16:08+0200\n"
 "Last-Translator: \n"
 "Language-Team: Dutch <vertaling@vrijschrift.org>\n"
 "Language: nl\n"
@@ -135,7 +135,7 @@ msgstr ""
 
 #: vajo_gui.py:459 vajo_tui.py:371
 msgid "Initializing..."
-msgstr ""
+msgstr "Initialiseren..."
 
 #: vajo_gui.py:502 vajo_gui.py:589 vajo_gui.py:1097 vajo_gui.py:1220
 #: vajo_gui.py:1236 vajo_gui.py:1287 vajo_gui.py:1320 vajo_gui.py:1382
@@ -156,9 +156,8 @@ msgid "Full system upgrade"
 msgstr "Volledige systeemupgrade"
 
 #: vajo_gui.py:544 vajo_tui.py:150 vajo_tui.py:281
-#, fuzzy
 msgid "Installed packages"
-msgstr "Fout bij het installeren van pakket"
+msgstr "Geïnstalleerde pakketten"
 
 #: vajo_gui.py:547 vajo_tui.py:150 vajo_tui.py:283
 msgid "Check system"
@@ -235,9 +234,8 @@ msgstr "Toon uitvoerlog"
 
 #: vajo_gui.py:820 vajo_gui.py:1087 vajo_gui.py:1368 vajo_tui.py:949
 #: vajo_tui.py:1140 vajo_tui.py:1193 vajo_tui.py:1308
-#, fuzzy
 msgid "installed"
-msgstr "Geïnstalleerd"
+msgstr "geïnstalleerd"
 
 #: vajo_gui.py:840 vajo_tui.py:1209
 msgid "Invalid search query"
@@ -754,7 +752,6 @@ msgid "© 2023 - 2026 MocaccinoOS. All Rights Reserved"
 msgstr "© 2023 - 2026 MocaccinoOS. Alle rechten voorbehouden"
 
 #: vajo_core.py:170
-#, fuzzy
 msgid ""
 "Vajo: a Luet Package Manager TUI (ncurses)\n"
 "Version: {}\n"
@@ -766,7 +763,7 @@ msgstr ""
 "Versie: {}\n"
 "Website: {}\n"
 "Auteurs: {}\n"
-"(Gebruikt luet_pm_core.py)"
+"(Gebruikt vajo_core.py)"
 
 #: vajo_core.py:202
 msgid "No elevation helper available"
@@ -905,11 +902,11 @@ msgstr "{} versies terug"
 
 #: modules/rollback.py:421
 msgid "~1 year ago"
-msgstr ""
+msgstr "~1 jaar geleden"
 
 #: modules/rollback.py:423
 msgid "~2 years ago"
-msgstr ""
+msgstr "~2 jaar geleden"
 
 #: modules/rollback.py:612
 msgid "Failed to write repository configuration"
