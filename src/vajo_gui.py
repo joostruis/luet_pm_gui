@@ -344,7 +344,10 @@ class PackageDetailsPopup(Gtk.Window):
                 self.files_liststore.append([f])
 
     def update_expander_label(self, expander, count):
-        label_text = _(expander.get_label().split(' (')[0]) + " ({})".format(count)
+        label = expander.get_label()
+        if not label:
+            return
+        label_text = _(label.split(' (')[0]) + " ({})".format(count)
         expander.set_label(label_text)
 
     def update_textview(self, textview, text):
@@ -526,6 +529,9 @@ class SearchApp(Gtk.Window):
         self.full_upgrade_item = Gtk.MenuItem(label=_("Full system upgrade"))
         self.full_upgrade_item.connect("activate", self.on_full_system_upgrade)
         file_menu.append(self.full_upgrade_item)
+        installed_packages_item = Gtk.MenuItem(label=_("Installed packages"))
+        installed_packages_item.connect("activate", self.on_show_installed_packages)
+        file_menu.append(installed_packages_item)
         check_system_item = Gtk.MenuItem(label=_("Check system"))
         check_system_item.connect("activate", self.check_system)
         file_menu.append(check_system_item)
@@ -767,6 +773,41 @@ class SearchApp(Gtk.Window):
         self.search_button.set_sensitive(True)
         self.treeview.set_sensitive(True)
         self.treeview.set_has_tooltip(True)
+
+    def on_show_installed_packages(self, widget):
+        """Show all installed packages as search results using the cache."""
+        with self.cache_lock:
+            installed = dict(self.installed_packages_cache)
+
+        packages = []
+        for key, version in installed.items():
+            if '/' not in key:
+                continue
+            cat, name = key.split('/', 1)
+            if PackageFilter.is_package_hidden(cat, name):
+                continue
+            pkg = {
+                "category": cat,
+                "name": name,
+                "version": version,
+                "repository": "",
+                "is_actually_installed": True,
+                "protected": PackageFilter.is_package_protected(cat, name),
+                "upgradeable": False,
+                "upgrade_symbol": "",
+                "description": "",
+            }
+            if self.desc_index.is_ready:
+                indexed = self.desc_index._index.get(key)
+                if indexed:
+                    pkg["description"] = indexed.get("description", "")
+            packages.append(pkg)
+
+        packages.sort(key=lambda p: (p["category"], p["name"]))
+        self.last_search = _("installed")
+        self.search_entry.set_text("")
+        self.clear_liststore()
+        self.on_search_finished({"packages": packages})
 
     def on_search_clicked(self, widget):
         package_name = self.search_entry.get_text().strip()
@@ -1030,7 +1071,10 @@ class SearchApp(Gtk.Window):
         self.cache_initialized = True
         self.stop_spinner()
         
-        if self.last_search:
+        if self.last_search == _("installed"):
+            self.clear_liststore()
+            self.on_show_installed_packages(None)
+        elif self.last_search:
             advanced = self.advanced_search_checkbox.get_active()
             search_cmd = ["luet", "search", "-o", "json", "--files" if advanced else "-q", self.last_search]
             self.clear_liststore()
@@ -1308,14 +1352,14 @@ class SearchApp(Gtk.Window):
                 self.update_sync_info_label()
                 
                 # 2. FIX: Re-run search to update the list with new cache data
-                if self.last_search:
+                if self.last_search == _("installed"):
+                    self.clear_liststore()
+                    self.on_show_installed_packages(None)
+                elif self.last_search:
                     advanced = self.advanced_search_checkbox.get_active()
                     search_cmd = ["luet", "search", "-o", "json", "--files" if advanced else "-q", self.last_search]
-                    
                     self.clear_liststore()
-
                     self.start_spinner(_("Searching for {}...").format(self.last_search))
-
                     self.start_search_thread(search_cmd, advanced)
                 else:
                     self.enable_gui()

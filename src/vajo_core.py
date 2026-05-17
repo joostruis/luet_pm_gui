@@ -75,13 +75,14 @@ class PackageState:
             pkgs = {}
             cat = name = ver = None
             for line in res.stdout.splitlines():
-                stripped = line.strip()
-                if stripped.startswith('category:'):
-                    cat = stripped[len('category:'):].strip().strip('"')
-                elif stripped.startswith('name:'):
-                    name = stripped[len('name:'):].strip().strip('"')
-                elif stripped.startswith('version:'):
-                    ver = stripped[len('version:'):].strip().strip('"')
+                # Only match top-level fields (2 spaces indent) to avoid
+                # picking up nested fields in requires/provides blocks
+                if line.startswith('  category:'):
+                    cat = line[len('  category:'):].strip().strip('"')
+                elif line.startswith('  name:'):
+                    name = line[len('  name:'):].strip().strip('"')
+                elif line.startswith('  version:'):
+                    ver = line[len('  version:'):].strip().strip('"')
                 if cat and name and ver:
                     pkgs[f"{cat}/{name}"] = ver
                     cat = name = ver = None
@@ -323,7 +324,7 @@ class PackageFilter:
         :param name: Package name
         :return: True if package should be hidden, False otherwise
         """
-        if category in ("entity", "buildbase", "layerbase"):
+        if category in ("entity", "buildbase", "layerbase", "acct-group", "acct-user"):
             return True
         
         key = "{}/{}".format(category, name)
@@ -1101,14 +1102,27 @@ class PackageDetails:
     @staticmethod
     def get_definition_yaml(run_command_sync, repository, category, name, version):
         """Load definition.yaml content for the package via run_command_sync.
-        Returns a dict or None.
+        Returns a dict or None. If repository is empty, searches all repos.
         """
         try:
-            path = f"/var/luet/db/repos/{repository}/treefs/{category}/{name}/{version}/definition.yaml"
-            res = run_command_sync(["cat", path], require_root=True)
-            if res.returncode != 0:
-                return None
-            return yaml.safe_load(res.stdout) if res.stdout else None
+            if repository:
+                repos = [repository]
+            else:
+                # No repository known — search all repos (e.g. from installed packages list)
+                res = run_command_sync(
+                    ["find", "/var/luet/db/repos", "-mindepth", "1", "-maxdepth", "1", "-type", "d"],
+                    require_root=True
+                )
+                if res.returncode != 0:
+                    return None
+                repos = [os.path.basename(p.strip()) for p in res.stdout.splitlines() if p.strip()]
+
+            for repo in repos:
+                path = f"/var/luet/db/repos/{repo}/treefs/{category}/{name}/{version}/definition.yaml"
+                res = run_command_sync(["cat", path], require_root=True)
+                if res.returncode == 0 and res.stdout:
+                    return yaml.safe_load(res.stdout)
+            return None
         except Exception:
             return None
 

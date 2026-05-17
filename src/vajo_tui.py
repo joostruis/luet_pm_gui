@@ -147,7 +147,7 @@ class Menu:
     def get_base_menu_items():
         """Get base menu items with placeholders: None=cache, False=rollback."""
         return [
-            [_("Update repositories"), _("Full system upgrade"), _("Check system"), None, False, _("Quit")],
+            [_("Update repositories"), _("Full system upgrade"), _("Installed packages"), _("Check system"), None, False, _("Quit")],
             [_("Documentation"), _("About")]
         ]
 
@@ -278,6 +278,8 @@ class Menu:
         elif item == _("Full system upgrade"):
             if not self.is_pinned:
                 self.app.run_full_upgrade()
+        elif item == _("Installed packages"):
+            self.app.run_show_installed_packages()
         elif item == _("Check system"):
             self.app.run_check_system()
         elif item == self.cache_menu_label:
@@ -944,7 +946,9 @@ class LuetTUI:
                 self.refresh_installed_packages_cache()
                 
                 # 2. FIX: If we have an active search, re-run it to update symbols
-                if self.search_query:
+                if self.search_query == _("installed"):
+                    self.run_show_installed_packages()
+                elif self.search_query:
                     self.run_search(self.search_query)
 
                 self.set_status(_("System upgrade completed successfully"))
@@ -1133,7 +1137,9 @@ class LuetTUI:
                     if returncode == 0:
                         self.set_status(_("Rollback completed successfully"))
                         self.refresh_installed_packages_cache()
-                        if self.search_query:
+                        if self.search_query == _("installed"):
+                            self.run_show_installed_packages()
+                        elif self.search_query:
                             self.run_search(self.search_query)
                         self.update_rollback_menu()
                         if not self.is_error_status:
@@ -1156,6 +1162,32 @@ class LuetTUI:
 
         threading.Thread(target=_prepare, daemon=True).start()
         
+    def run_show_installed_packages(self):
+        """Show all installed packages as results using the cache — no luet call needed."""
+        with self.cache_lock:
+            installed = dict(self.installed_packages_cache)
+
+        packages = []
+        for key, version in installed.items():
+            if '/' not in key:
+                continue
+            cat, name = key.split('/', 1)
+            if PackageFilter.is_package_hidden(cat, name):
+                continue
+            packages.append({
+                "category": cat,
+                "name": name,
+                "version": version,
+                "repository": "",
+                "is_actually_installed": True,
+                "protected": PackageFilter.is_package_protected(cat, name),
+                "upgrade_symbol": "",
+            })
+
+        packages.sort(key=lambda p: (p["category"], p["name"]))
+        self.search_query = _("installed")
+        self.on_search_finished({"packages": packages})
+
     def run_search(self, query):
         self.set_status(_("Searching for {}...").format(query))
         self.draw()
@@ -1268,7 +1300,9 @@ class LuetTUI:
             self.cache_initialized = True
             
             self.set_status(_("Ready"))
-            if self.search_query: 
+            if self.search_query == _("installed"):
+                self.run_show_installed_packages()
+            elif self.search_query:
                 self.run_search(self.search_query)
 
         if installed:
